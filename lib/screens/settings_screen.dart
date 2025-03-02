@@ -229,8 +229,8 @@ class SettingsScreen extends StatelessWidget {
                 applicationName: 'PYUSD Wallet',
                 applicationVersion: '1.0.0',
                 applicationIcon: Image.asset(
-                  'assets/logo.png',
-                  width: 48,
+                  'assets/images/pyusdlogo.png',
+                  // width: 48,
                   height: 48,
                 ),
                 children: const [

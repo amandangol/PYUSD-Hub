@@ -7,7 +7,9 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: ".env");
+  print(dotenv.env); // Check if variables are loaded
+
   runApp(const MyApp());
 }
 

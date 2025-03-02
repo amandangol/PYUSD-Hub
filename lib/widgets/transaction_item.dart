@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../models/transaction.dart';
 
 class TransactionItem extends StatelessWidget {
@@ -203,8 +202,8 @@ class TransactionItem extends StatelessWidget {
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () async {
-                        // final url =
-                        //     'https://etherscan.io/tx/${transaction.hash}';
+                        final url =
+                            'https://etherscan.io/tx/${transaction.hash}';
                         // if (await canLaunchUrl(Uri.parse(url))) {
                         //   await launchUrl(Uri.parse(url));
                         // }

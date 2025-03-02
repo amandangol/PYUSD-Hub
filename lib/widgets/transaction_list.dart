@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:shimmer/shimmer.dart';
-
 import '../models/transaction.dart';
 import 'transaction_item.dart';
 
@@ -20,7 +18,7 @@ class TransactionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return _buildLoadingShimmer();
+      return Center(child: const CircularProgressIndicator());
     }
 
     return ListView.builder(
@@ -37,25 +35,26 @@ class TransactionList extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingShimmer() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 5,
-        padding: EdgeInsets.zero,
-        itemBuilder: (context, index) {
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-            child: Container(
-              height: 72,
-              padding: const EdgeInsets.all(16),
-            ),
-          );
-        },
-      ),
-    );
-  }
+//   Widget _buildLoadingShimmer() {
+//     return Shimmer.fromColors(
+//       baseColor: Colors.grey[300]!,
+//       highlightColor: Colors.grey[100]!,
+//       child: ListView.builder(
+//         shrinkWrap: true,
+//         physics: const NeverScrollableScrollPhysics(),
+//         itemCount: 5,
+//         padding: EdgeInsets.zero,
+//         itemBuilder: (context, index) {
+//           return Card(
+//             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+//             child: Container(
+//               height: 72,
+//               padding: const EdgeInsets.all(16),
+//             ),
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }
 }

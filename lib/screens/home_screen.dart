@@ -121,14 +121,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        if (walletProvider.isLoading)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          ),
+                        // if (walletProvider.isLoading)
+                        //   const SizedBox(
+                        //     width: 20,
+                        //     height: 20,
+                        //     child: CircularProgressIndicator(
+                        //       strokeWidth: 2,
+                        //     ),
+                        //   ),
                       ],
                     ),
                   ),

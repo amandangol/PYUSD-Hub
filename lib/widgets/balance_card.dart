@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
 class BalanceCard extends StatelessWidget {
@@ -7,7 +8,7 @@ class BalanceCard extends StatelessWidget {
   final double balance;
   final bool isLoading;
 
-  const BalanceCard({
+  BalanceCard({
     Key? key,
     required this.address,
     required this.balance,
@@ -18,8 +19,20 @@ class BalanceCard extends StatelessWidget {
     return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
   }
 
+  final formatter = NumberFormat.currency(
+    symbol: '',
+    decimalDigits: 2,
+  );
+
   @override
   Widget build(BuildContext context) {
+    String formattedBalance;
+    if (balance >= 1000000) {
+      formattedBalance = formatter.format(balance);
+    } else {
+      // For smaller numbers, show exact value with 2 decimal places
+      formattedBalance = balance.toStringAsFixed(2);
+    }
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
@@ -74,14 +87,14 @@ class BalanceCard extends StatelessWidget {
                   width: 200,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.white.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               )
             else
               Text(
-                '${balance.toStringAsFixed(2)} PYUSD',
+                formattedBalance,
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
