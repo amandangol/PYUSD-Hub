@@ -3,14 +3,29 @@ import '../models/transaction.dart';
 import '../models/wallet.dart';
 import '../services/blockchain_service.dart';
 import '../services/wallet_service.dart';
+import 'network_provider.dart';
 
 class WalletProvider extends ChangeNotifier {
   final WalletService _walletService = WalletService();
   final BlockchainService _blockchainService = BlockchainService();
+  final NetworkProvider _networkProvider;
 
   WalletModel? _wallet;
-  double _balance = 0;
-  List<TransactionModel> _transactions = [];
+
+  // Replace single balance with a map of balances per network
+  Map<NetworkType, double> _balances = {
+    NetworkType.holeskyTestnet: 0,
+    NetworkType.sepoliaTestnet: 0,
+    NetworkType.ethereumMainnet: 0,
+  };
+
+  // Replace single transactions list with a map of transactions per network
+  Map<NetworkType, List<TransactionModel>> _transactionsByNetwork = {
+    NetworkType.holeskyTestnet: [],
+    NetworkType.sepoliaTestnet: [],
+    NetworkType.ethereumMainnet: [],
+  };
+
   bool _isLoading = false;
   bool _isBalanceRefreshing = false;
   String? _error;
@@ -21,12 +36,21 @@ class WalletProvider extends ChangeNotifier {
 
   // Getters
   WalletModel? get wallet => _wallet;
-  double get balance => _balance;
-  List<TransactionModel> get transactions => _transactions;
+
+  // Return balance for current network
+  double get balance => _balances[_networkProvider.currentNetwork] ?? 0;
+
+  // Return transactions for current network
+  List<TransactionModel> get transactions =>
+      _transactionsByNetwork[_networkProvider.currentNetwork] ?? [];
+
   bool get isLoading => _isLoading;
   bool get isBalanceRefreshing => _isBalanceRefreshing;
   String? get error => _error;
   bool get hasWallet => _wallet != null;
+  NetworkProvider get networkProvider => _networkProvider;
+
+  WalletProvider(this._networkProvider);
 
   // Initialize wallet
   Future<void> initWallet() async {
@@ -90,10 +114,12 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  // Refresh balance with dedicated loading state
+  // Refresh balance with dedicated loading state - modified to use current network
   Future<void> refreshBalance() async {
     if (_wallet == null) return;
     if (_isRefreshingBalance) return; // Prevent multiple concurrent calls
+
+    final currentNetwork = _networkProvider.currentNetwork;
 
     _isRefreshingBalance = true;
     // Set dedicated balance loading state
@@ -101,16 +127,26 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('Refreshing balance for ${_wallet!.address}');
+      print(
+          'Refreshing balance for ${_wallet!.address} on ${_networkProvider.currentNetworkConfig.name}');
+
+      // Make sure blockchain service is using the current network config
+      await _blockchainService.updateNetwork(
+        _networkProvider.currentNetworkConfig.rpcUrl,
+        _networkProvider.currentNetworkConfig.pyusdContractAddress,
+        _networkProvider.currentNetworkConfig.chainId,
+        _networkProvider.currentNetworkConfig.explorerUrl,
+      );
+
       final newBalance =
           await _blockchainService.getPYUSDBalance(_wallet!.address);
 
-      // Update balance only if it changed
-      if (_balance != newBalance) {
-        print('Balance updated: $_balance -> $newBalance');
-        _balance = newBalance;
-        notifyListeners();
-      }
+      print(
+          'Balance fetched on ${_networkProvider.currentNetworkConfig.name}: $newBalance (previous: ${_balances[currentNetwork]})');
+
+      // Always update the balance for the current network
+      _balances[currentNetwork] = newBalance;
+      notifyListeners();
     } catch (e) {
       print('Failed to refresh balance: $e');
       _setError('Failed to refresh balance: $e');
@@ -121,10 +157,12 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  // Fetch transaction history
+  // Fetch transaction history - modified to use current network
   Future<void> fetchTransactions() async {
     if (_wallet == null) return;
     if (_isFetchingTransactions) return; // Prevent multiple concurrent calls
+
+    final currentNetwork = _networkProvider.currentNetwork;
 
     _isFetchingTransactions = true;
     _setLoading(true);
@@ -132,9 +170,12 @@ class WalletProvider extends ChangeNotifier {
       final newTransactions =
           await _blockchainService.getTransactionHistory(_wallet!.address);
 
+      // Get current transactions for this network
+      final currentTxs = _transactionsByNetwork[currentNetwork] ?? [];
+
       // Check if transactions have changed before updating
-      if (_transactionsChanged(newTransactions)) {
-        _transactions = newTransactions;
+      if (_transactionsChanged(newTransactions, currentTxs)) {
+        _transactionsByNetwork[currentNetwork] = newTransactions;
         notifyListeners();
 
         // Only refresh balance if transactions have changed and we're not already refreshing
@@ -150,22 +191,22 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  // Helper to check if transactions have changed
-  bool _transactionsChanged(List<TransactionModel> newTransactions) {
-    if (_transactions.length != newTransactions.length) return true;
+  // Modified helper to check if transactions have changed
+  bool _transactionsChanged(List<TransactionModel> newTransactions,
+      List<TransactionModel> currentTransactions) {
+    if (currentTransactions.length != newTransactions.length) return true;
 
     // Check if any transaction hashes differ
     for (int i = 0; i < newTransactions.length; i++) {
-      if (i >= _transactions.length ||
-          newTransactions[i].hash != _transactions[i].hash) {
+      if (i >= currentTransactions.length ||
+          newTransactions[i].hash != currentTransactions[i].hash) {
         return true;
       }
     }
     return false;
   }
 
-  // Modified part of the wallet_provider.dart file
-
+  // Modified sendPYUSD to use current network
   Future<bool> sendPYUSD({
     required String to,
     required double amount,
@@ -173,6 +214,9 @@ class WalletProvider extends ChangeNotifier {
   }) async {
     if (_wallet == null) return false;
     if (_isLoading) return false;
+
+    final currentNetwork = _networkProvider.currentNetwork;
+    final currentBalance = _balances[currentNetwork] ?? 0;
 
     _setLoading(true);
 
@@ -187,7 +231,7 @@ class WalletProvider extends ChangeNotifier {
         return false;
       }
 
-      if (amount + gasFee > _balance) {
+      if (amount + gasFee > currentBalance) {
         _setError('Insufficient balance');
         return false;
       }
@@ -201,12 +245,16 @@ class WalletProvider extends ChangeNotifier {
         timestamp: DateTime.now(),
         status: 'Pending',
         fee: gasFee.toString(),
+        networkName: _networkProvider.currentNetworkConfig.name,
       );
 
       // Add pending transaction immediately for responsive UI
-      _transactions.insert(0, pendingTx);
+      final currentTxs = _transactionsByNetwork[currentNetwork] ?? [];
+      currentTxs.insert(0, pendingTx);
+      _transactionsByNetwork[currentNetwork] = currentTxs;
+
       // Pre-emptively update balance to provide immediate feedback
-      _balance = _balance - amount - gasFee;
+      _balances[currentNetwork] = currentBalance - amount - gasFee;
       notifyListeners();
 
       String? txHash;
@@ -227,12 +275,15 @@ class WalletProvider extends ChangeNotifier {
       if (txHash != null) {
         print('Transaction successful: $txHash');
 
+        // Get current transactions list for this network
+        final currentTxs = _transactionsByNetwork[currentNetwork] ?? [];
+
         // Find the pending transaction by its unique ID
-        final index = _transactions.indexWhere((tx) => tx.hash == pendingTxId);
+        final index = currentTxs.indexWhere((tx) => tx.hash == pendingTxId);
 
         if (index != -1) {
           // Replace the pending transaction with the confirmed one
-          _transactions[index] = TransactionModel(
+          currentTxs[index] = TransactionModel(
             hash: txHash,
             from: _wallet!.address,
             to: to,
@@ -240,11 +291,13 @@ class WalletProvider extends ChangeNotifier {
             timestamp: DateTime.now(),
             status: 'Pending', // Keep as pending until confirmation
             fee: gasFee.toString(),
+            networkName: _networkProvider.currentNetworkConfig.name,
           );
+          _transactionsByNetwork[currentNetwork] = currentTxs;
           notifyListeners();
         } else {
           // If we somehow lost the pending transaction, add the new one
-          _transactions.insert(
+          currentTxs.insert(
               0,
               TransactionModel(
                 hash: txHash,
@@ -254,7 +307,9 @@ class WalletProvider extends ChangeNotifier {
                 timestamp: DateTime.now(),
                 status: 'Pending',
                 fee: gasFee.toString(),
+                networkName: _networkProvider.currentNetworkConfig.name,
               ));
+          _transactionsByNetwork[currentNetwork] = currentTxs;
           notifyListeners();
         }
 
@@ -265,20 +320,22 @@ class WalletProvider extends ChangeNotifier {
 
         // Schedule a status update check after some time
         Future.delayed(const Duration(seconds: 30), () async {
-          _checkTransactionStatus(txHash!);
+          _checkTransactionStatus(txHash!, currentNetwork);
         });
 
         return true;
       }
 
       // If transaction failed, remove the pending transaction and restore balance
-      _removeAndRestorePendingTransaction(pendingTxId, amount, gasFee);
+      _removeAndRestorePendingTransaction(
+          pendingTxId, amount, gasFee, currentNetwork);
       _setError('Transaction failed: No transaction hash returned');
       return false;
     } catch (e) {
       print('Transaction failed with error: $e');
       // Remove the pending transaction and restore balance
-      _removeAndRestorePendingTransaction(pendingTxId, amount, gasFee);
+      _removeAndRestorePendingTransaction(
+          pendingTxId, amount, gasFee, currentNetwork);
       _setError('Transaction failed: $e');
       return false;
     } finally {
@@ -286,19 +343,98 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-// Helper method to remove pending transaction and restore balance
-  void _removeAndRestorePendingTransaction(
-      String pendingTxId, double amount, double gasFee) {
-    final index = _transactions.indexWhere((tx) => tx.hash == pendingTxId);
-    if (index != -1) {
-      _transactions.removeAt(index);
-      _balance = _balance + amount + gasFee; // Restore balance
+  // Get current network name
+  String getCurrentNetworkName() {
+    return _networkProvider.currentNetworkConfig.name;
+  }
+
+  // Get contract address for current network
+  String getCurrentContractAddress() {
+    return _networkProvider.currentNetworkConfig.pyusdContractAddress;
+  }
+
+  // Get chain ID for current network
+  int getCurrentChainId() {
+    return _networkProvider.currentNetworkConfig.chainId;
+  }
+
+  // Get explorer URL for current network
+  String getCurrentExplorerUrl() {
+    return _networkProvider.currentNetworkConfig.explorerUrl;
+  }
+
+  Future<void> handleNetworkChange() async {
+    final currentNetwork = _networkProvider.currentNetwork;
+    print('Network changed to: ${_networkProvider.currentNetworkConfig.name}');
+
+    // Reset state for UI purposes but don't clear data
+    _isRefreshingBalance = false;
+    _isFetchingTransactions = false;
+    _error = null; // Clear any existing errors
+
+    // Set loading states immediately
+    _isBalanceRefreshing = true;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Ensure blockchain service is updated with the new network settings
+      await _blockchainService.updateNetwork(
+        _networkProvider.currentNetworkConfig.rpcUrl,
+        _networkProvider.currentNetworkConfig.pyusdContractAddress,
+        _networkProvider.currentNetworkConfig.chainId,
+        _networkProvider.currentNetworkConfig.explorerUrl,
+      );
+
+      print(
+          'BlockchainService updated for network: ${_networkProvider.currentNetworkConfig.name}');
+
+      // Refresh data for the current network
+      if (_wallet != null) {
+        // Force a fresh balance fetch
+        print(
+            'Fetching balance for network: ${_networkProvider.currentNetworkConfig.name}');
+        final newBalance =
+            await _blockchainService.getPYUSDBalance(_wallet!.address);
+
+        // Update the balance for this specific network
+        _balances[currentNetwork] = newBalance;
+
+        print(
+            'Balance updated for ${_networkProvider.currentNetworkConfig.name}: $newBalance');
+
+        // Fetch transactions separately
+        await fetchTransactions();
+      }
+    } catch (e) {
+      print('Error during network change: $e');
+      _setError('Failed to update data after network change: $e');
+    } finally {
+      _isBalanceRefreshing = false;
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-// Improved transaction status check method
-  Future<void> _checkTransactionStatus(String txHash) async {
+  // Modified helper method to remove pending transaction and restore balance
+  void _removeAndRestorePendingTransaction(
+      String pendingTxId, double amount, double gasFee, NetworkType network) {
+    final txList = _transactionsByNetwork[network] ?? [];
+    final index = txList.indexWhere((tx) => tx.hash == pendingTxId);
+
+    if (index != -1) {
+      txList.removeAt(index);
+      _transactionsByNetwork[network] = txList;
+
+      // Restore balance for this network
+      _balances[network] = (_balances[network] ?? 0) + amount + gasFee;
+      notifyListeners();
+    }
+  }
+
+  // Modified transaction status check method
+  Future<void> _checkTransactionStatus(
+      String txHash, NetworkType network) async {
     try {
       // Make multiple attempts to check transaction status
       bool isConfirmed = false;
@@ -312,56 +448,51 @@ class WalletProvider extends ChangeNotifier {
         // For now, we'll simulate confirmation after a delay
         await Future.delayed(const Duration(seconds: 10));
 
+        // Get transactions for the specific network
+        final txList = _transactionsByNetwork[network] ?? [];
+
         // Find the transaction in our list
-        final index = _transactions.indexWhere((tx) => tx.hash == txHash);
-        if (index != -1 && _transactions[index].status == 'Pending') {
+        final index = txList.indexWhere((tx) => tx.hash == txHash);
+        if (index != -1 && txList[index].status == 'Pending') {
           // Update the transaction status to confirmed
           final updatedTx = TransactionModel(
-            hash: _transactions[index].hash,
-            from: _transactions[index].from,
-            to: _transactions[index].to,
-            amount: _transactions[index].amount,
-            timestamp: _transactions[index].timestamp,
+            hash: txList[index].hash,
+            from: txList[index].from,
+            to: txList[index].to,
+            amount: txList[index].amount,
+            timestamp: txList[index].timestamp,
             status: 'Confirmed', // Update the status
-            fee: _transactions[index].fee,
+            fee: txList[index].fee,
+            networkName: txList[index].networkName,
           );
 
-          _transactions[index] = updatedTx;
+          txList[index] = updatedTx;
+          _transactionsByNetwork[network] = txList;
           notifyListeners();
           isConfirmed = true;
         } else if (index == -1) {
           // If we can't find the transaction, try to refresh transactions
-          await fetchTransactions();
-          // Check if it was added after refresh
-          if (_transactions.any((tx) => tx.hash == txHash)) {
-            isConfirmed = true;
+          // Only refresh if the current network is the one with the transaction
+          if (network == _networkProvider.currentNetwork) {
+            await fetchTransactions();
+
+            // Check if it was added after refresh
+            final refreshedTxs = _transactionsByNetwork[network] ?? [];
+            if (refreshedTxs.any((tx) => tx.hash == txHash)) {
+              isConfirmed = true;
+            }
           }
         }
       }
 
       // Final refresh to ensure everything is up to date
-      await refreshWalletData();
+      if (network == _networkProvider.currentNetwork) {
+        await refreshWalletData();
+      }
     } catch (e) {
       print('Error checking transaction status: $e');
       // Even if we have an error, try to refresh data
       await refreshWalletData();
-    }
-  }
-
-  // Delete wallet
-  Future<void> deleteWallet() async {
-    if (_isLoading) return;
-    _setLoading(true);
-    try {
-      await _walletService.deleteWallet();
-      _wallet = null;
-      _balance = 0;
-      _transactions = [];
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to delete wallet: $e');
-    } finally {
-      _setLoading(false);
     }
   }
 

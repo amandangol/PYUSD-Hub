@@ -16,7 +16,6 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  bool _isInitialized = false;
   bool _isInitializing = false;
 
   @override
@@ -53,9 +52,7 @@ class _SplashScreenState extends State<SplashScreen>
       await walletProvider.initWallet();
 
       if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
+        setState(() {});
 
         // Navigate to main app immediately after initialization
         Timer(const Duration(milliseconds: 300), () {

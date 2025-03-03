@@ -31,21 +31,15 @@ class ActionButtons extends StatelessWidget {
         ),
         _buildActionButton(
           context,
-          Icons.arrow_downward_rounded,
-          'Receive',
-          onReceivePressed,
-        ),
-        _buildActionButton(
-          context,
           Icons.swap_horiz_rounded,
           'Swap',
           onSwapPressed,
         ),
         _buildActionButton(
           context,
-          Icons.history_rounded,
-          'History',
-          onHistoryPressed,
+          Icons.arrow_downward_rounded,
+          'Receive',
+          onReceivePressed,
         ),
       ],
     );

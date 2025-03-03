@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../utils/snackbar_utils.dart';
 import '../receive_screen.dart';
 import '../send_screen.dart';
 import '../settings_screen.dart';
@@ -151,10 +152,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 // Balance Card
                 BalanceCard(
-                  balance: walletProvider.balance,
+                  balance: walletProvider
+                      .balance, // This should now correctly reflect the current network's balance
                   walletAddress: walletProvider.wallet?.address ?? '',
                   isRefreshing: walletProvider.isBalanceRefreshing,
-                  primaryColor: primaryColor,
+                  primaryColor: Theme.of(context).primaryColor,
+                  networkName: walletProvider.getCurrentNetworkName(),
                 ),
 
                 // Action Buttons
@@ -180,8 +183,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                   onSwapPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Swap feature coming soon')),
+                    SnackbarUtil.showSnackbar(
+                      context: context,
+                      message: "Swap Feature coming soon",
                     );
                   },
                   onHistoryPressed: () {
@@ -195,7 +199,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                 // Network Status Card
                 const SizedBox(height: 24),
-                NetworkStatusCard(isDarkMode: isDarkMode),
+                EnhancedNetworkStatusCard(
+                  isDarkMode: isDarkMode,
+                ),
 
                 // Transactions Section
                 const SizedBox(height: 24),

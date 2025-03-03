@@ -5,6 +5,7 @@ import '../providers/wallet_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 
+import '../utils/snackbar_utils.dart';
 import 'welcome_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -108,12 +109,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ClipboardData(
                                     text: walletProvider.wallet?.address ?? ''),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                  'Address copied to clipboard',
-                                  style: TextStyle(),
-                                )),
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: "Address copied to clipboard",
                               );
                             },
                           ),
@@ -216,14 +214,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             value: false, // Connect to a biometric provider
                             onChanged: (value) {
                               // Toggle biometric auth
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    value
-                                        ? 'Biometric authentication enabled'
-                                        : 'Biometric authentication disabled',
-                                  ),
-                                ),
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: value
+                                    ? 'Biometric authentication enabled'
+                                    : 'Biometric authentication disabled',
                               );
                             },
                             activeColor: primaryColor,
@@ -234,12 +229,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             trailing:
                                 const Icon(Icons.arrow_forward_ios, size: 16),
                             onTap: () {
-                              // Navigate to PIN change screen
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('PIN change feature coming soon'),
-                                ),
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: 'PIN change feature coming soon',
                               );
                             },
                           ),
@@ -311,11 +303,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const Icon(Icons.arrow_forward_ios, size: 16),
                             onTap: () {
                               // Navigate to Privacy Policy
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Privacy Policy will open soon'),
-                                ),
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: "Privacy Policy will open soon",
                               );
                             },
                           ),
@@ -476,10 +466,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ClipboardData(text: wallet?.privateKey ?? ''),
               );
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Private key copied to clipboard'),
-                ),
+              SnackbarUtil.showSnackbar(
+                context: context,
+                message: "Private key copied to clipboard",
               );
             },
           ),
@@ -556,10 +545,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ClipboardData(text: wallet?.mnemonic ?? ''),
               );
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Recovery phrase copied to clipboard'),
-                ),
+              SnackbarUtil.showSnackbar(
+                context: context,
+                message: "Recovery phrase copied to clipboard",
               );
             },
           ),

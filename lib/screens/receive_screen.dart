@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../providers/wallet_provider.dart';
+import '../utils/snackbar_utils.dart';
 
 class ReceiveScreen extends StatelessWidget {
   const ReceiveScreen({Key? key}) : super(key: key);
@@ -176,16 +177,9 @@ class ReceiveScreen extends StatelessWidget {
                         GestureDetector(
                           onTap: () {
                             Clipboard.setData(ClipboardData(text: address));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    const Text('Address copied to clipboard'),
-                                backgroundColor: primaryColor,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
+                            SnackbarUtil.showSnackbar(
+                              context: context,
+                              message: "Address copied to clipboard",
                             );
                           },
                           child: Container(
@@ -239,16 +233,9 @@ class ReceiveScreen extends StatelessWidget {
                           child: ElevatedButton.icon(
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: address));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content:
-                                      const Text('Address copied to clipboard'),
-                                  backgroundColor: primaryColor,
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: "Address copied to clipboard",
                               );
                             },
                             icon: const Icon(Icons.copy_rounded,
@@ -281,10 +268,9 @@ class ReceiveScreen extends StatelessWidget {
                             onPressed: () {
                               // Implementation for sharing would go here
                               // This would typically use a package like share_plus
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Sharing address...'),
-                                ),
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: "Sharing address...",
                               );
                             },
                             icon:

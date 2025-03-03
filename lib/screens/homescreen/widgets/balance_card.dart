@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../utils/snackbar_utils.dart';
 
 class BalanceCard extends StatelessWidget {
   final double balance;
   final String walletAddress;
   final bool isRefreshing;
   final Color primaryColor;
+  final String networkName; // Added network name parameter
+  final String tokenSymbol; // Added token symbol parameter (PYUSD)
 
   const BalanceCard({
     Key? key,
@@ -12,6 +17,8 @@ class BalanceCard extends StatelessWidget {
     required this.walletAddress,
     required this.isRefreshing,
     required this.primaryColor,
+    required this.networkName, // New required parameter
+    this.tokenSymbol = 'PYUSD', // Default to PYUSD with optional override
   }) : super(key: key);
 
   String _formatAddress(String address) {
@@ -46,6 +53,37 @@ class BalanceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Network indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    networkName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -69,13 +107,30 @@ class BalanceCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              '\$${balance.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '\$${balance.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    tokenSymbol,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(
@@ -105,12 +160,12 @@ class BalanceCard extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.copy, color: Colors.white),
                   onPressed: () {
-                    // Copy address to clipboard
-                    // Implementation needed
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Address copied to clipboard'),
-                      ),
+                    Clipboard.setData(
+                      ClipboardData(text: walletAddress),
+                    );
+                    SnackbarUtil.showSnackbar(
+                      context: context,
+                      message: "Address copied to clipboard",
                     );
                   },
                 ),

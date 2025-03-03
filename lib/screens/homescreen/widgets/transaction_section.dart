@@ -24,7 +24,6 @@ class TransactionsSection extends StatelessWidget {
     final cardColor = isDarkMode ? const Color(0xFF252543) : Colors.white;
     // Show only the 3 most recent transactions on home screen
     final displayedTransactions = transactions.take(3).toList();
-    final hasMoreTransactions = transactions.length > 3;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

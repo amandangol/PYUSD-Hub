@@ -15,7 +15,6 @@ class WelcomeScreen extends StatelessWidget {
     final primaryColor =
         isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
-    final cardColor = isDarkMode ? const Color(0xFF252543) : Colors.white;
     final surfaceColor =
         isDarkMode ? const Color(0xFF252543) : const Color(0xFFF5F7FF);
 

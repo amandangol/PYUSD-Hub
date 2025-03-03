@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/main.dart';
 import '../providers/wallet_provider.dart';
+import '../utils/snackbar_utils.dart';
 import '../widgets/loading_overlay.dart';
 
 class CreateWalletScreen extends StatefulWidget {
@@ -171,12 +172,11 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                                 }
                               } catch (e) {
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: ${e.toString()}'),
-                                      backgroundColor: theme.colorScheme.error,
-                                    ),
+                                  SnackbarUtil.showSnackbar(
+                                    context: context,
+                                    message: "Error: ${e.toString()}",
                                   );
+
                                   setState(() {
                                     _isCreating = false;
                                   });
@@ -317,25 +317,12 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                                 Clipboard.setData(ClipboardData(
                                   text: walletProvider.wallet?.mnemonic ?? '',
                                 ));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Row(
-                                      children: [
-                                        Icon(
-                                          Icons.check_circle,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: 12),
-                                        Text(
-                                            'Recovery phrase copied to clipboard'),
-                                      ],
-                                    ),
-                                    backgroundColor: Colors.green[800],
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
+                                SnackbarUtil.showSnackbar(
+                                  context: context,
+                                  message:
+                                      'Recovery phrase copied to clipboard',
+                                  isError: false,
+                                  icon: Icons.check_circle,
                                 );
                               },
                               icon: const Icon(Icons.copy_rounded),

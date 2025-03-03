@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/wallet_provider.dart';
+import '../utils/snackbar_utils.dart';
 import '../widgets/loading_overlay.dart';
 
 class SendTransactionScreen extends StatefulWidget {
@@ -53,12 +54,12 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       );
 
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaction sent successfully'),
-            backgroundColor: Colors.green,
-          ),
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: "Transaction sent successfully",
+          icon: Icons.check_circle_outline,
         );
+
         Navigator.pop(context);
       } else {
         throw Exception('Transaction failed');

@@ -1,94 +1,276 @@
-import 'package:flutter/foundation.dart';
-import 'dart:math';
+import 'package:flutter/material.dart';
+import '../services/blockchain_service.dart';
 
-class NetworkProvider with ChangeNotifier {
-  bool _isLoading = true;
-  String _congestionLevel = 'medium';
-  double _currentGasPrice = 23.5;
-  double _fastGasPrice = 32.0;
-  double _standardGasPrice = 23.5;
-  double _slowGasPrice = 18.2;
-  List<double> _gasPriceHistory = [];
-  Map<String, double> _pyusdTransferVolume = {};
-  Map<String, double> _bridgeActivity = {};
-  int _totalTransactions = 0;
-  int _uniqueAddresses = 0;
-  int _totalBridgeVolume = 0;
+// Enum for supported networks
+enum NetworkType {
+  holeskyTestnet,
+  sepoliaTestnet,
+  ethereumMainnet, // Added Ethereum Mainnet
+}
 
-  bool get isLoading => _isLoading;
-  String get congestionLevel => _congestionLevel;
-  double get currentGasPrice => _currentGasPrice;
-  double get fastGasPrice => _fastGasPrice;
-  double get standardGasPrice => _standardGasPrice;
-  double get slowGasPrice => _slowGasPrice;
-  List<double> get gasPriceHistory => _gasPriceHistory;
-  Map<String, double> get pyusdTransferVolume => _pyusdTransferVolume;
-  Map<String, double> get bridgeActivity => _bridgeActivity;
-  int get totalTransactions => _totalTransactions;
-  int get uniqueAddresses => _uniqueAddresses;
-  int get totalBridgeVolume => _totalBridgeVolume;
+class NetworkConfig {
+  final String name;
+  final String rpcUrl;
+  final int chainId;
+  final String pyusdContractAddress;
+  final String explorerUrl;
 
-  NetworkProvider() {
-    _gasPriceHistory =
-        List.generate(24, (_) => Random().nextDouble() * 40 + 10);
-    _pyusdTransferVolume = {
-      'Ethereum': 45325423.32,
-      'Avalanche': 12534234.65,
-      'Solana': 8674532.12,
-      'Optimism': 4563245.87,
-      'Arbitrum': 3452167.43,
-    };
-    _bridgeActivity = {
-      'Wormhole': 34.5,
-      'Portal': 26.3,
-      'Hop': 18.7,
-      'Across': 12.2,
-      'Stargate': 8.3,
-    };
-    _totalTransactions = 145324;
-    _uniqueAddresses = 34521;
-    _totalBridgeVolume = 74523124;
-  }
+  NetworkConfig({
+    required this.name,
+    required this.rpcUrl,
+    required this.chainId,
+    required this.pyusdContractAddress,
+    required this.explorerUrl,
+  });
+}
 
-  double getGasPricePercentile() {
-    const double maxGasPrice = 100.0;
-    return _currentGasPrice / maxGasPrice;
-  }
+class NetworkProvider extends ChangeNotifier {
+  // Network configurations
+  static final Map<NetworkType, NetworkConfig> networks = {
+    NetworkType.holeskyTestnet: NetworkConfig(
+      name: 'Holesky Testnet',
+      rpcUrl:
+          'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-holesky/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+      chainId: 17000,
+      pyusdContractAddress: '0x36b40228133cb20F83d4AED93E00865d435F36A1',
+      explorerUrl: 'https://holesky.etherscan.io',
+    ),
+    NetworkType.sepoliaTestnet: NetworkConfig(
+      name: 'Sepolia Testnet',
+      rpcUrl:
+          'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+      chainId: 11155111,
+      pyusdContractAddress: '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9',
+      explorerUrl: 'https://sepolia.etherscan.io',
+    ),
+    NetworkType.ethereumMainnet: NetworkConfig(
+      name: 'Ethereum Mainnet',
+      rpcUrl:
+          'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/global/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+      chainId: 1,
+      pyusdContractAddress:
+          '0x466a756E9A7401B5e2444a3fCB3c2C12FBEa0a54', // Official PYUSD contract address on mainnet
+      explorerUrl: 'https://etherscan.io',
+    ),
+  };
 
-  Future<void> fetchNetworkData() async {
-    _isLoading = true;
+  // Current network
+  NetworkType _currentNetwork = NetworkType.holeskyTestnet;
+  bool _isChangingNetwork = false;
+  String? _error;
+
+  // Getters
+  NetworkType get currentNetwork => _currentNetwork;
+  NetworkConfig get currentNetworkConfig => networks[_currentNetwork]!;
+  bool get isChangingNetwork => _isChangingNetwork;
+  String? get error => _error;
+
+  // Change network
+  Future<bool> switchNetwork(
+      NetworkType network, BlockchainService blockchainService) async {
+    if (_currentNetwork == network) return true;
+    if (_isChangingNetwork) return false;
+
+    _isChangingNetwork = true;
+    _error = null;
     notifyListeners();
 
     try {
-      // Simulate fetching data from API
-      await Future.delayed(const Duration(seconds: 2));
+      // Reinitialize blockchain service with new network
+      await blockchainService.updateNetwork(
+        networks[network]!.rpcUrl,
+        networks[network]!.pyusdContractAddress,
+        networks[network]!.chainId,
+        networks[network]!.explorerUrl,
+      );
 
-      // In a real app, you would fetch data from GCP RPC here
-      // Update values based on fetched data
-      _currentGasPrice = Random().nextDouble() * 40 + 10;
-      _fastGasPrice = _currentGasPrice * 1.5;
-      _standardGasPrice = _currentGasPrice;
-      _slowGasPrice = _currentGasPrice * 0.8;
+      _currentNetwork = network;
+      print('Network switched to ${networks[network]!.name}');
 
-      // Update congestion level based on gas price
-      if (_currentGasPrice < 20) {
-        _congestionLevel = 'low';
-      } else if (_currentGasPrice < 40) {
-        _congestionLevel = 'medium';
-      } else {
-        _congestionLevel = 'high';
-      }
-
-      // Update gas price history
-      _gasPriceHistory =
-          List.generate(24, (_) => Random().nextDouble() * 40 + 10);
-
-      _isLoading = false;
+      _isChangingNetwork = false;
       notifyListeners();
+      return true;
     } catch (e) {
-      _isLoading = false;
+      _error = 'Failed to switch network: $e';
+      print(_error);
+
+      _isChangingNetwork = false;
       notifyListeners();
-      rethrow;
+      return false;
     }
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+}
+
+// Network selector widget
+class NetworkSelector extends StatelessWidget {
+  final NetworkProvider networkProvider;
+  final BlockchainService blockchainService;
+  final VoidCallback onNetworkChanged;
+  final bool isDarkMode;
+
+  const NetworkSelector({
+    Key? key,
+    required this.networkProvider,
+    required this.blockchainService,
+    required this.onNetworkChanged,
+    this.isDarkMode = false,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = isDarkMode ? const Color(0xFF252543) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.2)
+                : Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Network',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: NetworkProvider.networks.length,
+              itemBuilder: (context, index) {
+                final network = NetworkProvider.networks.keys.elementAt(index);
+                final config = NetworkProvider.networks[network]!;
+                final isSelected = network == networkProvider.currentNetwork;
+
+                return InkWell(
+                  onTap: networkProvider.isChangingNetwork
+                      ? null
+                      : () async {
+                          if (!isSelected) {
+                            final success = await networkProvider.switchNetwork(
+                              network,
+                              blockchainService,
+                            );
+                            if (success) {
+                              onNetworkChanged();
+                            }
+                          }
+                        },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDarkMode
+                              ? const Color(0xFF303064)
+                              : const Color(0xFFE6F2FF))
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? (isDarkMode
+                                ? const Color(0xFF5E5EC9)
+                                : const Color(0xFF3B82F6))
+                            : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? (isDarkMode
+                                    ? const Color(0xFF5E5EC9)
+                                    : const Color(0xFF3B82F6))
+                                : (isDarkMode
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                config.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                'Chain ID: ${config.chainId}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: secondaryTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle,
+                            color: isDarkMode
+                                ? const Color(0xFF5E5EC9)
+                                : const Color(0xFF3B82F6),
+                            size: 20,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (networkProvider.isChangingNetwork)
+              const Padding(
+                padding: EdgeInsets.only(top: 12.0),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            if (networkProvider.error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: Text(
+                  networkProvider.error!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

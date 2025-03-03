@@ -8,6 +8,7 @@ import 'providers/theme_provider.dart';
 import 'screens/homescreen/home_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/blockchain_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -31,8 +32,25 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => WalletProvider()),
-        ChangeNotifierProvider(create: (_) => NetworkProvider()),
+        // First provide the services
+        Provider<BlockchainService>(
+          create: (_) => BlockchainService(),
+        ),
+
+        // Then provide the NetworkProvider
+        ChangeNotifierProvider<NetworkProvider>(
+          create: (_) => NetworkProvider(),
+        ),
+
+        // Finally provide the WalletProvider which depends on NetworkProvider
+        ChangeNotifierProxyProvider<NetworkProvider, WalletProvider>(
+          create: (context) => WalletProvider(
+            Provider.of<NetworkProvider>(context, listen: false),
+          ),
+          update: (context, networkProvider, previous) =>
+              previous ?? WalletProvider(networkProvider),
+        ),
+
         ChangeNotifierProvider(
             create: (_) => ThemeProvider()..setDarkMode(initialThemeIsDark)),
       ],

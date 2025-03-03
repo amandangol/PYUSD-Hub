@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:intl/intl.dart';
 
 class TransactionAnalysisService {
   final String _rpcUrl;

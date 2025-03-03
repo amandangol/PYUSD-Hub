@@ -5,15 +5,20 @@ import 'package:web3dart/web3dart.dart';
 import '../models/transaction.dart';
 
 class BlockchainService {
-  static const String _pyusdContractAddress =
-      '0x36b40228133cb20F83d4AED93E00865d435F36A1';
-  static const int _decimals = 6;
+  // Default contract address for Holesky testnet
+  String _pyusdContractAddress = '0x36b40228133cb20F83d4AED93E00865d435F36A1';
+  static const int _defaultDecimals = 6;
 
-  late final Web3Client _ethClient;
-  late final String _rpcUrl;
-  late final EthereumAddress _contractAddress;
+  late Web3Client _ethClient;
+  late String _rpcUrl;
+  late EthereumAddress _contractAddress;
   late DeployedContract _contract;
   bool _isInitialized = false;
+  int _chainId = 17000; // Default to Holesky
+  String _explorerApiUrl =
+      'https://api-holesky.etherscan.io/api'; // Default to Holesky explorer
+  String _explorerUrl =
+      'https://holesky.etherscan.io'; // Default to Holesky explorer
 
   BlockchainService() {
     _rpcUrl = dotenv.env['GCP_RPC_URL'] ??
@@ -27,6 +32,39 @@ class BlockchainService {
 
     // Initialize contract immediately
     _initContract();
+  }
+
+  // New method to update network with explorer URL parameter
+  Future<void> updateNetwork(String rpcUrl, String contractAddress, int chainId,
+      String explorerUrl) async {
+    print(
+        'Updating network. New RPC: $rpcUrl, New contract: $contractAddress, New chainId: $chainId, Explorer: $explorerUrl');
+
+    // Close existing client
+    _ethClient.dispose();
+
+    // Update parameters
+    _rpcUrl = rpcUrl;
+    _pyusdContractAddress = contractAddress;
+    _contractAddress = EthereumAddress.fromHex(contractAddress);
+    _chainId = chainId;
+    _explorerUrl = explorerUrl;
+
+    // Update explorer API URL based on chainId
+    if (chainId == 1) {
+      _explorerApiUrl = 'https://api.etherscan.io/api';
+    } else if (chainId == 11155111) {
+      _explorerApiUrl = 'https://api-sepolia.etherscan.io/api';
+    } else {
+      _explorerApiUrl = 'https://api-holesky.etherscan.io/api';
+    }
+
+    // Initialize new client and contract
+    _ethClient = Web3Client(_rpcUrl, http.Client());
+    _isInitialized = false;
+    await _initContract();
+
+    print('Network updated. Using explorer API: $_explorerApiUrl');
   }
 
   Future<void> _initContract() async {
@@ -73,7 +111,8 @@ class BlockchainService {
         _contractAddress,
       );
       _isInitialized = true;
-      print('Contract initialized successfully');
+      print(
+          'Contract initialized successfully for address: $_pyusdContractAddress');
     } catch (e) {
       print('Error initializing contract: $e');
       _isInitialized = false;
@@ -104,11 +143,43 @@ class BlockchainService {
       if (result.isNotEmpty && result[0] != null) {
         return (result[0] as BigInt).toInt();
       }
-      return _decimals;
+      return _defaultDecimals;
     } catch (e) {
       print('Error getting token decimals: $e');
       // Fall back to default value
-      return _decimals;
+      return _defaultDecimals;
+    }
+  }
+
+  Future<double> _getBalanceViaEtherscan(String address) async {
+    print(
+        'Trying to get balance via Etherscan API for $address on $_explorerApiUrl');
+    try {
+      final String etherscanApiKey = dotenv.env['ETHERSCAN_API_KEY'] ??
+          'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
+
+      final response = await http
+          .get(
+            Uri.parse(
+                '$_explorerApiUrl?module=account&action=tokenbalance&contractaddress=$_pyusdContractAddress&address=$address&tag=latest&apikey=$etherscanApiKey'),
+          )
+          .timeout(Duration(seconds: 15));
+
+      final data = json.decode(response.body);
+      print('Etherscan balance API response: $data');
+
+      if (data['status'] == '1' && data['result'] != null) {
+        final BigInt balanceBI = BigInt.parse(data['result']);
+        final int decimals = await getTokenDecimals();
+        final double balance =
+            balanceBI.toDouble() / BigInt.from(10).pow(decimals).toDouble();
+        print('Etherscan balance: $balance');
+        return balance;
+      }
+      return 0.0;
+    } catch (e) {
+      print('Error getting balance via Etherscan: $e');
+      return 0.0;
     }
   }
 
@@ -127,7 +198,8 @@ class BlockchainService {
     // Try both RPC and fallback methods
     try {
       // First try Web3 RPC method
-      print('Getting balance for address: $normalizedAddress');
+      print(
+          'Getting balance for address: $normalizedAddress on chain ID: $_chainId');
       final ethAddress = EthereumAddress.fromHex(normalizedAddress);
       final balanceFunction = _contract.function('balanceOf');
       print('Calling balance function...');
@@ -173,38 +245,6 @@ class BlockchainService {
     }
   }
 
-  Future<double> _getBalanceViaEtherscan(String address) async {
-    print('Trying to get balance via Etherscan API for $address');
-    try {
-      final String etherscanApiUrl = 'https://api-holesky.etherscan.io/api';
-      final String etherscanApiKey = dotenv.env['ETHERSCAN_API_KEY'] ??
-          'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
-
-      final response = await http
-          .get(
-            Uri.parse(
-                '$etherscanApiUrl?module=account&action=tokenbalance&contractaddress=$_pyusdContractAddress&address=$address&tag=latest&apikey=$etherscanApiKey'),
-          )
-          .timeout(Duration(seconds: 15));
-
-      final data = json.decode(response.body);
-      print('Etherscan balance API response: $data');
-
-      if (data['status'] == '1' && data['result'] != null) {
-        final BigInt balanceBI = BigInt.parse(data['result']);
-        final int decimals = await getTokenDecimals();
-        final double balance =
-            balanceBI.toDouble() / BigInt.from(10).pow(decimals).toDouble();
-        print('Etherscan balance: $balance');
-        return balance;
-      }
-      return 0.0;
-    } catch (e) {
-      print('Error getting balance via Etherscan: $e');
-      return 0.0;
-    }
-  }
-
   Future<List<TransactionModel>> getTransactionHistory(String address) async {
     if (address.isEmpty) {
       print('Empty address provided for transaction history');
@@ -217,11 +257,11 @@ class BlockchainService {
     final normalizedAddress =
         EthereumAddress.fromHex(address).hex.toLowerCase();
     print(
-        'Fetching transaction history for normalized address: $normalizedAddress');
+        'Fetching transaction history for normalized address: $normalizedAddress on $_explorerApiUrl');
 
     try {
-      // Etherscan API approach for Holesky testnet
-      final String etherscanApiUrl = 'https://api-holesky.etherscan.io/api';
+      // Get the appropriate Etherscan API URL based on current network
+      final String etherscanApiUrl = _explorerApiUrl;
       final String etherscanApiKey = dotenv.env['ETHERSCAN_API_KEY'] ??
           'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
 
@@ -246,10 +286,6 @@ class BlockchainService {
 
         for (var tx in txList) {
           try {
-            final from = tx['from'].toString().toLowerCase();
-            final to = tx['to'].toString().toLowerCase();
-            final isIncoming = to == normalizedAddress;
-
             final BigInt valueBI = BigInt.parse(tx['value']);
             final double amount =
                 valueBI.toDouble() / BigInt.from(10).pow(decimals).toDouble();
@@ -264,14 +300,19 @@ class BlockchainService {
             final double feeEth =
                 feeWei.toDouble() / BigInt.from(10).pow(18).toDouble();
 
+            // Add transaction hash link using current explorer URL
+            final String txHashLink = '$_explorerUrl/tx/${tx['hash']}';
+
             transactions.add(TransactionModel(
               hash: tx['hash'],
+              hashLink: txHashLink,
               from: tx['from'],
               to: tx['to'],
               amount: amount,
               timestamp: timestamp,
               status: 'Confirmed',
               fee: feeEth.toStringAsFixed(6),
+              networkName: _getNetworkNameFromChainId(_chainId),
             ));
           } catch (e) {
             print('Error processing transaction: $e');
@@ -298,10 +339,24 @@ class BlockchainService {
     }
   }
 
+  String _getNetworkNameFromChainId(int chainId) {
+    switch (chainId) {
+      case 1:
+        return 'Ethereum Mainnet';
+      case 11155111:
+        return 'Sepolia Testnet';
+      case 17000:
+        return 'Holesky Testnet';
+      default:
+        return 'Unknown Network';
+    }
+  }
+
   Future<List<TransactionModel>> _getTransactionsViaRPC(
       String normalizedAddress,
       {required int decimals}) async {
-    print('Attempting to get transactions via RPC for $normalizedAddress');
+    print(
+        'Attempting to get transactions via RPC for $normalizedAddress on $_rpcUrl');
 
     try {
       // Fix: Use specific block numbers instead of 'latest' for toBlock
@@ -402,8 +457,13 @@ class BlockchainService {
               timestamp = DateTime.now();
             }
 
+            // Create transaction hash link
+            final String txHashLink =
+                '$_explorerUrl/tx/${log['transactionHash']}';
+
             transactions.add(TransactionModel(
               hash: log['transactionHash'],
+              hashLink: txHashLink,
               from: from,
               to: to,
               amount: amount,
@@ -411,6 +471,7 @@ class BlockchainService {
               status: 'Confirmed',
               fee:
                   '0.0001', // Placeholder since actual fee calculation would require more calls
+              networkName: _getNetworkNameFromChainId(_chainId),
             ));
           }
         } catch (e) {
@@ -438,7 +499,9 @@ class BlockchainService {
 
     try {
       final transferFunction = _contract.function('transfer');
-      final chainId = int.parse(dotenv.env['NETWORK_CHAIN_ID'] ?? '17000');
+
+      // Use current chainId instead of getting from dotenv
+      final chainId = _chainId;
 
       int decimals = await getTokenDecimals();
       final amountInWei =

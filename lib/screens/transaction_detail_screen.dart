@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/transaction.dart';
 import '../services/transaction_analysis_service.dart';
+import '../utils/snackbar_utils.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -90,8 +91,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label copied to clipboard')),
+    SnackbarUtil.showSnackbar(
+      context: context,
+      message: "$label copied to clipboard",
     );
   }
 
@@ -101,9 +103,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     final Uri url = Uri.parse(explorerUrl);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open explorer')),
-      );
+      SnackbarUtil.showSnackbar(
+          context: context, message: "Could not open explorer", isError: true);
     }
   }
 
