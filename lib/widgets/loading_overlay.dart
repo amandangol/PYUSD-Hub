@@ -1,71 +1,88 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class LoadingOverlay extends StatelessWidget {
-  final Widget child;
   final bool isLoading;
-  final String loadingText;
+  final Widget child;
+  final String? loadingText;
+  final Color? overlayColor;
 
   const LoadingOverlay({
     Key? key,
-    required this.child,
     required this.isLoading,
-    this.loadingText = 'Loading...',
+    required this.child,
+    this.loadingText,
+    this.overlayColor,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      _showLoadingDialog(context, loadingText);
-    }
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? Colors.black54 : Colors.white70;
 
-    return child; // No Stack, just returning child
-  }
+    return Stack(
+      children: [
+        // Main content
+        child,
 
-  void _showLoadingDialog(BuildContext context, String loadingText) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        barrierDismissible: false, // Prevent closing
-        builder: (context) => Dialog(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: Center(
+        // Loading overlay
+        if (isLoading)
+          Positioned.fill(
             child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.85),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    loadingText,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black.withOpacity(0.8),
+              color: overlayColor ?? backgroundColor.withOpacity(0.8),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Spinner
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? theme.colorScheme.surface
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          if (loadingText != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              loadingText!,
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    });
+      ],
+    );
   }
 }

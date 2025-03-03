@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:flutter/services.dart';
+import 'package:pyusd_forensics/main.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/loading_overlay.dart';
-import 'home_screen.dart';
 
 class ImportWalletScreen extends StatefulWidget {
   const ImportWalletScreen({Key? key}) : super(key: key);
@@ -13,48 +13,43 @@ class ImportWalletScreen extends StatefulWidget {
 }
 
 class _ImportWalletScreenState extends State<ImportWalletScreen> {
+  final TextEditingController _mnemonicController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _phraseController = TextEditingController();
-  final TextEditingController _privateKeyController = TextEditingController();
   bool _isLoading = false;
-  int _currentTab = 0;
+  String? _errorMessage;
 
   @override
   void dispose() {
-    _phraseController.dispose();
-    _privateKeyController.dispose();
+    _mnemonicController.dispose();
     super.dispose();
   }
 
-  Future<void> _importWallet(WalletProvider provider) async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _importWallet() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      if (_currentTab == 0) {
-        // Import with mnemonic
-        await provider.importWalletFromMnemonic(_phraseController.text.trim());
-      } else {
-        // Import with private key
-        await provider
-            .importWalletFromPrivateKey(_privateKeyController.text.trim());
-      }
+      final walletProvider =
+          Provider.of<WalletProvider>(context, listen: false);
+      await walletProvider
+          .importWalletFromMnemonic(_mnemonicController.text.trim());
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainApp()),
           (route) => false,
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: ${e.toString()}')),
-        );
-      }
+      setState(() {
+        _errorMessage = e.toString();
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -66,171 +61,363 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return LoadingOverlay(
       isLoading: _isLoading,
-      loadingText: 'Importing wallet...',
+      loadingText: 'Importing your wallet...',
       child: Scaffold(
+        backgroundColor: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
         appBar: AppBar(
-          title: const Text('Import Wallet'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text(
+            'Import Wallet',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          iconTheme: IconThemeData(
+            color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+          ),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Import Your PYUSD Wallet',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Tab selection
-                Row(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _currentTab = 0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color: _currentTab == 0
-                                    ? Theme.of(context).primaryColor
-                                    : Colors.grey.shade300,
-                                width: 2,
+                    // Header
+                    Text(
+                      'Import Existing Wallet',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Enter your recovery phrase to access your wallet',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Recovery phrase input
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.vpn_key_rounded,
+                          color: isDarkMode
+                              ? theme.colorScheme.primary
+                              : const Color(0xFF3D56F0),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Recovery Phrase',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF1A1A2E),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDarkMode
+                                ? Colors.black.withOpacity(0.2)
+                                : Colors.grey.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _mnemonicController,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: isDarkMode
+                              ? const Color(0xFF252543)
+                              : Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          hintText: 'Enter words separated by spaces',
+                          hintStyle: TextStyle(
+                            color: isDarkMode ? Colors.white38 : Colors.black38,
+                          ),
+                          helperText:
+                              'Each word should be separated by a single space',
+                          helperStyle: TextStyle(
+                            color: isDarkMode ? Colors.white38 : Colors.black38,
+                          ),
+                          alignLabelWithHint: true,
+                          contentPadding: const EdgeInsets.all(20),
+                        ),
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                        maxLines: 4,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your recovery phrase';
+                          }
+
+                          final wordCount = value.trim().split(' ').length;
+                          if (![12, 15, 18, 21, 24].contains(wordCount)) {
+                            return 'Recovery phrase must have 12, 15, 18, 21, or 24 words';
+                          }
+
+                          return null;
+                        },
+                      ),
+                    ),
+
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: theme.colorScheme.error,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: TextStyle(
+                                  color: theme.colorScheme.error,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Paste button
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          final data = await Clipboard.getData('text/plain');
+                          if (data != null && data.text != null) {
+                            _mnemonicController.text = data.text!;
+                          }
+                        },
+                        icon: Icon(
+                          Icons.content_paste_rounded,
+                          color: isDarkMode
+                              ? theme.colorScheme.primary
+                              : const Color(0xFF3D56F0),
+                        ),
+                        label: Text(
+                          'Paste from Clipboard',
+                          style: TextStyle(
+                            color: isDarkMode
+                                ? theme.colorScheme.primary
+                                : const Color(0xFF3D56F0),
+                            fontWeight: FontWeight.w600,
                           ),
-                          child: Text(
-                            'Recovery Phrase',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: _currentTab == 0
-                                  ? Theme.of(context).primaryColor
-                                  : Colors.grey,
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isDarkMode
+                                  ? theme.colorScheme.primary.withOpacity(0.5)
+                                  : const Color(0xFF3D56F0).withOpacity(0.3),
+                              width: 1,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _currentTab = 1),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color: _currentTab == 1
-                                    ? Theme.of(context).primaryColor
-                                    : Colors.grey.shade300,
-                                width: 2,
-                              ),
-                            ),
+
+                    const SizedBox(height: 32),
+
+                    // Import Information
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? const Color(0xFF252543)
+                            : const Color(0xFFF5F7FF),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDarkMode
+                                ? Colors.black.withOpacity(0.2)
+                                : Colors.grey.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                          child: Text(
-                            'Private Key',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: _currentTab == 1
-                                  ? Theme.of(context).primaryColor
-                                  : Colors.grey,
-                            ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? theme.colorScheme.primary
+                                          .withOpacity(0.2)
+                                      : const Color(0xFF3D56F0)
+                                          .withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.shield_rounded,
+                                  color: isDarkMode
+                                      ? theme.colorScheme.primary
+                                      : const Color(0xFF3D56F0),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Security Tips',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode
+                                      ? theme.colorScheme.primary
+                                      : const Color(0xFF3D56F0),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SecurityTip(
+                            icon: Icons.location_on,
+                            text: 'Ensure you are in a private location',
+                            isDarkMode: isDarkMode,
+                          ),
+                          const SizedBox(height: 12),
+                          SecurityTip(
+                            icon: Icons.people_alt_outlined,
+                            text:
+                                'Never share your recovery phrase with anyone',
+                            isDarkMode: isDarkMode,
+                          ),
+                          const SizedBox(height: 12),
+                          SecurityTip(
+                            icon: Icons.warning_amber_rounded,
+                            text:
+                                'This app will never ask for your recovery phrase outside of this import screen',
+                            isDarkMode: isDarkMode,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Import button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _importWallet,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDarkMode
+                              ? theme.colorScheme.primary
+                              : const Color(0xFF3D56F0),
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shadowColor: isDarkMode
+                              ? theme.colorScheme.primary.withOpacity(0.4)
+                              : const Color(0xFF3D56F0).withOpacity(0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'Import Wallet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                if (_currentTab == 0)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Enter your 12-word recovery phrase:',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _phraseController,
-                        decoration: const InputDecoration(
-                          hintText:
-                              'Enter recovery phrase (12 words separated by spaces)',
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 3,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your recovery phrase';
-                          }
-                          final words = value.trim().split(' ');
-                          if (words.length != 12) {
-                            return 'Recovery phrase must contain exactly 12 words';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  )
-                // Private Key tab content
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Enter your private key:',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _privateKeyController,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter your private key',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your private key';
-                          }
-                          final key = value.trim();
-                          if (key.startsWith('0x')) {
-                            if (key.length != 66) {
-                              return 'Private key must be 64 characters (with 0x prefix)';
-                            }
-                          } else if (key.length != 64) {
-                            return 'Private key must be 64 characters';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-
-                const Spacer(),
-                ElevatedButton(
-                  onPressed:
-                      _isLoading ? null : () => _importWallet(walletProvider),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                  ),
-                  child: const Text('Import Wallet'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class SecurityTip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final bool isDarkMode;
+
+  const SecurityTip({
+    Key? key,
+    required this.icon,
+    required this.text,
+    required this.isDarkMode,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: isDarkMode ? Colors.white70 : Colors.black54,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

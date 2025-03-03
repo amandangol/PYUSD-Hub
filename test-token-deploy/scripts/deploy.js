@@ -3,13 +3,24 @@ const { ethers } = require("hardhat");
 async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with the account:", deployer.address);
+  console.log(
+    "Account balance:",
+    (await ethers.provider.getBalance(deployer.address)).toString()
+  );
 
   const TestPYUSD = await ethers.getContractFactory("TestPYUSD");
-  const initialSupply = ethers.parseUnits("1000000", 18); // Ensure correct format
-  const token = await TestPYUSD.deploy(initialSupply);
+  const decimals = 6;
+  const initialSupply = 1000000; // 1 million tokens
 
-  await token.waitForDeployment(); // Replaces .deployed()
-  console.log("TestPYUSD deployed to:", await token.getAddress());
+  console.log(
+    `Deploying TestPYUSD with initial supply of ${initialSupply} tokens (with ${decimals} decimals)`
+  );
+
+  const token = await TestPYUSD.deploy(initialSupply);
+  await token.waitForDeployment();
+
+  const tokenAddress = await token.getAddress();
+  console.log("TestPYUSD deployed to:", tokenAddress);
 }
 
 main()

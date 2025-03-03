@@ -1,40 +1,46 @@
+// models/transaction.dart
 class TransactionModel {
   final String hash;
   final String from;
   final String to;
   final double amount;
-  final DateTime timestamp;
-  final bool isIncoming;
-  final String status;
   final String fee;
+  final String status;
+  final DateTime timestamp;
 
-  const TransactionModel({
+  TransactionModel({
     required this.hash,
     required this.from,
     required this.to,
     required this.amount,
+    required this.fee,
+    required this.status,
     required this.timestamp,
-    required this.isIncoming,
-    this.status = 'Confirmed',
-    this.fee = '0.0001',
   });
 
-  // Factory constructor to create from a value string
-  factory TransactionModel.fromValueString({
-    required String hash,
-    required String from,
-    required String to,
-    required String value,
-    required DateTime timestamp,
-    required bool isIncoming,
-  }) {
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
     return TransactionModel(
-      hash: hash,
-      from: from,
-      to: to,
-      amount: double.tryParse(value) ?? 0.0,
-      timestamp: timestamp,
-      isIncoming: isIncoming,
+      hash: json['hash'] ?? '',
+      from: json['from'] ?? '',
+      to: json['to'] ?? '',
+      amount: double.tryParse(json['amount'].toString()) ?? 0.0,
+      fee: json['fee'] ?? '0',
+      status: json['status'] ?? 'Pending',
+      timestamp: json['timestamp'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'] * 1000)
+          : DateTime.now(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'hash': hash,
+      'from': from,
+      'to': to,
+      'amount': amount,
+      'fee': fee,
+      'status': status,
+      'timestamp': timestamp.millisecondsSinceEpoch ~/ 1000,
+    };
   }
 }

@@ -1,5 +1,3 @@
-// File: lib/services/wallet_service.dart
-import 'dart:math';
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:ed25519_hd_key/ed25519_hd_key.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
