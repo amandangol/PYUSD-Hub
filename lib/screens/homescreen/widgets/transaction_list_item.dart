@@ -57,6 +57,7 @@ class TransactionListItem extends StatelessWidget {
             builder: (context) => TransactionDetailScreen(
               transaction: transaction,
               currentAddress: currentAddress,
+              isDarkMode: isDarkMode,
             ),
           ),
         );

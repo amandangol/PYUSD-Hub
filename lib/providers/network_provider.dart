@@ -3,9 +3,8 @@ import '../services/blockchain_service.dart';
 
 // Enum for supported networks
 enum NetworkType {
-  holeskyTestnet,
   sepoliaTestnet,
-  ethereumMainnet, // Added Ethereum Mainnet
+  ethereumMainnet,
 }
 
 class NetworkConfig {
@@ -27,18 +26,10 @@ class NetworkConfig {
 class NetworkProvider extends ChangeNotifier {
   // Network configurations
   static final Map<NetworkType, NetworkConfig> networks = {
-    NetworkType.holeskyTestnet: NetworkConfig(
-      name: 'Holesky Testnet',
-      rpcUrl:
-          'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-holesky/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
-      chainId: 17000,
-      pyusdContractAddress: '0x36b40228133cb20F83d4AED93E00865d435F36A1',
-      explorerUrl: 'https://holesky.etherscan.io',
-    ),
     NetworkType.sepoliaTestnet: NetworkConfig(
       name: 'Sepolia Testnet',
       rpcUrl:
-          'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+          'https://blockchain.googleapis.com/v1/projects/tidy-computing-433704-d6/locations/asia-east1/endpoints/ethereum-sepolia/rpc?key=AIzaSyCBonfhoxR_wlTKPhAhStdQ5djdv_Pah6o',
       chainId: 11155111,
       pyusdContractAddress: '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9',
       explorerUrl: 'https://sepolia.etherscan.io',
@@ -46,7 +37,7 @@ class NetworkProvider extends ChangeNotifier {
     NetworkType.ethereumMainnet: NetworkConfig(
       name: 'Ethereum Mainnet',
       rpcUrl:
-          'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/global/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+          'https://blockchain.googleapis.com/v1/projects/tidy-computing-433704-d6/locations/us-central1/endpoints/ethereum-mainnet/rpc?key=AIzaSyCBonfhoxR_wlTKPhAhStdQ5djdv_Pah6o',
       chainId: 1,
       pyusdContractAddress:
           '0x466a756E9A7401B5e2444a3fCB3c2C12FBEa0a54', // Official PYUSD contract address on mainnet
@@ -55,7 +46,7 @@ class NetworkProvider extends ChangeNotifier {
   };
 
   // Current network
-  NetworkType _currentNetwork = NetworkType.holeskyTestnet;
+  NetworkType _currentNetwork = NetworkType.sepoliaTestnet;
   bool _isChangingNetwork = false;
   String? _error;
 
@@ -65,7 +56,6 @@ class NetworkProvider extends ChangeNotifier {
   bool get isChangingNetwork => _isChangingNetwork;
   String? get error => _error;
 
-  // Change network
   Future<bool> switchNetwork(
       NetworkType network, BlockchainService blockchainService) async {
     if (_currentNetwork == network) return true;
@@ -78,10 +68,7 @@ class NetworkProvider extends ChangeNotifier {
     try {
       // Reinitialize blockchain service with new network
       await blockchainService.updateNetwork(
-        networks[network]!.rpcUrl,
-        networks[network]!.pyusdContractAddress,
-        networks[network]!.chainId,
-        networks[network]!.explorerUrl,
+        networks[network]!.chainId, // Pass chainId here
       );
 
       _currentNetwork = network;

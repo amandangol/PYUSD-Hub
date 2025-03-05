@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:web3dart/web3dart.dart';
 import '../models/transaction.dart';
 import '../models/wallet.dart';
 import '../services/blockchain_service.dart';
@@ -14,14 +15,12 @@ class WalletProvider extends ChangeNotifier {
 
   // Replace single balance with a map of balances per network
   Map<NetworkType, double> _balances = {
-    NetworkType.holeskyTestnet: 0,
     NetworkType.sepoliaTestnet: 0,
     NetworkType.ethereumMainnet: 0,
   };
 
   // Replace single transactions list with a map of transactions per network
   Map<NetworkType, List<TransactionModel>> _transactionsByNetwork = {
-    NetworkType.holeskyTestnet: [],
     NetworkType.sepoliaTestnet: [],
     NetworkType.ethereumMainnet: [],
   };
@@ -39,6 +38,8 @@ class WalletProvider extends ChangeNotifier {
 
   // Return balance for current network
   double get balance => _balances[_networkProvider.currentNetwork] ?? 0;
+  double _ethBalance = 0.0;
+  double get ethBalance => _ethBalance;
 
   // Return transactions for current network
   List<TransactionModel> get transactions =>
@@ -132,10 +133,7 @@ class WalletProvider extends ChangeNotifier {
 
       // Make sure blockchain service is using the current network config
       await _blockchainService.updateNetwork(
-        _networkProvider.currentNetworkConfig.rpcUrl,
-        _networkProvider.currentNetworkConfig.pyusdContractAddress,
         _networkProvider.currentNetworkConfig.chainId,
-        _networkProvider.currentNetworkConfig.explorerUrl,
       );
 
       final newBalance =
@@ -146,10 +144,13 @@ class WalletProvider extends ChangeNotifier {
 
       // Always update the balance for the current network
       _balances[currentNetwork] = newBalance;
+      _ethBalance = await _blockchainService.getEthBalance(_wallet!.address);
+      print('ETH Balance: $_ethBalance');
       notifyListeners();
     } catch (e) {
       print('Failed to refresh balance: $e');
       _setError('Failed to refresh balance: $e');
+      print('Failed to fetch ETH balance: $e');
     } finally {
       _isBalanceRefreshing = false;
       _isRefreshingBalance = false; // Reset the flag
@@ -206,17 +207,76 @@ class WalletProvider extends ChangeNotifier {
     return false;
   }
 
-  // Modified sendPYUSD to use current network
+  Future<double> estimateGasFee(String to, double amount) async {
+    if (_wallet == null) return 0.0;
+
+    try {
+      // Convert string address to EthereumAddress
+      final toAddress = EthereumAddress.fromHex(to);
+
+      // Convert double amount to BigInt with correct decimal handling
+      final decimals = await _blockchainService.getTokenDecimals();
+      final amountInWei =
+          BigInt.from(amount * BigInt.from(10).pow(decimals).toDouble());
+
+      // Convert wallet address to EthereumAddress
+      final fromAddress = EthereumAddress.fromHex(_wallet!.address);
+
+      // Get current gas price
+      final gasPrice = await _blockchainService.getCurrentGasPrice();
+
+      // Estimate gas limit
+      final gasLimit = await _blockchainService.estimateGasForPYUSDTransfer(
+        from: fromAddress,
+        to: toAddress,
+        amount: amountInWei,
+      );
+
+      // Calculate gas fee in ETH
+      final gasFeeWei = gasPrice.getInWei * gasLimit.getInWei;
+      final gasFeeEth =
+          gasFeeWei.toDouble() / BigInt.from(10).pow(18).toDouble();
+
+      return gasFeeEth;
+    } catch (e) {
+      print('Gas fee estimation error: $e');
+      return 0.0;
+    }
+  }
+
   Future<bool> sendPYUSD({
     required String to,
     required double amount,
-    required double gasFee,
   }) async {
     if (_wallet == null) return false;
     if (_isLoading) return false;
 
     final currentNetwork = _networkProvider.currentNetwork;
     final currentBalance = _balances[currentNetwork] ?? 0;
+
+    // Convert addresses to EthereumAddress
+    final toAddress = EthereumAddress.fromHex(to);
+    final fromAddress = EthereumAddress.fromHex(_wallet!.address);
+
+    // Get token decimals for correct conversion
+    final decimals = await _blockchainService.getTokenDecimals();
+    final amountInWei =
+        BigInt.from(amount * BigInt.from(10).pow(decimals).toDouble());
+
+    // Estimate gas fee first
+    final gasFee = await estimateGasFee(to, amount);
+    final currentEthBalance = _ethBalance;
+
+    if (amount > currentBalance) {
+      _setError('Insufficient PYUSD balance');
+      return false;
+    }
+
+    // Check ETH balance for gas
+    if (currentEthBalance < gasFee) {
+      _setError('Insufficient ETH for gas fees');
+      return false;
+    }
 
     _setLoading(true);
 
@@ -228,11 +288,6 @@ class WalletProvider extends ChangeNotifier {
       // Validate transaction parameters
       if (amount <= 0) {
         _setError('Amount must be greater than 0');
-        return false;
-      }
-
-      if (amount + gasFee > currentBalance) {
-        _setError('Insufficient balance');
         return false;
       }
 
@@ -254,8 +309,16 @@ class WalletProvider extends ChangeNotifier {
       _transactionsByNetwork[currentNetwork] = currentTxs;
 
       // Pre-emptively update balance to provide immediate feedback
-      _balances[currentNetwork] = currentBalance - amount - gasFee;
+      _balances[currentNetwork] = currentBalance - amount;
       notifyListeners();
+
+      // Get current gas price and estimated gas limit
+      final gasPrice = await _blockchainService.getCurrentGasPrice();
+      final gasLimit = await _blockchainService.estimateGasForPYUSDTransfer(
+        from: fromAddress,
+        to: toAddress,
+        amount: amountInWei,
+      );
 
       String? txHash;
       try {
@@ -264,11 +327,11 @@ class WalletProvider extends ChangeNotifier {
           to: to,
           amount: amount,
           credentials: _wallet!.credentials,
+          gasPrice: gasPrice,
+          gasLimit: gasLimit,
         );
       } catch (e) {
         print('Blockchain service error: $e');
-        // Don't throw here, let the outer try-catch handle it
-        // This ensures we can properly clean up the pending transaction
         txHash = null;
       }
 
@@ -295,30 +358,14 @@ class WalletProvider extends ChangeNotifier {
           );
           _transactionsByNetwork[currentNetwork] = currentTxs;
           notifyListeners();
-        } else {
-          // If we somehow lost the pending transaction, add the new one
-          currentTxs.insert(
-              0,
-              TransactionModel(
-                hash: txHash,
-                from: _wallet!.address,
-                to: to,
-                amount: amount,
-                timestamp: DateTime.now(),
-                status: 'Pending',
-                fee: gasFee.toString(),
-                networkName: _networkProvider.currentNetworkConfig.name,
-              ));
-          _transactionsByNetwork[currentNetwork] = currentTxs;
-          notifyListeners();
         }
 
-        // Schedule a balance refresh after a short delay to allow the blockchain to update
+        // Schedule a balance refresh after a short delay
         Future.delayed(const Duration(seconds: 2), () async {
           await refreshWalletData();
         });
 
-        // Schedule a status update check after some time
+        // Schedule a status update check
         Future.delayed(const Duration(seconds: 30), () async {
           _checkTransactionStatus(txHash!, currentNetwork);
         });
@@ -341,6 +388,25 @@ class WalletProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  Future<void> requestTestEth() async {
+    if (_wallet == null) return;
+
+    try {
+      // Use the BlockchainService method to request test ETH
+      await _blockchainService.requestSepoliaTestEth(_wallet!.address);
+
+      // Refresh balance after requesting
+      await refreshBalance();
+    } catch (e) {
+      _setError('Failed to get test ETH: $e');
+    }
+  }
+
+  String getSepoliaFaucetLink() {
+    if (_wallet == null) return '';
+    return 'https://sepolia-faucet.pk910.de/?address=${_wallet!.address}';
   }
 
   // Get current network name
@@ -367,48 +433,29 @@ class WalletProvider extends ChangeNotifier {
     final currentNetwork = _networkProvider.currentNetwork;
     print('Network changed to: ${_networkProvider.currentNetworkConfig.name}');
 
-    // Reset state for UI purposes but don't clear data
+    // Reset flags
     _isRefreshingBalance = false;
     _isFetchingTransactions = false;
-    _error = null; // Clear any existing errors
+    _error = null;
 
-    // Set loading states immediately
+    // Ensure consistent loading states
     _isBalanceRefreshing = true;
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Ensure blockchain service is updated with the new network settings
       await _blockchainService.updateNetwork(
-        _networkProvider.currentNetworkConfig.rpcUrl,
-        _networkProvider.currentNetworkConfig.pyusdContractAddress,
         _networkProvider.currentNetworkConfig.chainId,
-        _networkProvider.currentNetworkConfig.explorerUrl,
       );
 
-      print(
-          'BlockchainService updated for network: ${_networkProvider.currentNetworkConfig.name}');
-
-      // Refresh data for the current network
       if (_wallet != null) {
-        // Force a fresh balance fetch
-        print(
-            'Fetching balance for network: ${_networkProvider.currentNetworkConfig.name}');
-        final newBalance =
-            await _blockchainService.getPYUSDBalance(_wallet!.address);
-
-        // Update the balance for this specific network
-        _balances[currentNetwork] = newBalance;
-
-        print(
-            'Balance updated for ${_networkProvider.currentNetworkConfig.name}: $newBalance');
-
-        // Fetch transactions separately
+        // Fetch balances (both PYUSD and ETH)
+        await refreshBalance();
         await fetchTransactions();
       }
     } catch (e) {
-      print('Error during network change: $e');
-      _setError('Failed to update data after network change: $e');
+      print('Network change error: $e');
+      _setError('Failed to update network: $e');
     } finally {
       _isBalanceRefreshing = false;
       _isLoading = false;

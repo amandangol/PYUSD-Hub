@@ -54,6 +54,7 @@ dependencies:
   local_auth: ^2.0.0
   shared_preferences: ^2.3.3
   package_info_plus: ^8.3.0
+  syncfusion_flutter_charts: ^26.1.40
 
 dev_dependencies:
   flutter_test:
@@ -65,7 +66,6 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^3.0.0
-  
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -76,8 +76,6 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-  
-
 
   # To add assets to your application, add an assets section, like this:
   assets:
@@ -93,8 +91,7 @@ flutter_icons:
   windows: true
   macos: true
   image_path: "assets/icon/icon.png"
-  remove_alpha_ios: true  # Fixes iOS alpha issue
-  
+  remove_alpha_ios: true # Fixes iOS alpha issue
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -122,5 +119,3 @@ flutter_icons:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
-
-  
