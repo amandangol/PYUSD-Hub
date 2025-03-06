@@ -110,7 +110,7 @@ class ReceiveScreen extends StatelessWidget {
                               Row(
                                 children: [
                                   Text(
-                                    '\$${walletProvider.balance.toStringAsFixed(2)}',
+                                    'balace',
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,

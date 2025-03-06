@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen>
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
     // Reduced theme initialization delay
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     try {
       // Initialize wallet only once - this just loads the wallet,

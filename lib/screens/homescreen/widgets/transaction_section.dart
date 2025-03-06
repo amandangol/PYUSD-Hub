@@ -3,7 +3,7 @@ import '../../../models/transaction.dart';
 import '../../all_transaction_screen.dart';
 import 'transaction_list_item.dart';
 
-class TransactionsSection extends StatelessWidget {
+class TransactionsSection extends StatefulWidget {
   final List<TransactionModel> transactions;
   final String currentAddress;
   final bool isLoading;
@@ -20,114 +20,183 @@ class TransactionsSection extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<TransactionsSection> createState() => _TransactionsSectionState();
+}
+
+class _TransactionsSectionState extends State<TransactionsSection> {
+  String _filter = 'All'; // 'All', 'PYUSD', 'ETH'
+
+  @override
   Widget build(BuildContext context) {
-    final cardColor = isDarkMode ? const Color(0xFF252543) : Colors.white;
-    // Show only the 3 most recent transactions on home screen
-    final displayedTransactions = transactions.take(3).toList();
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final cardColor = isDarkMode
+        ? const Color(0xFF222447)
+        : theme.colorScheme.primary.withOpacity(0.05);
+
+    // Filter transactions based on selected filter
+    final filteredTransactions = _getFilteredTransactions();
+
+    // Limit to 4 transactions for the home screen
+    final displayTransactions = filteredTransactions.take(3).toList();
+    final hasMoreTransactions = filteredTransactions.length > 3;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent Transactions',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Transactions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: widget.isDarkMode ? Colors.white : Colors.black87,
               ),
-              if (isLoading)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
-                )
-            ],
-          ),
+            ),
+            // Filter dropdown
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: widget.isDarkMode
+                    ? Colors.grey.shade800
+                    : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: DropdownButton<String>(
+                value: _filter,
+                icon: const Icon(Icons.filter_list, size: 16),
+                underline: const SizedBox(),
+                isDense: true,
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white : Colors.black87,
+                  fontSize: 14,
+                ),
+                dropdownColor:
+                    widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
+                items: <String>['All', 'PYUSD', 'ETH']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _filter = newValue;
+                    });
+                  }
+                },
+              ),
+            ),
+          ],
         ),
-
-        // Transactions List or Empty State
-        if (transactions.isEmpty)
-          _buildEmptyState(isDarkMode)
+        const SizedBox(height: 16),
+        if (widget.isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (displayTransactions.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.history,
+                    size: 48,
+                    color: widget.isDarkMode ? Colors.white30 : Colors.black12,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _getEmptyStateMessage(),
+                    style: TextStyle(
+                      color:
+                          widget.isDarkMode ? Colors.white60 : Colors.black45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
         else
-          _buildTransactionsList(
-            displayedTransactions,
-            currentAddress,
-            isDarkMode,
-            cardColor,
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: displayTransactions.length,
+            itemBuilder: (context, index) {
+              final tx = displayTransactions[index];
+              return TransactionItem(
+                transaction: tx,
+                currentAddress: widget.currentAddress,
+                isDarkMode: widget.isDarkMode,
+                cardColor: cardColor,
+              );
+            },
           ),
 
-        // "View All" button only shown for mobile UI when there are more than 3 transactions
-        if (transactions.length > 3)
+        // View All button - only show if we have transactions and there are more than 4
+        if (filteredTransactions.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 16.0),
-            child: TextButton(
-              onPressed: () {
+            child: InkWell(
+              onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => AllTransactionsScreen(
-                      transactions: transactions,
-                      currentAddress: currentAddress,
-                      isDarkMode: isDarkMode,
-                      primaryColor: primaryColor,
+                      transactions: filteredTransactions,
+                      currentAddress: widget.currentAddress,
+                      isDarkMode: widget.isDarkMode,
+                      primaryColor: widget.primaryColor,
                     ),
                   ),
                 );
               },
-              style: TextButton.styleFrom(
-                foregroundColor: primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: primaryColor),
-                ),
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text(
-                'View All Transactions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-
-        // For 1-3 transactions, add a decorative element to improve blank space
-        if (transactions.length <= 3)
-          Padding(
-            padding: const EdgeInsets.only(top: 24.0),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.swap_vert_circle_outlined,
-                    size: 48,
-                    color: isDarkMode
-                        ? primaryColor.withOpacity(0.3)
-                        : primaryColor.withOpacity(0.2),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: widget.isDarkMode
+                      ? Colors.grey.shade800.withOpacity(0.5)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.isDarkMode
+                        ? Colors.grey.shade700
+                        : Colors.grey.shade300,
+                    width: 1,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    transactions.length == 1
-                        ? 'Your transaction history is just beginning!'
-                        : 'Make more transactions to build your history',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDarkMode ? Colors.white60 : Colors.black45,
-                    ),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All Transactions',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: widget.isDarkMode
+                              ? Colors.white70
+                              : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward,
+                        size: 16,
+                        color:
+                            widget.isDarkMode ? Colors.white70 : Colors.black87,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -135,70 +204,30 @@ class TransactionsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(bool isDarkMode) {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? const Color(0xFF252543).withOpacity(0.5)
-            : Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withOpacity(0.05)
-              : Colors.grey.withOpacity(0.2),
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.receipt_long_rounded,
-              size: 60,
-              color: isDarkMode ? Colors.white38 : Colors.black26,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No transactions yet',
-              style: TextStyle(
-                fontSize: 18,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your transaction history will appear here',
-              style: TextStyle(
-                fontSize: 14,
-                color: isDarkMode ? Colors.white38 : Colors.black38,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  // Helper method to filter transactions based on selected filter
+  List<TransactionModel> _getFilteredTransactions() {
+    if (_filter == 'All') {
+      return widget.transactions;
+    } else if (_filter == 'PYUSD') {
+      return widget.transactions
+          .where((tx) => tx.tokenSymbol == 'PYUSD')
+          .toList();
+    } else {
+      // ETH
+      return widget.transactions
+          .where((tx) => tx.tokenSymbol == null || tx.tokenSymbol == 'ETH')
+          .toList();
+    }
   }
 
-  Widget _buildTransactionsList(
-    List<TransactionModel> transactions,
-    String currentAddress,
-    bool isDarkMode,
-    Color cardColor,
-  ) {
-    return ListView.builder(
-      itemCount: transactions.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemBuilder: (context, index) {
-        final tx = transactions[index];
-        return TransactionListItem(
-          transaction: tx,
-          currentAddress: currentAddress,
-          isDarkMode: isDarkMode,
-          cardColor: cardColor,
-        );
-      },
-    );
+  // Helper method to get appropriate empty state message
+  String _getEmptyStateMessage() {
+    if (_filter == 'All') {
+      return 'No transactions yet';
+    } else if (_filter == 'PYUSD') {
+      return 'No PYUSD transactions yet';
+    } else {
+      return 'No ETH transactions yet';
+    }
   }
 }

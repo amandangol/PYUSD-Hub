@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/providers/transactiondetail_provider.dart';
+import 'package:pyusd_forensics/services/pyUSDBalanceTransferService.dart';
+import 'package:pyusd_forensics/services/transaction_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/network_provider.dart';
 import 'providers/wallet_provider.dart';
@@ -8,51 +11,55 @@ import 'providers/theme_provider.dart';
 import 'screens/homescreen/home_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
-import 'services/blockchain_service.dart';
+import 'services/ethereum_rpc_service.dart';
 import 'theme/app_theme.dart';
 
+// Modify your main function:
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  print(dotenv.env); // Check if variables are loaded
 
-  // Initialize SharedPreferences and load the theme preference
+  // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool("theme") ?? false;
 
-  runApp(MyApp(initialThemeIsDark: isDarkMode));
+  // Create and initialize ThemeProvider
+  final themeProvider = ThemeProvider();
+  await themeProvider.initialize();
+
+  runApp(MyApp(
+    initialThemeIsDark: isDarkMode,
+    themeProvider: themeProvider,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final bool initialThemeIsDark;
+  final ThemeProvider themeProvider;
 
-  const MyApp({Key? key, required this.initialThemeIsDark}) : super(key: key);
+  const MyApp({
+    Key? key,
+    required this.initialThemeIsDark,
+    required this.themeProvider,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // First provide the services
-        Provider<BlockchainService>(
-          create: (_) => BlockchainService(),
-        ),
-
-        // Then provide the NetworkProvider
         ChangeNotifierProvider<NetworkProvider>(
           create: (_) => NetworkProvider(),
         ),
-
-        // Finally provide the WalletProvider which depends on NetworkProvider
-        ChangeNotifierProxyProvider<NetworkProvider, WalletProvider>(
-          create: (context) => WalletProvider(
-            Provider.of<NetworkProvider>(context, listen: false),
-          ),
-          update: (context, networkProvider, previous) =>
-              previous ?? WalletProvider(networkProvider),
-        ),
-
         ChangeNotifierProvider(
-            create: (_) => ThemeProvider()..setDarkMode(initialThemeIsDark)),
+          create: (context) => WalletProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => TransactionDetailProvider(),
+        ),
+        // Provide the already initialized ThemeProvider
+        ChangeNotifierProvider.value(
+          value: themeProvider,
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

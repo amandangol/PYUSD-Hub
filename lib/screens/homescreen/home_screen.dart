@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
@@ -64,7 +65,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final walletProvider =
             Provider.of<WalletProvider>(context, listen: false);
 
-        // Force a complete refresh of both balance and transactions
         await walletProvider.refreshWalletData();
 
         // Mark initial refresh as done to prevent duplicate refreshes
@@ -91,131 +91,197 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
+    // Determine if we have any wallet connected
+    final hasWallet = walletProvider.hasWallet;
+
+    // Get the current wallet address - either from the local wallet or WalletConnect
+    final currentWalletAddress = walletProvider.getCurrentAddress() ?? '';
+
     return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/images/pyusdlogo.png',
-              height: 24,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.paid, size: 24);
-              },
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'PYUSD Wallet',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Row(
+            children: [
+              Image.asset(
+                'assets/images/pyusdlogo.png',
+                height: 24,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(Icons.paid, size: 24);
+                },
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'PYUSD Wallet',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            // Wallet selector dropdown will go here in the future
+            if (hasWallet)
+              IconButton(
+                icon: Icon(
+                  Icons.refresh,
+                  color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+                onPressed: () => _refreshWalletData(forceRefresh: true),
+              ),
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
                 color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
               ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SettingsScreen()),
+                ).then((_) {
+                  // Refresh after returning from settings, but don't force
+                  _refreshWalletData();
+                });
+              },
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-            ),
-            onPressed: () => _refreshWalletData(forceRefresh: true),
+        body: _buildWalletContent(
+            walletProvider, isDarkMode, primaryColor, currentWalletAddress));
+  }
+
+  Widget _buildWalletContent(WalletProvider walletProvider, bool isDarkMode,
+      Color primaryColor, String walletAddress) {
+    return RefreshIndicator(
+      onRefresh: () => _refreshWalletData(forceRefresh: true),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BalanceCard(
+                ethBalance: walletProvider.ethBalance,
+                tokenBalance: walletProvider.tokenBalance, // Add tokenBalance
+                walletAddress: walletAddress,
+                isRefreshing: walletProvider.isBalanceRefreshing,
+                primaryColor: primaryColor,
+                networkName: walletProvider.currentNetworkName,
+              ),
+
+              // Action Buttons
+              const SizedBox(height: 24),
+              ActionButtons(
+                primaryColor: primaryColor,
+                isDarkMode: isDarkMode,
+                onSendPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SendTransactionScreen()),
+                  ).then((_) {
+                    // Refresh after sending transaction
+                    _refreshWalletData();
+                  });
+                },
+                onReceivePressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ReceiveScreen()),
+                  );
+                },
+                onSwapPressed: () {
+                  SnackbarUtil.showSnackbar(
+                    context: context,
+                    message: "Swap Feature coming soon",
+                  );
+                },
+              ),
+
+              // Network Status Card
+              const SizedBox(height: 24),
+              EnhancedNetworkStatusCard(
+                isDarkMode: isDarkMode,
+              ),
+
+              const SizedBox(height: 24),
+              TransactionsSection(
+                transactions: walletProvider.transactions,
+                currentAddress: walletAddress,
+                isLoading: walletProvider.isLoading &&
+                    !walletProvider.isBalanceRefreshing,
+                isDarkMode: isDarkMode,
+                primaryColor: primaryColor, // Added primaryColor parameter
+              ),
+            ],
           ),
-          IconButton(
-            icon: Icon(
-              Icons.settings_outlined,
-              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              ).then((_) {
-                // Refresh after returning from settings, but don't force
-                _refreshWalletData();
-              });
-            },
-          ),
-        ],
+        ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => _refreshWalletData(forceRefresh: true),
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Balance Card
-                BalanceCard(
-                  balance: walletProvider
-                      .balance, // This should now correctly reflect the current network's balance
-                  walletAddress: walletProvider.wallet?.address ?? '',
-                  isRefreshing: walletProvider.isBalanceRefreshing,
-                  primaryColor: Theme.of(context).primaryColor,
-                  networkName: walletProvider.getCurrentNetworkName(),
-                ),
+    );
+  }
+}
 
-                // Action Buttons
-                const SizedBox(height: 24),
-                ActionButtons(
-                  primaryColor: primaryColor,
-                  isDarkMode: isDarkMode,
-                  onSendPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SendTransactionScreen()),
-                    ).then((_) {
-                      // Refresh after sending transaction
-                      _refreshWalletData();
-                    });
-                  },
-                  onReceivePressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ReceiveScreen()),
-                    );
-                  },
-                  onSwapPressed: () {
-                    SnackbarUtil.showSnackbar(
-                      context: context,
-                      message: "Swap Feature coming soon",
-                    );
-                  },
-                  onHistoryPressed: () {
-                    _scrollController.animateTo(
-                      300, // Approximate position of transactions
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                ),
+class NetworkOption extends StatelessWidget {
+  final String name;
+  final bool isSelected;
+  final bool isDarkMode;
+  final VoidCallback onTap;
 
-                // Network Status Card
-                const SizedBox(height: 24),
-                EnhancedNetworkStatusCard(
-                  isDarkMode: isDarkMode,
-                ),
+  const NetworkOption({
+    Key? key,
+    required this.name,
+    required this.isSelected,
+    required this.isDarkMode,
+    required this.onTap,
+  }) : super(key: key);
 
-                // Transactions Section
-                const SizedBox(height: 24),
-                TransactionsSection(
-                  transactions: walletProvider.transactions,
-                  currentAddress: walletProvider.wallet?.address ?? '',
-                  isLoading: walletProvider.isLoading &&
-                      !walletProvider.isBalanceRefreshing,
-                  isDarkMode: isDarkMode,
-                  primaryColor: primaryColor,
-                ),
-              ],
-            ),
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.green.withOpacity(0.1)
+              : isDarkMode
+                  ? Colors.transparent
+                  : Colors.grey.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color:
+                isSelected ? Colors.green.withOpacity(0.5) : Colors.transparent,
+            width: 1,
           ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.check_circle : Icons.circle_outlined,
+              color: isSelected ? Colors.green : Colors.grey,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              name,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                    ? Colors.green
+                    : isDarkMode
+                        ? Colors.white70
+                        : Colors.black87,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 class ActionButtons extends StatelessWidget {
@@ -6,7 +8,6 @@ class ActionButtons extends StatelessWidget {
   final VoidCallback onSendPressed;
   final VoidCallback onReceivePressed;
   final VoidCallback onSwapPressed;
-  final VoidCallback onHistoryPressed;
 
   const ActionButtons({
     Key? key,
@@ -15,7 +16,6 @@ class ActionButtons extends StatelessWidget {
     required this.onSendPressed,
     required this.onReceivePressed,
     required this.onSwapPressed,
-    required this.onHistoryPressed,
   }) : super(key: key);
 
   @override
@@ -23,58 +23,72 @@ class ActionButtons extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildActionButton(
-          context,
-          Icons.arrow_upward_rounded,
-          'Send',
-          onSendPressed,
+        ActionButton(
+          icon: Icons.arrow_upward,
+          label: 'Send',
+          onPressed: onSendPressed,
+          color: primaryColor,
+          isDarkMode: isDarkMode,
         ),
-        _buildActionButton(
-          context,
-          Icons.swap_horiz_rounded,
-          'Swap',
-          onSwapPressed,
+        ActionButton(
+          icon: Icons.arrow_downward,
+          label: 'Receive',
+          onPressed: onReceivePressed,
+          color: primaryColor,
+          isDarkMode: isDarkMode,
         ),
-        _buildActionButton(
-          context,
-          Icons.arrow_downward_rounded,
-          'Receive',
-          onReceivePressed,
+        ActionButton(
+          icon: Icons.swap_horiz,
+          label: 'Swap',
+          onPressed: onSwapPressed,
+          color: primaryColor,
+          isDarkMode: isDarkMode,
         ),
       ],
     );
   }
+}
 
-  Widget _buildActionButton(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onPressed,
-  ) {
+class ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final Color color;
+  final bool isDarkMode;
+
+  const ActionButton({
+    Key? key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    required this.color,
+    required this.isDarkMode,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onPressed,
       child: Column(
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: isDarkMode
-                  ? primaryColor.withOpacity(0.2)
-                  : primaryColor.withOpacity(0.1),
+              color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
-              color: primaryColor,
-              size: 28,
+              color: color,
+              size: 24,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
               color: isDarkMode ? Colors.white : Colors.black87,
             ),
