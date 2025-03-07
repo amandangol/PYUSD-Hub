@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:pyusd_forensics/main.dart';
-import '../providers/wallet_provider.dart';
-import '../widgets/loading_overlay.dart';
+import '../../providers/wallet_provider.dart';
+import '../../widgets/loading_overlay.dart';
 
 class ImportWalletScreen extends StatefulWidget {
   const ImportWalletScreen({Key? key}) : super(key: key);

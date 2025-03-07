@@ -143,16 +143,10 @@ class BalanceCard extends StatelessWidget {
                                   AlwaysStoppedAnimation<Color>(primaryColor),
                             ),
                           )
-                        : Image.asset(
-                            'assets/images/pyusdlogo.png',
-                            height: 24,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.monetization_on,
-                                color: primaryColor,
-                                size: 24,
-                              );
-                            },
+                        : Icon(
+                            Icons.monetization_on,
+                            color: primaryColor,
+                            size: 24,
                           ),
                     const SizedBox(width: 12),
                     Text(
@@ -193,7 +187,7 @@ class BalanceCard extends StatelessWidget {
                             ),
                           )
                         : Icon(
-                            Icons.check_circle,
+                            Icons.currency_exchange,
                             color: primaryColor,
                             size: 24,
                           ),

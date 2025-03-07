@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../providers/wallet_provider.dart';
-import '../utils/snackbar_utils.dart';
+import '../../../providers/wallet_provider.dart';
+import '../../../utils/snackbar_utils.dart';
 
 class ReceiveScreen extends StatelessWidget {
   const ReceiveScreen({Key? key}) : super(key: key);

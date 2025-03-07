@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
-import '../models/transaction.dart';
-import '../providers/network_provider.dart';
-import '../providers/transactiondetail_provider.dart';
-import '../utils/datetime_utils.dart';
+import '../../../models/transaction.dart';
+import '../../../providers/network_provider.dart';
+import '../../../providers/transactiondetail_provider.dart';
+import '../../../utils/datetime_utils.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -403,7 +403,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
             // Fee and date
             Text(
-              'Fee: ${_detailedTransaction!.fee.toStringAsFixed(6)} ETH',
+              'Fee: ${_detailedTransaction!.fee.toStringAsFixed(10)} ETH',
               style: TextStyle(
                 fontSize: 14,
                 color: widget.isDarkMode ? Colors.white70 : Colors.black54,
@@ -543,7 +543,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             _buildDetailRow(
               title: 'Gas Price',
               value:
-                  '${_detailedTransaction!.gasPrice.toStringAsFixed(2)} Gwei',
+                  '${_detailedTransaction!.gasPrice.toStringAsFixed(9)} Gwei',
             ),
             _buildDetailRow(
               title: 'Gas Efficiency',
@@ -551,7 +551,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             _buildDetailRow(
               title: 'Transaction Fee',
-              value: '${_detailedTransaction!.fee.toStringAsFixed(6)} ETH',
+              value: '${_detailedTransaction!.fee.toStringAsFixed(15)} ETH',
               valueColor: Colors.orange,
             ),
           ],

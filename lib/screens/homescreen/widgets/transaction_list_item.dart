@@ -84,7 +84,7 @@ class _TransactionItemState extends State<TransactionItem> {
     // Format the value with the appropriate sign and token symbol
     final String formattedValue = (isIncoming ? '+ ' : '- ') +
         displayTransaction.value
-            .toStringAsFixed(displayTransaction.tokenSymbol != null ? 4 : 6) +
+            .toStringAsFixed(displayTransaction.tokenSymbol != null ? 4 : 9) +
         ' ${displayTransaction.tokenSymbol ?? 'ETH'}';
 
     return Card(

@@ -254,13 +254,34 @@ class EthereumRpcService {
     }
   }
 
-  // Send ETH transaction using GCP RPC method
+  // Updated sendEthTransaction method with chain ID support
   Future<String> sendEthTransaction(
       String rpcUrl, String privateKey, String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
     try {
       final credentials = EthPrivateKey.fromHex(privateKey);
       final sender = credentials.address;
+
+      // Get the chain ID for the current network
+      final chainIdResponse = await http.post(
+        Uri.parse(rpcUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'jsonrpc': '2.0',
+          'method': 'eth_chainId',
+          'params': [],
+          'id': 1,
+        }),
+      );
+
+      final chainIdData = jsonDecode(chainIdResponse.body);
+      if (chainIdData['error'] != null) {
+        throw Exception(chainIdData['error']['message']);
+      }
+
+      // Parse the chain ID (comes as hex)
+      final chainId = int.parse(chainIdData['result'].substring(2), radix: 16);
+      print('Using chain ID: $chainId for network at $rpcUrl');
 
       // Convert amount from ETH to wei
       final amountInWei = BigInt.from(amount * 1e18);
@@ -324,7 +345,13 @@ class EthereumRpcService {
       );
 
       final client = Web3Client(rpcUrl, http.Client());
-      final signedTx = await client.signTransaction(credentials, tx);
+
+      // Make sure to pass the chainId parameter when signing the transaction
+      final signedTx = await client.signTransaction(
+        credentials,
+        tx,
+        chainId: chainId, // This is the important addition
+      );
 
       // Send raw transaction
       final txResponse = await http.post(
@@ -349,7 +376,7 @@ class EthereumRpcService {
     }
   }
 
-  // Send PYUSD (or any ERC20 token) transaction using GCP RPC method
+// Updated sendTokenTransaction method with chain ID support
   Future<String> sendTokenTransaction(
       String rpcUrl,
       String privateKey,
@@ -362,6 +389,28 @@ class EthereumRpcService {
     try {
       final credentials = EthPrivateKey.fromHex(privateKey);
       final sender = credentials.address;
+
+      // Get the chain ID for the current network
+      final chainIdResponse = await http.post(
+        Uri.parse(rpcUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'jsonrpc': '2.0',
+          'method': 'eth_chainId',
+          'params': [],
+          'id': 1,
+        }),
+      );
+
+      final chainIdData = jsonDecode(chainIdResponse.body);
+      if (chainIdData['error'] != null) {
+        throw Exception(chainIdData['error']['message']);
+      }
+
+      // Parse the chain ID (comes as hex)
+      final chainId = int.parse(chainIdData['result'].substring(2), radix: 16);
+      print(
+          'Using chain ID: $chainId for token transaction on network at $rpcUrl');
 
       // Convert amount to token units
       final amountInTokenUnits =
@@ -438,7 +487,12 @@ class EthereumRpcService {
         data: callData,
       );
 
-      final signedTx = await client.signTransaction(credentials, tx);
+      // Include the chainId parameter when signing the transaction
+      final signedTx = await client.signTransaction(
+        credentials,
+        tx,
+        chainId: chainId, // This is the important addition
+      );
 
       // Send raw transaction
       final txResponse = await http.post(

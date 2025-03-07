@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:web3dart/web3dart.dart';
 
-import '../providers/wallet_provider.dart';
-import '../utils/snackbar_utils.dart';
-import 'homescreen/widgets/custom_textfield.dart';
+import '../../../providers/wallet_provider.dart';
+import '../../../utils/snackbar_utils.dart';
+import '../../homescreen/widgets/custom_textfield.dart';
 
 class SendTransactionScreen extends StatefulWidget {
   const SendTransactionScreen({Key? key}) : super(key: key);
@@ -21,17 +21,38 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
   bool _isValidAddress = false;
   double _estimatedGasFee = 0.0;
+  double _gasPrice = 0.0;
+  int _estimatedGas = 0;
   bool _isLoading = false;
+  bool _isEstimatingGas = false;
   String _selectedAsset = 'PYUSD'; // Default to PYUSD
 
   // For QR scanner result
   String? _scanResult;
 
   @override
+  void initState() {
+    super.initState();
+    _fetchGasPrice();
+  }
+
+  @override
   void dispose() {
     _addressController.dispose();
     _amountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchGasPrice() async {
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+
+    try {
+      _gasPrice = await walletProvider.getCurrentGasPrice();
+      setState(() {});
+    } catch (e) {
+      // Use default gas price if fetch fails
+      _gasPrice = 20.0; // 20 Gwei default
+    }
   }
 
   void _validateAddress(String address) {
@@ -41,48 +62,76 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       setState(() {
         _isValidAddress = true;
       });
+      _estimateGasFee(); // Re-estimate when address changes
     } catch (e) {
       setState(() {
         _isValidAddress = false;
+        _estimatedGasFee = 0.0;
+        _estimatedGas = 0;
       });
     }
   }
 
   Future<void> _estimateGasFee() async {
-    if (!_isValidAddress || _amountController.text.isEmpty) return;
+    if (!_isValidAddress || _amountController.text.isEmpty) {
+      setState(() {
+        _estimatedGasFee = 0.0;
+        _estimatedGas = 0;
+      });
+      return;
+    }
 
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
     try {
       setState(() {
-        _isLoading = true;
+        _isEstimatingGas = true;
       });
 
-      final amount = double.parse(_amountController.text);
+      double? amount = double.tryParse(_amountController.text);
+      if (amount == null || amount <= 0) return;
+
       final recipient = EthereumAddress.fromHex(_addressController.text);
 
-      // // Estimate gas based on selected asset
-      // if (_selectedAsset == 'PYUSD') {
-      //   _estimatedGasFee = await walletProvider.estimateTokenTransferGas(
-      //     recipient,
-      //     amount,
-      //   );
-      // } else {
-      //   _estimatedGasFee = await walletProvider.estimateEthTransferGas(
-      //     recipient,
-      //     amount,
-      //   );
-      // }
+      // Estimate gas based on selected asset
+      int estimatedGas;
+
+      if (_selectedAsset == 'PYUSD') {
+        estimatedGas = await walletProvider.estimateTokenTransferGas(
+          recipient.hex,
+          amount,
+        );
+      } else {
+        estimatedGas = await walletProvider.estimateEthTransferGas(
+          recipient.hex,
+          amount,
+        );
+      }
+
+      // Get current gas price if we don't have it yet
+      if (_gasPrice <= 0) {
+        _gasPrice = await walletProvider.getCurrentGasPrice();
+      }
+
+      // Calculate fee: gas units × gas price (in Gwei) × 10^-9 (to convert to ETH)
+      _estimatedGasFee = estimatedGas * _gasPrice * 1e-9;
+      _estimatedGas = estimatedGas;
 
       setState(() {});
     } catch (e) {
-      SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Failed to estimate gas fee: $e',
-          isError: true);
+      print('Gas estimation error: $e');
+      // Set default values if estimation fails
+      setState(() {
+        if (_selectedAsset == 'PYUSD') {
+          _estimatedGas = 100000; // Default for token transfers
+        } else {
+          _estimatedGas = 21000; // Default for ETH transfers
+        }
+        _estimatedGasFee = _estimatedGas * _gasPrice * 1e-9;
+      });
     } finally {
       setState(() {
-        _isLoading = false;
+        _isEstimatingGas = false;
       });
     }
   }
@@ -111,6 +160,29 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       return;
     }
 
+    // For ETH transactions, make sure they have enough to cover amount + gas
+    if (_selectedAsset == 'ETH' &&
+        (amount + _estimatedGasFee) > walletProvider.ethBalance) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message:
+            'Insufficient ETH to cover both transaction amount and gas fees',
+        isError: true,
+      );
+      return;
+    }
+
+    // Check if there's enough ETH for gas when sending PYUSD
+    if (_selectedAsset == 'PYUSD' &&
+        _estimatedGasFee > walletProvider.ethBalance) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: 'Insufficient ETH for gas fees',
+        isError: true,
+      );
+      return;
+    }
+
     // Confirm transaction details
     final confirmed = await showDialog<bool>(
       context: context,
@@ -122,7 +194,16 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           children: [
             Text('Recipient: $address'),
             Text('Amount: $amount ${_selectedAsset}'),
-            Text('Gas Fee: ${_estimatedGasFee.toStringAsFixed(6)} ETH'),
+            const SizedBox(height: 8),
+            const Text('Gas Details:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Estimated Gas Units: $_estimatedGas'),
+            Text('Gas Price: ${_gasPrice.toStringAsFixed(2)} Gwei'),
+            Text('Total Gas Fee: ${_estimatedGasFee.toStringAsFixed(6)} ETH'),
+            if (_selectedAsset == 'ETH')
+              Text(
+                  'Total Amount (with gas): ${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH'),
+            const SizedBox(height: 8),
             Text('Network: ${walletProvider.currentNetworkName}'),
             const SizedBox(height: 12),
             const Text('Please confirm this transaction details.',
@@ -156,25 +237,29 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     try {
       String txHash;
 
-      // if (_selectedAsset == 'PYUSD') {
-      //   txHash = await walletProvider.sendPYUSD(
-      //     address,
-      //     amount,
-      //   );
-      // } else {
-      //   txHash = await walletProvider.sendETH(
-      //     address,
-      //     amount,
-      //   );
-      // }
+      if (_selectedAsset == 'PYUSD') {
+        txHash = await walletProvider.sendPYUSD(
+          address,
+          amount,
+          gasPrice: _gasPrice, // Pass the gas price
+          gasLimit: _estimatedGas, // Pass the gas limit
+        );
+      } else {
+        txHash = await walletProvider.sendETH(
+          address,
+          amount,
+          gasPrice: _gasPrice, // Pass the gas price
+          gasLimit: _estimatedGas, // Pass the gas limit
+        );
+      }
 
       // Show success message
       if (mounted) {
-        // SnackbarUtil.showSnackbar(
-        //   context: context,
-        //   message: 'Transaction sent! Hash: ${txHash.substring(0, 10)}...',
-        //   isError: false,
-        // );
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Transaction sent! Hash: ${txHash.substring(0, 10)}...',
+          isError: false,
+        );
 
         // Navigate back to the previous screen
         Navigator.of(context).pop();
@@ -209,6 +294,12 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     // Determine available balance based on selected asset
     final availableBalance = _selectedAsset == 'PYUSD'
         ? walletProvider.tokenBalance
+        : walletProvider.ethBalance;
+
+    // For ETH transfers, calculate the max amount that can be sent considering gas fees
+    final maxSendableEth = _selectedAsset == 'ETH' && _estimatedGasFee > 0
+        ? (walletProvider.ethBalance - _estimatedGasFee)
+            .clamp(0.0, double.infinity)
         : walletProvider.ethBalance;
 
     return Scaffold(
@@ -292,12 +383,25 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        '${availableBalance.toStringAsFixed(6)} $_selectedAsset',
+                        _selectedAsset == 'ETH'
+                            ? '${availableBalance.toStringAsFixed(6)} ETH'
+                            : '${availableBalance.toStringAsFixed(6)} PYUSD',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: colorScheme.primary,
                         ),
                       ),
+                      if (_selectedAsset == 'ETH' && _estimatedGasFee > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Max sendable (after gas): ${maxSendableEth.toStringAsFixed(6)} ETH',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 8),
                       Text(
                         'Network: ${walletProvider.currentNetworkName}',
@@ -411,8 +515,17 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                                 if (amount == null || amount <= 0) {
                                   return 'Invalid amount';
                                 }
-                                if (amount > availableBalance) {
-                                  return 'Insufficient balance';
+
+                                if (_selectedAsset == 'ETH') {
+                                  // For ETH, check if amount + gas fee exceeds balance
+                                  if (amount > maxSendableEth) {
+                                    return 'Amount exceeds max sendable (gas fee included)';
+                                  }
+                                } else {
+                                  // For PYUSD, just check token balance
+                                  if (amount > availableBalance) {
+                                    return 'Insufficient balance';
+                                  }
                                 }
                                 return null;
                               },
@@ -423,8 +536,14 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                           ElevatedButton(
                             onPressed: () {
                               setState(() {
-                                _amountController.text =
-                                    availableBalance.toString();
+                                if (_selectedAsset == 'ETH' &&
+                                    _estimatedGasFee > 0) {
+                                  _amountController.text =
+                                      maxSendableEth.toString();
+                                } else {
+                                  _amountController.text =
+                                      availableBalance.toString();
+                                }
                               });
                               _estimateGasFee();
                             },
@@ -437,52 +556,114 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Balance: ${availableBalance.toStringAsFixed(6)} $_selectedAsset',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                      if (_selectedAsset == 'ETH' && _estimatedGasFee > 0)
+                        Text(
+                          'Available: ${maxSendableEth.toStringAsFixed(6)} ETH (after gas fees)',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      else
+                        Text(
+                          'Balance: ${availableBalance.toStringAsFixed(6)} $_selectedAsset',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
               ),
 
               // Gas Fee Estimation
-              if (_estimatedGasFee > 0)
-                Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Transaction Fee',
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Estimated Gas Fee:'),
-                            Text(
-                              '${_estimatedGasFee.toStringAsFixed(6)} ETH',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
+              Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Transaction Fee',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          if (_isEstimatingGas)
+                            SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.0,
                                 color: colorScheme.primary,
                               ),
                             ),
-                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Gas Units:'),
+                          Text(
+                            _estimatedGas > 0
+                                ? _estimatedGas.toString()
+                                : 'Not estimated',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Gas Price:'),
+                          Text(
+                            '${_gasPrice.toStringAsFixed(9)} Gwei',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Estimated Fee:'),
+                          Text(
+                            _estimatedGasFee > 0
+                                ? '${_estimatedGasFee.toStringAsFixed(15)} ETH'
+                                : 'Enter details above',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (_selectedAsset == 'PYUSD' &&
+                          _estimatedGasFee > walletProvider.ethBalance &&
+                          _estimatedGasFee > 0)
+                        const Text(
+                          'Warning: Insufficient ETH for gas fees',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
+              ),
 
               const SizedBox(height: 24),
 
@@ -490,7 +671,16 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
               ElevatedButton(
                 onPressed: _isValidAddress &&
                         _amountController.text.isNotEmpty &&
-                        !_isLoading
+                        !_isLoading &&
+                        !_isEstimatingGas &&
+                        !(_selectedAsset == 'PYUSD' &&
+                            _estimatedGasFee > walletProvider.ethBalance &&
+                            _estimatedGasFee > 0) &&
+                        !(_selectedAsset == 'ETH' &&
+                            double.tryParse(_amountController.text) != null &&
+                            double.parse(_amountController.text) +
+                                    _estimatedGasFee >
+                                walletProvider.ethBalance)
                     ? _sendTransaction
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -561,9 +751,7 @@ class _AssetSelectionCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryContainer
-              : colorScheme.surfaceVariant,
+          color: isSelected ? colorScheme.tertiary : colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? colorScheme.primary : Colors.transparent,
@@ -580,7 +768,7 @@ class _AssetSelectionCard extends StatelessWidget {
                       ? Icons.attach_money
                       : Icons.currency_exchange,
                   color: isSelected
-                      ? colorScheme.primary
+                      ? colorScheme.inverseSurface
                       : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
@@ -589,7 +777,7 @@ class _AssetSelectionCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: isSelected
-                        ? colorScheme.primary
+                        ? colorScheme.inverseSurface
                         : colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -597,7 +785,7 @@ class _AssetSelectionCard extends StatelessWidget {
                   Icon(
                     Icons.check_circle,
                     size: 18,
-                    color: colorScheme.primary,
+                    color: colorScheme.inverseSurface,
                   ),
               ],
             ),
