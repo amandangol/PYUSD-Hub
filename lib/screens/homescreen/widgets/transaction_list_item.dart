@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:pyusd_forensics/utils/datetime_utils.dart';
-
 import '../../../models/transaction.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/transactiondetail_provider.dart';
-import '../../transaction_detail_screen.dart';
+import '../../transactions/transaction_details/transaction_detail_screen.dart';
 
 class TransactionItem extends StatefulWidget {
   final TransactionModel transaction;
@@ -28,64 +27,45 @@ class TransactionItem extends StatefulWidget {
 
 class _TransactionItemState extends State<TransactionItem> {
   bool _isLoading = false;
-  TransactionDetailModel? _cachedDetails;
 
-  @override
-  void initState() {
-    super.initState();
-    // Move prefetch to after the frame is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _prefetchTransactionDetails();
-    });
-  }
+  // Helper method to format amount - updated to match the detail screen formatting
+  String _formatAmount(TransactionModel tx) {
+    if (tx.tokenSymbol != null) {
+      int decimalPlaces = tx.tokenDecimals != null && tx.tokenDecimals! <= 6
+          ? tx.tokenDecimals!
+          : 6;
 
-  Future<void> _prefetchTransactionDetails() async {
-    if (!mounted) return;
+      // Enhanced debug logging to trace the values
+      print(
+          'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
 
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
-    final transactionDetailProvider =
-        Provider.of<TransactionDetailProvider>(context, listen: false);
-
-    try {
-      // Check if transaction is already in cache
-      final details = await transactionDetailProvider.getTransactionDetails(
-        txHash: widget.transaction.hash,
-        rpcUrl: networkProvider.currentRpcEndpoint,
-        networkType: networkProvider.currentNetwork,
-        currentAddress: widget.currentAddress,
-        forceRefresh: false,
-      );
-
-      // Store the cached details for display
-      if (mounted && details != null) {
-        setState(() {
-          _cachedDetails = details;
-        });
-      }
-    } catch (e) {
-      // Silently handle error, will try again when user taps
-      print('Background prefetch error: $e');
+      return '${tx.value.toStringAsFixed(decimalPlaces)} ${tx.tokenSymbol}';
+    } else {
+      return '${tx.value.toStringAsFixed(6)} ETH';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
-
-    // Use detailed transaction if available, otherwise use the base transaction
-    final displayTransaction = _cachedDetails ?? widget.transaction;
+    // Use the transaction directly from props
+    final displayTransaction = widget.transaction;
 
     // Determine if the transaction is incoming or outgoing
     final bool isIncoming =
         displayTransaction.direction == TransactionDirection.incoming;
 
-    // Format the value with the appropriate sign and token symbol
-    final String formattedValue = (isIncoming ? '+ ' : '- ') +
-        displayTransaction.value
-            .toStringAsFixed(displayTransaction.tokenSymbol != null ? 4 : 9) +
-        ' ${displayTransaction.tokenSymbol ?? 'ETH'}';
+    // Format the amount string
+    final formattedAmount = _formatAmount(displayTransaction);
+
+    // Enhanced debug logging
+    print('Transaction hash: ${displayTransaction.hash}');
+    print('Direction: ${isIncoming ? 'Incoming' : 'Outgoing'}');
+    print('Raw Value: ${displayTransaction.value}');
+    print('Token Symbol: ${displayTransaction.tokenSymbol}');
+    print('Token Decimals: ${displayTransaction.tokenDecimals}');
+    print('Formatted Value: $formattedAmount');
+    print('Status: ${displayTransaction.status}');
+    print('Timestamp: ${displayTransaction.timestamp}');
 
     return Card(
       color: widget.cardColor,
@@ -102,30 +82,46 @@ class _TransactionItemState extends State<TransactionItem> {
           });
 
           try {
-            // Get the provider outside of the build phase
+            // Get the providers outside of the build phase
             final transactionDetailProvider =
                 Provider.of<TransactionDetailProvider>(context, listen: false);
             final networkProvider =
                 Provider.of<NetworkProvider>(context, listen: false);
 
-            // First, try to get transaction details synchronously from cache
-            final cachedDetails = transactionDetailProvider
-                    .isTransactionCached(widget.transaction.hash)
-                ? await transactionDetailProvider.getTransactionDetails(
-                    txHash: widget.transaction.hash,
-                    rpcUrl: networkProvider.currentRpcEndpoint,
-                    networkType: networkProvider.currentNetwork,
-                    currentAddress: widget.currentAddress,
-                    forceRefresh: false,
-                  )
-                : null;
+            // Fetch the latest transaction details
+            final detailsToShow =
+                await transactionDetailProvider.getTransactionDetails(
+              txHash: widget.transaction.hash,
+              rpcUrl: networkProvider.currentRpcEndpoint,
+              networkType: networkProvider.currentNetwork,
+              currentAddress: widget.currentAddress,
+              forceRefresh: true, // Always fetch fresh data
+            );
 
-            // Use the latest available data for navigation
-            final transactionToShow = cachedDetails ?? displayTransaction;
+            // Print detailed transaction information
+            if (detailsToShow != null) {
+              print('Fetched transaction details:');
+              print('  Hash: ${detailsToShow.hash}');
+              print('  From: ${detailsToShow.from}');
+              print('  To: ${detailsToShow.to}');
+              print(
+                  '  Value: ${detailsToShow.value} ${detailsToShow.tokenSymbol ?? 'ETH'}');
+              print('  Gas Used: ${detailsToShow.gasUsed}');
+              print('  Gas Price: ${detailsToShow.gasPrice} Gwei');
+              print('  Fee: ${detailsToShow.fee} ETH');
+              print('  Status: ${detailsToShow.status}');
+              print('  Block Number: ${detailsToShow.blockNumber}');
+              print('  Confirmations: ${detailsToShow.confirmations}');
+            } else {
+              print('Failed to fetch detailed transaction information');
+            }
+
+            // Use transaction details if available, otherwise use the basic transaction
+            final transactionToShow = detailsToShow ?? displayTransaction;
 
             // Navigate using the current data
             if (context.mounted) {
-              final result = await Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => TransactionDetailScreen(
@@ -137,26 +133,11 @@ class _TransactionItemState extends State<TransactionItem> {
                   ),
                 ),
               );
-
-              // If we got updated transaction details back from the detail screen
-              if (result != null && result is TransactionDetailModel) {
-                // Update our local cached details
-                setState(() {
-                  _cachedDetails = result;
-                });
-              }
-            }
-
-            // Start a separate detached fetch in the background for future use
-            if (context.mounted) {
-              transactionDetailProvider.getTransactionDetails(
-                txHash: widget.transaction.hash,
-                rpcUrl: networkProvider.currentRpcEndpoint,
-                networkType: networkProvider.currentNetwork,
-                currentAddress: widget.currentAddress,
-              );
             }
           } catch (e) {
+            // Print error for debugging
+            print('Error when fetching transaction details: $e');
+
             // Show error if navigation fails
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -180,7 +161,7 @@ class _TransactionItemState extends State<TransactionItem> {
               child: Row(
                 children: [
                   // Transaction icon with animation for pending status
-                  _buildTransactionIcon(isIncoming),
+                  _buildTransactionIcon(isIncoming, displayTransaction.status),
                   const SizedBox(width: 12),
 
                   // Transaction details
@@ -240,7 +221,7 @@ class _TransactionItemState extends State<TransactionItem> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        formattedValue,
+                        formattedAmount,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -283,10 +264,8 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildTransactionIcon(bool isIncoming) {
+  Widget _buildTransactionIcon(bool isIncoming, TransactionStatus status) {
     // For pending transactions, use a pulsating animation
-    final status = _cachedDetails?.status ?? widget.transaction.status;
-
     if (status == TransactionStatus.pending) {
       return TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0.8, end: 1.0),

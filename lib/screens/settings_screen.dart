@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/providers/network_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/wallet_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../utils/formataddress_utils.dart';
 import '../utils/snackbar_utils.dart';
 import 'welcome_screen.dart';
 
@@ -37,6 +40,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _appVersion = 'Unknown';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch $url';
+      }
+    } catch (e) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: "Failed to open link: $e",
+      );
     }
   }
 
@@ -95,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ListTile(
                             title: const Text('Wallet Address'),
                             subtitle: Text(
-                              _formatAddress(
+                              FormataddressUtils.formatAddress(
                                   walletProvider.wallet?.address ?? ''),
                               style: TextStyle(
                                 fontFamily: 'monospace',
@@ -256,16 +275,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       margin: const EdgeInsets.only(bottom: 16),
-                      child: ListTile(
-                        title: const Text('Network Settings'),
-                        subtitle: Text(
-                          'Ethereum Mainnet',
-                          style: TextStyle(color: textColor.withOpacity(0.7)),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          _showNetworkDialog(context);
-                        },
+                      child: Column(
+                        children: [
+                          ListTile(
+                            title: const Text('Network Settings'),
+                            subtitle: Text(
+                              walletProvider.currentNetworkName ??
+                                  'Ethereum Mainnet',
+                              style:
+                                  TextStyle(color: textColor.withOpacity(0.7)),
+                            ),
+                            trailing:
+                                const Icon(Icons.arrow_forward_ios, size: 16),
+                            onTap: () {
+                              _showNetworkDialog(context, walletProvider);
+                            },
+                          ),
+                          const Divider(height: 1),
+                          // New Faucet section
+                          ExpansionTile(
+                            title: Row(
+                              children: [
+                                Icon(Icons.water_drop,
+                                    color: primaryColor, size: 20),
+                                const SizedBox(width: 8),
+                                const Text('Faucets'),
+                              ],
+                            ),
+                            subtitle: Text(
+                              'Get testnet tokens',
+                              style:
+                                  TextStyle(color: textColor.withOpacity(0.7)),
+                            ),
+                            children: [
+                              ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.blue.withOpacity(0.2),
+                                  child: const Icon(Icons.water_drop,
+                                      size: 18, color: Colors.blue),
+                                ),
+                                title: const Text('Sepolia ETH Faucet'),
+                                subtitle:
+                                    const Text('Get test ETH for development'),
+                                onTap: () {
+                                  _launchUrl(
+                                      'https://cloud.google.com/application/web3/faucet/ethereum/sepolia');
+                                },
+                              ),
+                              ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor:
+                                      Colors.green.withOpacity(0.2),
+                                  child: const Icon(Icons.attach_money,
+                                      size: 18, color: Colors.green),
+                                ),
+                                title: const Text('PYUSD Faucet'),
+                                subtitle: const Text('Get test PYUSD tokens'),
+                                onTap: () {
+                                  _launchUrl('https://faucet.paxos.com/');
+                                },
+                              ),
+                              ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor:
+                                      Colors.purple.withOpacity(0.2),
+                                  child: const Icon(Icons.currency_exchange,
+                                      size: 18, color: Colors.purple),
+                                ),
+                                title: const Text('Other Testnet Tokens'),
+                                subtitle:
+                                    const Text('Access various test tokens'),
+                                onTap: () {
+                                  _launchUrl(
+                                      'https://cloud.google.com/application/web3/faucet/ethereum');
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
 
@@ -395,16 +482,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Helper method to format address for better readability
-  String _formatAddress(String address) {
-    if (address.length < 10) return address;
-
-    String start = address.substring(0, 6);
-    String end = address.substring(address.length - 4);
-
-    return '$start....$end';
-  }
-
   void _showPrivateKeyDialog(BuildContext context, wallet) {
     showDialog(
       context: context,
@@ -442,7 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: Colors.white10,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
@@ -520,7 +597,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: Colors.white10,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
@@ -562,42 +639,150 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showNetworkDialog(BuildContext context) {
+  void _showNetworkDialog(BuildContext context, WalletProvider walletProvider) {
     final networks = [
-      'Ethereum Mainnet',
-      'Base',
-      'Optimism',
-      'Avalanche',
-      'Arbitrum'
+      {
+        'name': 'Ethereum Mainnet',
+        'chainId': 1,
+        'icon': Icons.public,
+        'color': Colors.blue
+      },
+      {
+        'name': 'Sepolia Testnet',
+        'chainId': 11155111,
+        'icon': Icons.science,
+        'color': Colors.green
+      },
+      {
+        'name': 'Base',
+        'chainId': 8453,
+        'icon': Icons.layers,
+        'color': Colors.blue
+      },
+      {
+        'name': 'Base Sepolia',
+        'chainId': 84532,
+        'icon': Icons.layers,
+        'color': Colors.green
+      },
+      {
+        'name': 'Optimism',
+        'chainId': 10,
+        'icon': Icons.flash_on,
+        'color': Colors.red
+      },
+      {
+        'name': 'Arbitrum',
+        'chainId': 42161,
+        'icon': Icons.speed,
+        'color': Colors.blue
+      },
+      {
+        'name': 'Avalanche',
+        'chainId': 43114,
+        'icon': Icons.ac_unit,
+        'color': Colors.red
+      },
     ];
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Select Network'),
+        title: Row(
+          children: [
+            Icon(Icons.swap_horiz,
+                color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Select Network'),
+          ],
+        ),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: networks.length,
-            itemBuilder: (context, index) {
-              final isSelected = index == 0; // Currently selected network
-              return ListTile(
-                title: Text(networks[index]),
-                trailing: isSelected
-                    ? Icon(Icons.check_circle,
-                        color: Theme.of(context).colorScheme.primary)
-                    : null,
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Switched to ${networks[index]}'),
-                    ),
-                  );
-                },
-              );
-            },
+          height: 350, // Fixed height for scrollable content
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Active networks:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: networks.length,
+                  itemBuilder: (context, index) {
+                    final network = networks[index];
+                    final currentNetworkName =
+                        walletProvider.currentNetworkName ?? 'Ethereum Mainnet';
+                    final isSelected = network['name'] == currentNetworkName;
+
+                    return Card(
+                      elevation: isSelected ? 2 : 0,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.transparent,
+                          width: 1,
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              (network['color'] as Color).withOpacity(0.2),
+                          child: Icon(
+                            network['icon'] as IconData,
+                            color: network['color'] as Color,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          network['name'] as String,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        subtitle: Text('Chain ID: ${network['chainId']}'),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary)
+                            : null,
+                        onTap: () {
+                          // Call wallet provider to switch network
+                          walletProvider
+                              .switchNetwork(NetworkType.sepoliaTestnet);
+                          Navigator.pop(context);
+
+                          // Show confirmation
+                          SnackbarUtil.showSnackbar(
+                            context: context,
+                            message: 'Switched to ${network['name']}',
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Note: Switching networks may require reloading your wallet data',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -616,14 +801,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
+        title: const Row(
           children: [
             Icon(
               Icons.logout,
               color: Colors.red,
             ),
-            const SizedBox(width: 8),
-            const Text('Log Out'),
+            SizedBox(width: 8),
+            Text('Log Out'),
           ],
         ),
         content: const Text(

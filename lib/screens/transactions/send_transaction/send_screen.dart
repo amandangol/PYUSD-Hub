@@ -47,8 +47,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
     try {
-      _gasPrice = await walletProvider.getCurrentGasPrice();
-      setState(() {});
+      // _gasPrice = await walletProvider.getCurrentGasPrice();
+      // setState(() {});
     } catch (e) {
       // Use default gas price if fetch fails
       _gasPrice = 20.0; // 20 Gwei default
@@ -84,38 +84,38 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
     try {
-      setState(() {
-        _isEstimatingGas = true;
-      });
+      // setState(() {
+      //   _isEstimatingGas = true;
+      // });
 
-      double? amount = double.tryParse(_amountController.text);
-      if (amount == null || amount <= 0) return;
+      // double? amount = double.tryParse(_amountController.text);
+      // if (amount == null || amount <= 0) return;
 
-      final recipient = EthereumAddress.fromHex(_addressController.text);
+      // final recipient = EthereumAddress.fromHex(_addressController.text);
 
-      // Estimate gas based on selected asset
-      int estimatedGas;
+      // // Estimate gas based on selected asset
+      // int estimatedGas;
 
-      if (_selectedAsset == 'PYUSD') {
-        estimatedGas = await walletProvider.estimateTokenTransferGas(
-          recipient.hex,
-          amount,
-        );
-      } else {
-        estimatedGas = await walletProvider.estimateEthTransferGas(
-          recipient.hex,
-          amount,
-        );
-      }
+      // if (_selectedAsset == 'PYUSD') {
+      //   estimatedGas = await walletProvider.estimateTokenTransferGas(
+      //     recipient.hex,
+      //     amount,
+      //   );
+      // } else {
+      //   estimatedGas = await walletProvider.estimateEthTransferGas(
+      //     recipient.hex,
+      //     amount,
+      //   );
+      // }
 
-      // Get current gas price if we don't have it yet
-      if (_gasPrice <= 0) {
-        _gasPrice = await walletProvider.getCurrentGasPrice();
-      }
+      // // Get current gas price if we don't have it yet
+      // if (_gasPrice <= 0) {
+      //   _gasPrice = await walletProvider.getCurrentGasPrice();
+      // }
 
-      // Calculate fee: gas units × gas price (in Gwei) × 10^-9 (to convert to ETH)
-      _estimatedGasFee = estimatedGas * _gasPrice * 1e-9;
-      _estimatedGas = estimatedGas;
+      // // Calculate fee: gas units × gas price (in Gwei) × 10^-9 (to convert to ETH)
+      // _estimatedGasFee = estimatedGas * _gasPrice * 1e-9;
+      // _estimatedGas = estimatedGas;
 
       setState(() {});
     } catch (e) {
@@ -237,33 +237,33 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     try {
       String txHash;
 
-      if (_selectedAsset == 'PYUSD') {
-        txHash = await walletProvider.sendPYUSD(
-          address,
-          amount,
-          gasPrice: _gasPrice, // Pass the gas price
-          gasLimit: _estimatedGas, // Pass the gas limit
-        );
-      } else {
-        txHash = await walletProvider.sendETH(
-          address,
-          amount,
-          gasPrice: _gasPrice, // Pass the gas price
-          gasLimit: _estimatedGas, // Pass the gas limit
-        );
-      }
+      // if (_selectedAsset == 'PYUSD') {
+      //   txHash = await walletProvider.sendPYUSD(
+      //     address,
+      //     amount,
+      //     gasPrice: _gasPrice, // Pass the gas price
+      //     gasLimit: _estimatedGas, // Pass the gas limit
+      //   );
+      // } else {
+      //   txHash = await walletProvider.sendETH(
+      //     address,
+      //     amount,
+      //     gasPrice: _gasPrice, // Pass the gas price
+      //     gasLimit: _estimatedGas, // Pass the gas limit
+      //   );
+      // }
 
-      // Show success message
-      if (mounted) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Transaction sent! Hash: ${txHash.substring(0, 10)}...',
-          isError: false,
-        );
+      // // Show success message
+      // if (mounted) {
+      //   SnackbarUtil.showSnackbar(
+      //     context: context,
+      //     message: 'Transaction sent! Hash: ${txHash.substring(0, 10)}...',
+      //     isError: false,
+      //   );
 
-        // Navigate back to the previous screen
-        Navigator.of(context).pop();
-      }
+      //   // Navigate back to the previous screen
+      //   Navigator.of(context).pop();
+      // }
     } catch (e) {
       SnackbarUtil.showSnackbar(
           context: context,

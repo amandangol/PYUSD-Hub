@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'create_wallet_screen.dart';
-import 'import_wallet_screen.dart';
+import '../authentication/screen/create_wallet_screen.dart';
+import '../authentication/screen/import_wallet_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({Key? key}) : super(key: key);

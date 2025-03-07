@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
-import '../receive_screen.dart';
-import '../send_screen.dart';
+import '../transactions/receive_transaction/receive_screen.dart';
+import '../transactions/send_transaction/send_screen.dart';
 import '../settings_screen.dart';
 import 'widgets/action_button.dart';
 import 'widgets/balance_card.dart';
@@ -123,14 +123,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           actions: [
             // Wallet selector dropdown will go here in the future
-            if (hasWallet)
-              IconButton(
-                icon: Icon(
-                  Icons.refresh,
-                  color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-                ),
-                onPressed: () => _refreshWalletData(forceRefresh: true),
-              ),
+            // if (hasWallet)
+            //   IconButton(
+            //     icon: Icon(
+            //       Icons.refresh,
+            //       color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            //     ),
+            //     onPressed: () => _refreshWalletData(forceRefresh: true),
+            //   ),
             IconButton(
               icon: Icon(
                 Icons.settings_outlined,

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
-
 import '../../../models/transaction.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/transactiondetail_provider.dart';
@@ -187,21 +185,33 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   Widget build(BuildContext context) {
     final isIncoming =
         widget.transaction.direction == TransactionDirection.incoming;
+    final theme = Theme.of(context);
+
+    // Get colors from theme to match HomeScreen
+    final primaryColor =
+        widget.isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
+    final backgroundColor =
+        widget.isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
+    final cardColor =
+        widget.isDarkMode ? const Color(0xFF252547) : Colors.white;
+    final textColor =
+        widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E);
+    final subtitleColor = widget.isDarkMode ? Colors.white70 : Colors.black54;
 
     // Determine transaction status color
     final statusColor = _getStatusColor(widget.transaction.status);
 
     // Show a placeholder view while data is loading
     if (_isInitializing && _detailedTransaction == null) {
-      return _buildLoadingScreen();
+      return _buildLoadingScreen(backgroundColor, textColor);
     }
 
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? Colors.black : Colors.grey[100],
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text('Transaction Details'),
-        backgroundColor: widget.isDarkMode ? Colors.black : Colors.white,
-        foregroundColor: widget.isDarkMode ? Colors.white : Colors.black,
+        backgroundColor: Colors.transparent,
+        foregroundColor: textColor,
         elevation: 0,
         actions: [
           // Refresh button
@@ -219,21 +229,23 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         ],
       ),
       body: RefreshIndicator(
+        color: primaryColor,
         onRefresh: _refreshTransactionDetails,
         child: _detailedTransaction == null
-            ? _buildErrorView()
-            : _buildTransactionDetails(statusColor, isIncoming),
+            ? _buildErrorView(backgroundColor, textColor, primaryColor)
+            : _buildTransactionDetails(statusColor, isIncoming, cardColor,
+                textColor, subtitleColor, primaryColor),
       ),
     );
   }
 
-  Widget _buildLoadingScreen() {
+  Widget _buildLoadingScreen(Color backgroundColor, Color textColor) {
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? Colors.black : Colors.grey[100],
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text('Transaction Details'),
-        backgroundColor: widget.isDarkMode ? Colors.black : Colors.white,
-        foregroundColor: widget.isDarkMode ? Colors.white : Colors.black,
+        backgroundColor: Colors.transparent,
+        foregroundColor: textColor,
         elevation: 0,
       ),
       body: const Center(
@@ -249,7 +261,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildErrorView() {
+  Widget _buildErrorView(
+      Color backgroundColor, Color textColor, Color primaryColor) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: SizedBox(
@@ -274,10 +287,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               ElevatedButton(
                 onPressed: _fetchTransactionDetails,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Retry'),
               ),
@@ -288,7 +304,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildTransactionDetails(Color statusColor, bool isIncoming) {
+  Widget _buildTransactionDetails(
+      Color statusColor,
+      bool isIncoming,
+      Color cardColor,
+      Color textColor,
+      Color subtitleColor,
+      Color primaryColor) {
     return Stack(
       children: [
         SingleChildScrollView(
@@ -298,15 +320,17 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Transaction status and type card
-              _buildStatusCard(statusColor, isIncoming),
+              _buildStatusCard(
+                  statusColor, isIncoming, cardColor, textColor, subtitleColor),
               const SizedBox(height: 16),
 
               // Transaction details card
-              _buildDetailsCard(),
+              _buildDetailsCard(
+                  cardColor, textColor, subtitleColor, primaryColor),
               const SizedBox(height: 16),
 
               // Gas details card
-              _buildGasDetailsCard(),
+              _buildGasDetailsCard(cardColor, textColor, subtitleColor),
 
               // Extra space at bottom for better scrolling experience
               const SizedBox(height: 40),
@@ -319,8 +343,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           Positioned.fill(
             child: Container(
               color: Colors.black.withOpacity(0.2),
-              child: const Center(
-                child: CircularProgressIndicator(),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                ),
               ),
             ),
           ),
@@ -328,16 +354,17 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildStatusCard(Color statusColor, bool isIncoming) {
+  Widget _buildStatusCard(Color statusColor, bool isIncoming, Color cardColor,
+      Color textColor, Color subtitleColor) {
     return Card(
-      color: widget.isDarkMode ? Colors.grey[900] : Colors.white,
-      elevation: 1,
-      shadowColor: Colors.black26,
+      color: cardColor,
+      elevation: 3,
+      shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             // Status icon
@@ -345,7 +372,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -359,9 +386,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             // Transaction type and status
             Text(
               isIncoming ? 'Received' : 'Sent',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -372,23 +400,23 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(
                     _getStatusText(),
                     style: TextStyle(
                       fontSize: 14,
                       color: statusColor,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Amount
             Text(
@@ -399,22 +427,22 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 color: isIncoming ? Colors.green : Colors.red,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             // Fee and date
             Text(
               'Fee: ${_detailedTransaction!.fee.toStringAsFixed(10)} ETH',
               style: TextStyle(
                 fontSize: 14,
-                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                color: subtitleColor,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               DateTimeUtils.formatDateTime(_detailedTransaction!.timestamp),
               style: TextStyle(
                 fontSize: 14,
-                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                color: subtitleColor,
               ),
             ),
           ],
@@ -423,25 +451,33 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildDetailsCard() {
+  Widget _buildDetailsCard(Color cardColor, Color textColor,
+      Color subtitleColor, Color primaryColor) {
     return Card(
-      color: widget.isDarkMode ? Colors.grey[900] : Colors.white,
-      elevation: 1,
-      shadowColor: Colors.black26,
+      color: cardColor,
+      elevation: 3,
+      shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Transaction Details',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(Icons.assignment_outlined, size: 18, color: primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  'Transaction Details',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             _buildDetailRow(
@@ -449,17 +485,23 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               value: _formatHash(_detailedTransaction!.hash),
               canCopy: true,
               data: _detailedTransaction!.hash,
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Status',
               value: _getStatusTextWithConfirmations(),
               valueColor: _getStatusColor(widget.transaction.status),
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Block',
               value: _detailedTransaction!.blockNumber > 0
                   ? _detailedTransaction!.blockNumber.toString()
                   : 'Pending',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'From',
@@ -468,8 +510,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               data: _detailedTransaction!.from,
               valueColor: _detailedTransaction!.from.toLowerCase() ==
                       widget.currentAddress.toLowerCase()
-                  ? Colors.orange
+                  ? primaryColor
                   : null,
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'To',
@@ -478,24 +522,32 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               data: _detailedTransaction!.to,
               valueColor: _detailedTransaction!.to.toLowerCase() ==
                       widget.currentAddress.toLowerCase()
-                  ? Colors.orange
+                  ? primaryColor
                   : null,
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             if (_detailedTransaction!.tokenContractAddress != null) ...[
               _buildDetailRow(
                 title: 'Token',
                 value: _detailedTransaction!.tokenSymbol ?? 'Unknown Token',
+                textColor: textColor,
+                subtitleColor: subtitleColor,
               ),
               _buildDetailRow(
                 title: 'Token Contract',
                 value: _formatHash(_detailedTransaction!.tokenContractAddress!),
                 canCopy: true,
                 data: _detailedTransaction!.tokenContractAddress!,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
               ),
             ],
             _buildDetailRow(
               title: 'Nonce',
               value: _detailedTransaction!.nonce.toString(),
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
           ],
         ),
@@ -503,28 +555,34 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildGasDetailsCard() {
+  Widget _buildGasDetailsCard(
+      Color cardColor, Color textColor, Color subtitleColor) {
     return Card(
-      color: widget.isDarkMode ? Colors.grey[900] : Colors.white,
-      elevation: 1,
-      shadowColor: Colors.black26,
+      color: cardColor,
+      elevation: 3,
+      shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.local_gas_station_outlined, size: 20),
-                SizedBox(width: 8),
+                Icon(
+                  Icons.local_gas_station_outlined,
+                  size: 18,
+                  color: widget.isDarkMode ? Colors.orange : Colors.deepOrange,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   'Gas Information',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
                 ),
               ],
@@ -534,25 +592,35 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               title: 'Gas Limit',
               value:
                   '${_detailedTransaction!.gasLimit.toStringAsFixed(0)} units',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Gas Used',
               value:
                   '${_detailedTransaction!.gasUsed.toStringAsFixed(0)} units',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Gas Price',
               value:
                   '${_detailedTransaction!.gasPrice.toStringAsFixed(9)} Gwei',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Gas Efficiency',
               value: _calculateGasEfficiency(),
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Transaction Fee',
               value: '${_detailedTransaction!.fee.toStringAsFixed(15)} ETH',
-              valueColor: Colors.orange,
+              valueColor: widget.isDarkMode ? Colors.orange : Colors.deepOrange,
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
           ],
         ),
@@ -566,6 +634,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     bool canCopy = false,
     String? data,
     Color? valueColor,
+    required Color textColor,
+    required Color subtitleColor,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -577,8 +647,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             child: Text(
               title,
               style: TextStyle(
-                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                color: subtitleColor,
                 fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -587,23 +658,31 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               value,
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: valueColor ??
-                    (widget.isDarkMode ? Colors.white : Colors.black87),
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? textColor,
               ),
             ),
           ),
           if (canCopy && data != null)
-            IconButton(
-              icon: const Icon(Icons.copy, size: 16),
-              constraints: const BoxConstraints(),
-              padding: EdgeInsets.zero,
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: data));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Copied to clipboard')),
-                );
-              },
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: data));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Copied to clipboard')),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(
+                    Icons.copy_outlined,
+                    size: 16,
+                    color: subtitleColor,
+                  ),
+                ),
+              ),
             ),
         ],
       ),

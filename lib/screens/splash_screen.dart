@@ -17,13 +17,15 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _isInitializing = false;
+  bool _initCompleted = false;
+  String _statusMessage = "Initializing...";
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200), // Slightly faster animation
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -43,30 +45,48 @@ class _SplashScreenState extends State<SplashScreen>
 
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
-    // Reduced theme initialization delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
     try {
-      // Initialize wallet only once - this just loads the wallet,
-      // but doesn't fetch balance or transactions yet
+      // Initialize wallet only once
       await walletProvider.initWallet();
 
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _statusMessage = "Wallet loaded successfully";
+          _initCompleted = true;
+        });
 
-        // Navigate to main app immediately after initialization
-        Timer(const Duration(milliseconds: 300), () {
+        // Navigate to main app after a short delay
+        // This prevents the UI from jumping too quickly
+        Timer(const Duration(milliseconds: 500), () {
           if (mounted) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MainApp()),
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    const MainApp(),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  var begin = const Offset(1.0, 0.0);
+                  var end = Offset.zero;
+                  var curve = Curves.easeInOut;
+                  var tween = Tween(begin: begin, end: end)
+                      .chain(CurveTween(curve: curve));
+                  return SlideTransition(
+                    position: animation.drive(tween),
+                    child: child,
+                  );
+                },
+              ),
             );
           }
         });
       }
     } catch (e) {
       _isInitializing = false;
-      // Handle initialization errors
       if (mounted) {
+        setState(() {
+          _statusMessage = "Error: ${e.toString()}";
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error initializing app: ${e.toString()}'),
@@ -89,6 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
     final isDarkMode = themeProvider.isDarkMode;
     final primaryColor = Theme.of(context).colorScheme.primary;
     final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).colorScheme.onBackground;
 
     return Scaffold(
       backgroundColor: backgroundColor,

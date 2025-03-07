@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pyusd_forensics/utils/formataddress_utils.dart';
 
 import '../../../utils/snackbar_utils.dart';
 
@@ -27,6 +28,7 @@ class BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    print(walletAddress);
 
     // Define colors based on theme
     final cardColor = isDarkMode
@@ -223,10 +225,11 @@ class BalanceCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _formatAddress(walletAddress),
+                            FormataddressUtils.formatAddress(walletAddress),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
+                              fontFamily: "monospace",
                               color: textColor,
                             ),
                           ),
@@ -255,12 +258,6 @@ class BalanceCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatAddress(String address) {
-    if (address.isEmpty) return 'No wallet connected';
-    if (address.length < 10) return address;
-    return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
   }
 
   void _copyToClipboard(BuildContext context, String text) {

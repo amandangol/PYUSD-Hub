@@ -10,7 +10,8 @@ class CustomTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final Widget? suffixIcon;
-
+  final Icon? prefixIcon;
+  final String? suffixText;
   const CustomTextField({
     Key? key,
     required this.controller,
@@ -21,6 +22,8 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType,
     this.inputFormatters,
     this.suffixIcon,
+    this.prefixIcon,
+    this.suffixText,
   }) : super(key: key);
 
   @override
@@ -34,6 +37,8 @@ class CustomTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         suffixIcon: suffixIcon,
+        prefixIcon: prefixIcon,
+        suffixText: suffixText,
       ),
       validator: validator,
       onChanged: onChanged,

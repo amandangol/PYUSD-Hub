@@ -1,7 +1,14 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/utils/formataddress_utils.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../providers/wallet_provider.dart';
 import '../../../utils/snackbar_utils.dart';
@@ -12,7 +19,12 @@ class ReceiveScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
-    final address = walletProvider.wallet?.address ?? '';
+    final address = walletProvider.getCurrentAddress() ?? '';
+
+    // Get the token balance
+    final tokenBalance = walletProvider.tokenBalance;
+    final isBalanceRefreshing = walletProvider.isBalanceRefreshing;
+    final GlobalKey qrKey = GlobalKey();
 
     // Get theme information for styling
     final theme = Theme.of(context);
@@ -41,6 +53,18 @@ class ReceiveScreen extends StatelessWidget {
         iconTheme: IconThemeData(
           color: textColor,
         ),
+        actions: [
+          // Add refresh button
+          IconButton(
+            icon: Icon(
+              Icons.refresh,
+              color: textColor,
+            ),
+            onPressed: () {
+              walletProvider.refreshWalletData(forceRefresh: true);
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -109,19 +133,51 @@ class ReceiveScreen extends StatelessWidget {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Text(
-                                    'balace',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: textColor,
+                                  if (isBalanceRefreshing)
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                primaryColor),
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      tokenBalance.toStringAsFixed(2),
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
                                     ),
-                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'PYUSD',
                                     style: TextStyle(
                                       fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Network: ',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: secondaryTextColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    walletProvider.currentNetworkName,
+                                    style: TextStyle(
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: primaryColor,
                                     ),
@@ -146,19 +202,28 @@ class ReceiveScreen extends StatelessWidget {
                               width: 1,
                             ),
                           ),
-                          child: QrImageView(
-                            data: address,
-                            version: QrVersions.auto,
-                            size: 200,
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            errorCorrectionLevel: QrErrorCorrectLevel.H,
-                            // embeddedImage:
-                            //     const AssetImage('assets/images/pyusdlogo.png'),
-                            // embeddedImageStyle: const QrEmbeddedImageStyle(
-                            //   size: Size(40, 40),
-                            // ),
-                          ),
+                          child: address.isEmpty
+                              ? const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(90.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                )
+                              : RepaintBoundary(
+                                  key: qrKey,
+                                  child: Container(
+                                    color: Colors.white,
+                                    child: QrImageView(
+                                      data: address,
+                                      version: QrVersions.auto,
+                                      size: 200,
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.black,
+                                      errorCorrectionLevel:
+                                          QrErrorCorrectLevel.H,
+                                    ),
+                                  ),
+                                ),
                         ),
 
                         const SizedBox(height: 24),
@@ -176,11 +241,13 @@ class ReceiveScreen extends StatelessWidget {
                         // Address with masked display
                         GestureDetector(
                           onTap: () {
-                            Clipboard.setData(ClipboardData(text: address));
-                            SnackbarUtil.showSnackbar(
-                              context: context,
-                              message: "Address copied to clipboard",
-                            );
+                            if (address.isNotEmpty) {
+                              Clipboard.setData(ClipboardData(text: address));
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: "Address copied to clipboard",
+                              );
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -202,7 +269,10 @@ class ReceiveScreen extends StatelessWidget {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    _formatAddress(address),
+                                    address.isEmpty
+                                        ? 'Loading...'
+                                        : FormataddressUtils.formatAddress(
+                                            address),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontFamily: 'monospace',
@@ -226,53 +296,57 @@ class ReceiveScreen extends StatelessWidget {
 
                         const SizedBox(height: 24),
 
-                        // Copy button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: address));
-                              SnackbarUtil.showSnackbar(
-                                context: context,
-                                message: "Address copied to clipboard",
-                              );
-                            },
-                            icon: const Icon(Icons.copy_rounded,
-                                color: Colors.white),
-                            label: const Text(
-                              'Copy Address',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 2,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
                         // Share button
                         SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              // Implementation for sharing would go here
-                              // This would typically use a package like share_plus
-                              SnackbarUtil.showSnackbar(
-                                context: context,
-                                message: "Sharing address...",
-                              );
-                            },
+                            onPressed: address.isEmpty
+                                ? null
+                                : () async {
+                                    try {
+                                      // Show loading indicator
+                                      SnackbarUtil.showSnackbar(
+                                        context: context,
+                                        message: "Preparing to share...",
+                                      );
+
+                                      // Capture QR code as image
+                                      final RenderRepaintBoundary boundary =
+                                          qrKey.currentContext!
+                                                  .findRenderObject()
+                                              as RenderRepaintBoundary;
+                                      final ui.Image image = await boundary
+                                          .toImage(pixelRatio: 3.0);
+                                      final ByteData? byteData =
+                                          await image.toByteData(
+                                              format: ui.ImageByteFormat.png);
+                                      final Uint8List pngBytes =
+                                          byteData!.buffer.asUint8List();
+
+                                      // Save to temporary file
+                                      final tempDir =
+                                          await getTemporaryDirectory();
+                                      final file = File(
+                                          '${tempDir.path}/pyusd_qr_code.png');
+                                      await file.writeAsBytes(pngBytes);
+
+                                      // Share address and QR code
+                                      await Share.shareXFiles(
+                                        [XFile(file.path)],
+                                        text:
+                                            'My PYUSD wallet address: $address',
+                                        subject: 'PYUSD Wallet Address',
+                                      );
+                                    } catch (e) {
+                                      SnackbarUtil.showSnackbar(
+                                        context: context,
+                                        message:
+                                            "Error sharing: ${e.toString()}",
+                                        isError: true,
+                                      );
+                                    }
+                                  },
                             icon:
                                 Icon(Icons.share_rounded, color: primaryColor),
                             label: Text(
@@ -290,7 +364,7 @@ class ReceiveScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                        ),
+                        )
                       ],
                     ),
                   ),
@@ -342,15 +416,5 @@ class ReceiveScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  // Helper method to format address for better readability
-  String _formatAddress(String address) {
-    if (address.length < 10) return address;
-
-    String start = address.substring(0, 6);
-    String end = address.substring(address.length - 4);
-
-    return '$start....$end';
   }
 }
