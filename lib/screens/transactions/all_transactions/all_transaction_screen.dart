@@ -40,8 +40,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     // Ensure we have the providers available
     final transactionDetailProvider =
         Provider.of<TransactionDetailProvider>(context, listen: false);
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
+    Provider.of<NetworkProvider>(context, listen: false);
 
     return Scaffold(
       backgroundColor: backgroundColor,

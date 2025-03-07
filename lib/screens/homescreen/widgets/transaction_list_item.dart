@@ -4,6 +4,7 @@ import 'package:pyusd_forensics/utils/datetime_utils.dart';
 import '../../../models/transaction.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/transactiondetail_provider.dart';
+import '../../../utils/formataddress_utils.dart';
 import '../../transactions/transaction_details/transaction_detail_screen.dart';
 
 class TransactionItem extends StatefulWidget {
@@ -30,14 +31,12 @@ class _TransactionItemState extends State<TransactionItem> {
   // Helper method to format amount - updated to match the detail screen formatting
   String _formatAmount(TransactionModel tx) {
     if (tx.tokenSymbol != null) {
-      int decimalPlaces = tx.tokenDecimals != null && tx.tokenDecimals! <= 6
-          ? tx.tokenDecimals!
-          : 6;
+      int decimalPlaces = tx.tokenDecimals!;
 
       print(
           'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
 
-      return '${tx.value.toStringAsFixed(decimalPlaces)} ${tx.tokenSymbol}';
+      return '${tx.value.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {
       return '${tx.value.toStringAsFixed(6)} ETH';
     }
@@ -55,15 +54,15 @@ class _TransactionItemState extends State<TransactionItem> {
     // Format the amount string
     final formattedAmount = _formatAmount(displayTransaction);
 
-    // Enhanced debug logging
-    print('Transaction hash: ${displayTransaction.hash}');
-    print('Direction: ${isIncoming ? 'Incoming' : 'Outgoing'}');
-    print('Raw Value: ${displayTransaction.value}');
-    print('Token Symbol: ${displayTransaction.tokenSymbol}');
-    print('Token Decimals: ${displayTransaction.tokenDecimals}');
-    print('Formatted Value: $formattedAmount');
-    print('Status: ${displayTransaction.status}');
-    print('Timestamp: ${displayTransaction.timestamp}');
+    // // Enhanced debug logging
+    // print('Transaction hash: ${displayTransaction.hash}');
+    // print('Direction: ${isIncoming ? 'Incoming' : 'Outgoing'}');
+    // print('Raw Value: ${displayTransaction.value}');
+    // print('Token Symbol: ${displayTransaction.tokenSymbol}');
+    // print('Token Decimals: ${displayTransaction.tokenDecimals}');
+    // print('Formatted Value: $formattedAmount');
+    // print('Status: ${displayTransaction.status}');
+    // print('Timestamp: ${displayTransaction.timestamp}');
 
     return Card(
       color: widget.cardColor,
@@ -199,24 +198,24 @@ class _TransactionItemState extends State<TransactionItem> {
                               ),
                           ],
                         ),
-                        // const SizedBox(height: 4),
-                        // Container(
-                        //   padding: const EdgeInsets.all(4),
-                        //   decoration: BoxDecoration(
-                        //     borderRadius: BorderRadius.all(Radius.circular(8)),
-                        //     color: Colors.white.withOpacity(0.2),
-                        //   ),
-                        //   child: Text(
-                        //     FormatterUtils.formatHash(displayTransaction.hash),
-                        //     style: TextStyle(
-                        //       fontSize: 8,
-                        //       fontFamily: "monospace",
-                        //       color: widget.isDarkMode
-                        //           ? Colors.white
-                        //           : Colors.black87,
-                        //     ),
-                        //   ),
-                        // ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                            color: Colors.white.withOpacity(0.2),
+                          ),
+                          child: Text(
+                            FormatterUtils.formatHash(displayTransaction.hash),
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontFamily: "monospace",
+                              color: widget.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           DateTimeUtils.formatDateTime(

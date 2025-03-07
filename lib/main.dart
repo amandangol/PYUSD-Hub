@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/providers/transactiondetail_provider.dart';
-import 'package:pyusd_forensics/services/pyUSDBalanceTransferService.dart';
-import 'package:pyusd_forensics/services/transaction_service.dart';
+import 'package:pyusd_forensics/screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/network_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/homescreen/home_screen.dart';
-import 'screens/settings_screen.dart';
+import 'screens/pyusd_dashboard/PYUSD_dashboardScreen.dart';
+import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
-import 'services/ethereum_rpc_service.dart';
 import 'theme/app_theme.dart';
 
 // Modify your main function:
@@ -56,7 +55,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => TransactionDetailProvider(),
         ),
-        // Provide the already initialized ThemeProvider
+        ChangeNotifierProvider(
+          create: (context) => PYUSDAnalyticsProvider(),
+        ),
         ChangeNotifierProvider.value(
           value: themeProvider,
         ),
@@ -90,7 +91,7 @@ class _MainAppState extends State<MainApp> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const HomeScreen(), // Replace with AnalyticsScreen when available
+    const PYUSDDashboardScreen(),
     const HomeScreen(), // Replace with NetworkScreen when available
     const SettingsScreen(),
   ];

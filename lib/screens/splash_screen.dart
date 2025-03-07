@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/screen/authentication_screen.dart';
 import 'dart:async';
 import '../main.dart';
 import '../providers/wallet_provider.dart';
@@ -18,8 +17,6 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _isInitializing = false;
-  bool _initCompleted = false;
-  String _statusMessage = "Initializing...";
 
   @override
   void initState() {
@@ -51,10 +48,7 @@ class _SplashScreenState extends State<SplashScreen>
       await walletProvider.initWallet();
 
       if (mounted) {
-        setState(() {
-          _statusMessage = "Wallet loaded successfully";
-          _initCompleted = true;
-        });
+        setState(() {});
 
         // Navigate to main app after a short delay
         // This prevents the UI from jumping too quickly
@@ -84,9 +78,7 @@ class _SplashScreenState extends State<SplashScreen>
     } catch (e) {
       _isInitializing = false;
       if (mounted) {
-        setState(() {
-          _statusMessage = "Error: ${e.toString()}";
-        });
+        setState(() {});
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -110,7 +102,6 @@ class _SplashScreenState extends State<SplashScreen>
     final isDarkMode = themeProvider.isDarkMode;
     final primaryColor = Theme.of(context).colorScheme.primary;
     final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = Theme.of(context).colorScheme.onBackground;
 
     return Scaffold(
       backgroundColor: backgroundColor,

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/providers/network_provider.dart';
-import '../providers/theme_provider.dart';
-import '../providers/wallet_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/wallet_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../utils/formataddress_utils.dart';
-import '../utils/snackbar_utils.dart';
-import 'wallet_selection_screen.dart';
+import '../../utils/formataddress_utils.dart';
+import '../../utils/snackbar_utils.dart';
+import '../wallet_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);

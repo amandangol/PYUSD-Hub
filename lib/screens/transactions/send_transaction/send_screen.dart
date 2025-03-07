@@ -131,7 +131,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   void _validateAddress(String address) {
     try {
       // Validate Ethereum address format
-      final ethAddress = EthereumAddress.fromHex(address);
       setState(() {
         _isValidAddress = true;
       });

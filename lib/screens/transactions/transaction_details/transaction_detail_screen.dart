@@ -693,7 +693,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   String _formatAmount(TransactionDetailModel tx) {
     if (tx.tokenSymbol != null) {
-      return '${tx.value.toStringAsFixed(tx.tokenDecimals != null && tx.tokenDecimals! <= 6 ? tx.tokenDecimals! : 6)} ${tx.tokenSymbol}';
+      return '${tx.value.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {
       return '${tx.value.toStringAsFixed(6)} ETH';
     }
