@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/screen/authentication_screen.dart';
 import 'package:pyusd_forensics/providers/network_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/wallet_provider.dart';
@@ -828,7 +827,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const AuthenticationScreen()),
+                      builder: (context) => const WalletSelectionScreen()),
                   (route) => false,
                 );
               }

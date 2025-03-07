@@ -12,45 +12,20 @@ class WalletService {
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  // Generate a new wallet with a random mnemonic
-  Future<WalletModel> createWallet(String mnemonic) async {
-    return await createWalletFromMnemonic(mnemonic);
-  }
-
-  // Generate a new mnemonic (12 words)
-  Future<List<String>> generateMnemonic() async {
+  // Generate a new wallet
+  Future<WalletModel> createWallet() async {
+    // Generate a random mnemonic (seed phrase)
     final mnemonic = bip39.generateMnemonic(strength: 128); // 12 words
-    return mnemonic.split(' ');
+    return await _createWalletFromMnemonic(mnemonic);
   }
 
-  // Validate a mnemonic phrase
-  Future<bool> validateMnemonic(String mnemonic) async {
-    return bip39.validateMnemonic(mnemonic);
-  }
-
-  // Create wallet from mnemonic
-  Future<WalletModel> createWalletFromMnemonic(String mnemonic) async {
+  // Import wallet using mnemonic
+  Future<WalletModel> importWalletFromMnemonic(String mnemonic) async {
     if (!bip39.validateMnemonic(mnemonic)) {
       throw Exception('Invalid mnemonic phrase');
     }
 
-    final seed = bip39.mnemonicToSeed(mnemonic);
-    final master = await ED25519_HD_KEY.getMasterKeyFromSeed(seed);
-    final privateKey = HEX.encode(master.key);
-
-    final credentials = EthPrivateKey.fromHex(privateKey);
-    final address = await credentials.extractAddress();
-
-    await _secureStorage.write(key: _walletAddressKey, value: address.hex);
-    await _secureStorage.write(key: _walletPrivateKey, value: privateKey);
-    await _secureStorage.write(key: _walletMnemonic, value: mnemonic);
-
-    return WalletModel(
-      address: address.hex,
-      privateKey: privateKey,
-      mnemonic: mnemonic,
-      credentials: credentials,
-    );
+    return await _createWalletFromMnemonic(mnemonic);
   }
 
   // Import wallet using private key
@@ -69,6 +44,27 @@ class WalletService {
       address: address.hex,
       privateKey: privateKey,
       mnemonic: '',
+      credentials: credentials,
+    );
+  }
+
+  // Create wallet from mnemonic and save securely
+  Future<WalletModel> _createWalletFromMnemonic(String mnemonic) async {
+    final seed = bip39.mnemonicToSeed(mnemonic);
+    final master = await ED25519_HD_KEY.getMasterKeyFromSeed(seed);
+    final privateKey = HEX.encode(master.key);
+
+    final credentials = EthPrivateKey.fromHex(privateKey);
+    final address = await credentials.extractAddress();
+
+    await _secureStorage.write(key: _walletAddressKey, value: address.hex);
+    await _secureStorage.write(key: _walletPrivateKey, value: privateKey);
+    await _secureStorage.write(key: _walletMnemonic, value: mnemonic);
+
+    return WalletModel(
+      address: address.hex,
+      privateKey: privateKey,
+      mnemonic: mnemonic,
       credentials: credentials,
     );
   }

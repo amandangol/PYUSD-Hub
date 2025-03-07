@@ -23,6 +23,7 @@ class BalanceDisplayCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -35,73 +36,31 @@ class BalanceDisplayCard extends StatelessWidget {
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  availableBalance.toStringAsFixed(6),
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  selectedAsset,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.primary,
-                  ),
-                ),
-              ],
+            Text(
+              selectedAsset == 'ETH'
+                  ? '${availableBalance.toStringAsFixed(6)} ETH'
+                  : '${availableBalance.toStringAsFixed(6)} PYUSD',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
             ),
             if (selectedAsset == 'ETH' && estimatedGasFee > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      size: 16,
-                      color: Colors.blue,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Max sendable: ${maxSendableEth.toStringAsFixed(6)} ETH',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Max sendable (after gas): ${maxSendableEth.toStringAsFixed(6)} ETH',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.wifi,
-                    size: 16,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    networkName,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 8),
+            Text(
+              'Network: $networkName',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],

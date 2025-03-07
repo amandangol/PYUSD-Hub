@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
             Navigator.of(context).pushReplacement(
               PageRouteBuilder(
                 pageBuilder: (context, animation, secondaryAnimation) =>
-                    const AuthenticationScreen(),
+                    const MainApp(),
                 transitionsBuilder:
                     (context, animation, secondaryAnimation, child) {
                   var begin = const Offset(1.0, 0.0);
