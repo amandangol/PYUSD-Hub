@@ -225,7 +225,7 @@ class BalanceCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            FormataddressUtils.formatAddress(walletAddress),
+                            FormatterUtils.formatAddress(walletAddress),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,

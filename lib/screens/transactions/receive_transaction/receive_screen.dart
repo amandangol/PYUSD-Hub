@@ -271,8 +271,7 @@ class ReceiveScreen extends StatelessWidget {
                                   child: Text(
                                     address.isEmpty
                                         ? 'Loading...'
-                                        : FormataddressUtils.formatAddress(
-                                            address),
+                                        : FormatterUtils.formatAddress(address),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontFamily: 'monospace',

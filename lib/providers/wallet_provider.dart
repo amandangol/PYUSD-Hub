@@ -45,6 +45,7 @@ class WalletProvider extends ChangeNotifier {
 
   // Timer for auto-refresh
   Timer? _refreshTimer;
+  List<String> _mnemonic = [];
 
   // Token contract addresses (replace with actual PYUSD addresses for each network)
   final Map<NetworkType, String> _tokenContractAddresses = {
@@ -112,36 +113,36 @@ class WalletProvider extends ChangeNotifier {
   }
 
   // Create a new wallet
-  Future<void> createWallet() async {
-    if (_isLoading) return;
-    _setLoading(true);
-    try {
-      _wallet = await _walletService.createWallet();
-      // Start auto-refresh after wallet creation
-      _startAutoRefresh();
-      await refreshWalletData();
-    } catch (e) {
-      _setError('Failed to create wallet: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
+  // Future<void> createWallet() async {
+  //   if (_isLoading) return;
+  //   _setLoading(true);
+  //   try {
+  //     _wallet = await _walletService.createWallet(_mnemonic.join(' '));
+  //     // Start auto-refresh after wallet creation
+  //     _startAutoRefresh();
+  //     await refreshWalletData();
+  //   } catch (e) {
+  //     _setError('Failed to create wallet: $e');
+  //   } finally {
+  //     _setLoading(false);
+  //   }
+  // }
 
   // Import wallet from mnemonic
-  Future<void> importWalletFromMnemonic(String mnemonic) async {
-    if (_isLoading) return;
-    _setLoading(true);
-    try {
-      _wallet = await _walletService.importWalletFromMnemonic(mnemonic);
-      // Start auto-refresh after wallet import
-      _startAutoRefresh();
-      await refreshWalletData();
-    } catch (e) {
-      _setError('Failed to import wallet: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
+  // Future<void> importWalletFromMnemonic(String mnemonic) async {
+  //   if (_isLoading) return;
+  //   _setLoading(true);
+  //   try {
+  //     _wallet = await _walletService.importWalletFromMnemonic(mnemonic);
+  //     // Start auto-refresh after wallet import
+  //     _startAutoRefresh();
+  //     await refreshWalletData();
+  //   } catch (e) {
+  //     _setError('Failed to import wallet: $e');
+  //   } finally {
+  //     _setLoading(false);
+  //   }
+  // }
 
   // Import wallet from private key
   Future<void> importWalletFromPrivateKey(String privateKey) async {

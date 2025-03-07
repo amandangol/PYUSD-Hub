@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/utils/formataddress_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/transaction.dart';
 import '../../../providers/network_provider.dart';
@@ -482,7 +483,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             const SizedBox(height: 16),
             _buildDetailRow(
               title: 'Transaction Hash',
-              value: _formatHash(_detailedTransaction!.hash),
+              value: FormatterUtils.formatHash(_detailedTransaction!.hash),
               canCopy: true,
               data: _detailedTransaction!.hash,
               textColor: textColor,
@@ -505,7 +506,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             _buildDetailRow(
               title: 'From',
-              value: _formatHash(_detailedTransaction!.from),
+              value: FormatterUtils.formatHash(_detailedTransaction!.from),
               canCopy: true,
               data: _detailedTransaction!.from,
               valueColor: _detailedTransaction!.from.toLowerCase() ==
@@ -517,7 +518,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             _buildDetailRow(
               title: 'To',
-              value: _formatHash(_detailedTransaction!.to),
+              value: FormatterUtils.formatHash(_detailedTransaction!.to),
               canCopy: true,
               data: _detailedTransaction!.to,
               valueColor: _detailedTransaction!.to.toLowerCase() ==
@@ -536,7 +537,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               ),
               _buildDetailRow(
                 title: 'Token Contract',
-                value: _formatHash(_detailedTransaction!.tokenContractAddress!),
+                value: FormatterUtils.formatHash(
+                    _detailedTransaction!.tokenContractAddress!),
                 canCopy: true,
                 data: _detailedTransaction!.tokenContractAddress!,
                 textColor: textColor,
@@ -695,11 +697,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     } else {
       return '${tx.value.toStringAsFixed(6)} ETH';
     }
-  }
-
-  String _formatHash(String hash) {
-    if (hash.length <= 16) return hash;
-    return '${hash.substring(0, 8)}...${hash.substring(hash.length - 8)}';
   }
 
   String _getStatusText() {

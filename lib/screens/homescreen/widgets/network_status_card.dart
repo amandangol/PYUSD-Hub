@@ -31,7 +31,6 @@ class _EnhancedNetworkStatusCardState extends State<EnhancedNetworkStatusCard> {
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
     final currentNetwork = walletProvider.currentNetwork;
-    final currentNetworkName = walletProvider.currentNetworkName;
     final cardColor =
         widget.isDarkMode ? const Color(0xFF252543) : Colors.white;
 

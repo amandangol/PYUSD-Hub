@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:pyusd_forensics/utils/datetime_utils.dart';
 import '../../../models/transaction.dart';
 import '../../../providers/network_provider.dart';
@@ -35,7 +34,6 @@ class _TransactionItemState extends State<TransactionItem> {
           ? tx.tokenDecimals!
           : 6;
 
-      // Enhanced debug logging to trace the values
       print(
           'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
 
@@ -201,6 +199,24 @@ class _TransactionItemState extends State<TransactionItem> {
                               ),
                           ],
                         ),
+                        // const SizedBox(height: 4),
+                        // Container(
+                        //   padding: const EdgeInsets.all(4),
+                        //   decoration: BoxDecoration(
+                        //     borderRadius: BorderRadius.all(Radius.circular(8)),
+                        //     color: Colors.white.withOpacity(0.2),
+                        //   ),
+                        //   child: Text(
+                        //     FormatterUtils.formatHash(displayTransaction.hash),
+                        //     style: TextStyle(
+                        //       fontSize: 8,
+                        //       fontFamily: "monospace",
+                        //       color: widget.isDarkMode
+                        //           ? Colors.white
+                        //           : Colors.black87,
+                        //     ),
+                        //   ),
+                        // ),
                         const SizedBox(height: 4),
                         Text(
                           DateTimeUtils.formatDateTime(

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
-import 'package:pyusd_forensics/main.dart';
-import '../../providers/wallet_provider.dart';
+import '../../main.dart';
+import '../../services/wallet_service.dart';
 import '../../widgets/loading_overlay.dart';
 
 class ImportWalletScreen extends StatefulWidget {
@@ -16,7 +15,14 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
   final TextEditingController _mnemonicController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  String? _errorMessage;
+  String? _error;
+  late WalletService _walletService;
+
+  @override
+  void initState() {
+    super.initState();
+    _walletService = Provider.of<WalletService>(context, listen: false);
+  }
 
   @override
   void dispose() {
@@ -29,17 +35,24 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final walletProvider =
-          Provider.of<WalletProvider>(context, listen: false);
-      await walletProvider
-          .importWalletFromMnemonic(_mnemonicController.text.trim());
+      final mnemonic = _mnemonicController.text.trim();
 
+      // Validate mnemonic
+      if (!await _walletService.validateMnemonic(mnemonic)) {
+        setState(() {
+          _error = 'Invalid recovery phrase. Please check and try again.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Import wallet from mnemonic
+      await _walletService.createWalletFromMnemonic(mnemonic);
+
+      // Navigate to the main app
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainApp()),
@@ -48,14 +61,9 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _error = 'Failed to import wallet: ${e.toString()}';
+        _isLoading = false;
       });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
@@ -63,12 +71,15 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final primaryColor =
+        isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
+    final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
     return LoadingOverlay(
       isLoading: _isLoading,
-      loadingText: 'Importing your wallet...',
+      loadingText: 'Importing wallet...',
       child: Scaffold(
-        backgroundColor: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
+        backgroundColor: backgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -79,345 +90,207 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
               color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
             ),
           ),
-          iconTheme: IconThemeData(
-            color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back,
+              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    Text(
-                      'Import Existing Wallet',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-                      ),
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Import Using Recovery Phrase',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color:
+                          isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Enter your recovery phrase to access your wallet',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Enter your 12-word recovery phrase to restore your wallet',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
-                    const SizedBox(height: 32),
+                  ),
 
-                    // Recovery phrase input
-                    Row(
+                  const SizedBox(height: 32),
+
+                  // Recovery phrase input
+                  TextFormField(
+                    controller: _mnemonicController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Enter your recovery phrase, words separated by spaces',
+                      hintStyle: TextStyle(
+                        color: isDarkMode ? Colors.white38 : Colors.black38,
+                      ),
+                      fillColor: isDarkMode ? Colors.black12 : Colors.grey[100],
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color:
+                              isDarkMode ? Colors.white24 : Colors.grey[300]!,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color:
+                              isDarkMode ? Colors.white24 : Colors.grey[300]!,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Recovery phrase is required';
+                      }
+
+                      final wordCount = value.trim().split(' ').length;
+                      if (wordCount != 12) {
+                        return 'Recovery phrase must contain 12 words';
+                      }
+
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Helper text
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.white10 : Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
-                          Icons.vpn_key_rounded,
-                          color: isDarkMode
-                              ? theme.colorScheme.primary
-                              : const Color(0xFF3D56F0),
+                          Icons.info_outline,
+                          color: isDarkMode ? Colors.white70 : Colors.blue[700],
                           size: 20,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Recovery Phrase',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode
-                                ? Colors.white
-                                : const Color(0xFF1A1A2E),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Words should be separated by spaces. Check that each word is spelled correctly.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.blue[700],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  if (_error != null)
                     Container(
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDarkMode
-                                ? Colors.black.withOpacity(0.2)
-                                : Colors.grey.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
+                        color: theme.colorScheme.error.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline,
+                              color: theme.colorScheme.error),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(color: theme.colorScheme.error),
+                            ),
                           ),
                         ],
                       ),
-                      child: TextFormField(
-                        controller: _mnemonicController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: isDarkMode
-                              ? const Color(0xFF252543)
-                              : Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                          hintText: 'Enter words separated by spaces',
-                          hintStyle: TextStyle(
-                            color: isDarkMode ? Colors.white38 : Colors.black38,
-                          ),
-                          helperText:
-                              'Each word should be separated by a single space',
-                          helperStyle: TextStyle(
-                            color: isDarkMode ? Colors.white38 : Colors.black38,
-                          ),
-                          alignLabelWithHint: true,
-                          contentPadding: const EdgeInsets.all(20),
-                        ),
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                        maxLines: 4,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your recovery phrase';
-                          }
-
-                          final wordCount = value.trim().split(' ').length;
-                          if (![12, 15, 18, 21, 24].contains(wordCount)) {
-                            return 'Recovery phrase must have 12, 15, 18, 21, or 24 words';
-                          }
-
-                          return null;
-                        },
-                      ),
                     ),
 
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.error.withOpacity(0.1),
+                  // Import button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _importWallet,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: theme.colorScheme.error,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.error,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ],
+                      child: const Text('Import Wallet'),
+                    ),
+                  ),
 
-                    const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                    // Paste button
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: () async {
-                          final data = await Clipboard.getData('text/plain');
-                          if (data != null && data.text != null) {
-                            _mnemonicController.text = data.text!;
-                          }
-                        },
-                        icon: Icon(
-                          Icons.content_paste_rounded,
-                          color: isDarkMode
-                              ? theme.colorScheme.primary
-                              : const Color(0xFF3D56F0),
-                        ),
-                        label: Text(
-                          'Paste from Clipboard',
-                          style: TextStyle(
-                            color: isDarkMode
-                                ? theme.colorScheme.primary
-                                : const Color(0xFF3D56F0),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: isDarkMode
-                                  ? theme.colorScheme.primary.withOpacity(0.5)
-                                  : const Color(0xFF3D56F0).withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                        ),
+                  // Security note
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.white10 : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.white24 : Colors.grey[300]!,
                       ),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    // Import Information
-                    Container(
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? const Color(0xFF252543)
-                            : const Color(0xFFF5F7FF),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDarkMode
-                                ? Colors.black.withOpacity(0.2)
-                                : Colors.grey.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? theme.colorScheme.primary
-                                          .withOpacity(0.2)
-                                      : const Color(0xFF3D56F0)
-                                          .withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.shield_rounded,
-                                  color: isDarkMode
-                                      ? theme.colorScheme.primary
-                                      : const Color(0xFF3D56F0),
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Security Tips',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDarkMode
-                                      ? theme.colorScheme.primary
-                                      : const Color(0xFF3D56F0),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          SecurityTip(
-                            icon: Icons.location_on,
-                            text: 'Ensure you are in a private location',
-                            isDarkMode: isDarkMode,
-                          ),
-                          const SizedBox(height: 12),
-                          SecurityTip(
-                            icon: Icons.people_alt_outlined,
-                            text:
-                                'Never share your recovery phrase with anyone',
-                            isDarkMode: isDarkMode,
-                          ),
-                          const SizedBox(height: 12),
-                          SecurityTip(
-                            icon: Icons.warning_amber_rounded,
-                            text:
-                                'This app will never ask for your recovery phrase outside of this import screen',
-                            isDarkMode: isDarkMode,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // Import button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _importWallet,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode
-                              ? theme.colorScheme.primary
-                              : const Color(0xFF3D56F0),
-                          foregroundColor: Colors.white,
-                          elevation: 4,
-                          shadowColor: isDarkMode
-                              ? theme.colorScheme.primary.withOpacity(0.4)
-                              : const Color(0xFF3D56F0).withOpacity(0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text(
-                          'Import Wallet',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Security Reminder',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Never share your recovery phrase with anyone. Be cautious of phishing attempts and only enter your phrase in trusted applications.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class SecurityTip extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool isDarkMode;
-
-  const SecurityTip({
-    Key? key,
-    required this.icon,
-    required this.text,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: isDarkMode ? Colors.white70 : Colors.black54,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/authentication/provider/authentication_provider.dart';
 import 'package:pyusd_forensics/providers/transactiondetail_provider.dart';
 import 'package:pyusd_forensics/services/pyUSDBalanceTransferService.dart';
 import 'package:pyusd_forensics/services/transaction_service.dart';
+import 'package:pyusd_forensics/services/wallet_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'authentication/screen/authentication_screen.dart';
 import 'providers/network_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/homescreen/home_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'services/ethereum_rpc_service.dart';
 import 'theme/app_theme.dart';
 
@@ -45,6 +49,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    WalletService walletService = WalletService();
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<NetworkProvider>(
@@ -55,6 +60,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (context) => TransactionDetailProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => AuthenticationProvider(WalletService()),
         ),
         // Provide the already initialized ThemeProvider
         ChangeNotifierProvider.value(
@@ -78,61 +86,80 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainApp extends StatefulWidget {
+class MainApp extends StatelessWidget {
   const MainApp({Key? key}) : super(key: key);
 
   @override
-  State<MainApp> createState() => _MainAppState();
-}
-
-class _MainAppState extends State<MainApp> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const HomeScreen(), // Replace with AnalyticsScreen when available
-    const HomeScreen(), // Replace with NetworkScreen when available
-    const SettingsScreen(),
-  ];
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor:
-            Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Wallet',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.network_check),
-            label: 'Network',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+    return Consumer<AuthenticationProvider>(
+      builder: (context, authProvider, _) {
+        // Show a loading indicator while checking initial status
+        if (authProvider.status == AuthStatus.initial) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // Handle different authentication states
+        switch (authProvider.status) {
+          case AuthStatus.noWallet:
+            return const WalletSelectionScreen();
+
+          case AuthStatus.unauthenticated:
+          case AuthStatus.locked:
+            // Direct users to AuthenticationScreen for both unauthenticated and locked states
+            // The AuthenticationScreen will handle showing the lockout message
+            return FutureBuilder<bool>(
+              future: authProvider.authService.isPinSetup(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                return const AuthenticationScreen();
+              },
+            );
+
+          case AuthStatus.authenticating:
+            return const Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text("Authenticating..."),
+                  ],
+                ),
+              ),
+            );
+
+          case AuthStatus.authenticated:
+            // Successfully authenticated, show the home screen
+            return const HomeScreen();
+
+          default:
+            // Fallback for any other states
+            return const Scaffold(
+              body: Center(
+                child: Text("Unexpected authentication state"),
+              ),
+            );
+        }
+      },
     );
+  }
+
+  // Format lockout time from seconds to minutes and seconds
+  String _formatLockoutTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 }

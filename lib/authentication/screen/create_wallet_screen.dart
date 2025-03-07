@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/main.dart';
-import '../../providers/wallet_provider.dart';
-import '../../utils/snackbar_utils.dart';
+import '../../main.dart';
+import '../provider/authentication_provider.dart';
+import '../../services/wallet_service.dart';
 import '../../widgets/loading_overlay.dart';
 
 class CreateWalletScreen extends StatefulWidget {
@@ -14,410 +14,454 @@ class CreateWalletScreen extends StatefulWidget {
 }
 
 class _CreateWalletScreenState extends State<CreateWalletScreen> {
-  bool _isCreating = false;
-  bool _walletCreated = false;
-  bool _phraseVisible = false;
+  late WalletService _walletService;
+  List<String> _mnemonic = [];
+  bool _isLoading = true;
+  bool _mnemonicConfirmed = false;
+  bool _displayMnemonic = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _walletService = Provider.of<WalletService>(context, listen: false);
+    _generateWallet();
+  }
+
+  Future<void> _generateWallet() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Generate a new mnemonic
+      _mnemonic = await _walletService.generateMnemonic();
+      setState(() => _isLoading = false);
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to generate wallet: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _createWallet() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Create wallet from mnemonic
+      await _walletService.createWallet(_mnemonic.join(' '));
+
+      // Navigate to the main app
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainApp()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to create wallet: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _copyToClipboard() {
+    Clipboard.setData(ClipboardData(text: _mnemonic.join(' ')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Recovery phrase copied to clipboard'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-
     final primaryColor =
         isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
-    final cardColor = isDarkMode ? const Color(0xFF252543) : Colors.white;
-    final surfaceColor =
-        isDarkMode ? const Color(0xFF252543) : const Color(0xFFF5F7FF);
 
     return LoadingOverlay(
-      isLoading: _isCreating,
-      loadingText: 'Creating your wallet...',
+      isLoading: _isLoading,
+      loadingText: 'Generating wallet...',
       child: Scaffold(
         backgroundColor: backgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: Text(
-            'Create Wallet',
+            'Create New Wallet',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
             ),
           ),
-          iconTheme: IconThemeData(
-            color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back,
+              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Create a New PYUSD Wallet',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'We will generate a secure wallet for you to store and manage your PYUSD.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Security Information Card
-                Container(
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDarkMode
-                            ? Colors.black.withOpacity(0.2)
-                            : Colors.grey.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.shield_rounded,
-                              color: primaryColor,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Important Security Information',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SecurityInfoItem(
-                        icon: Icons.key_rounded,
-                        text:
-                            'After creating your wallet, you will receive a recovery phrase',
-                        isDarkMode: isDarkMode,
-                      ),
-                      const SizedBox(height: 12),
-                      SecurityInfoItem(
-                        icon: Icons.note_alt_outlined,
-                        text: 'Write down this phrase and store it securely',
-                        isDarkMode: isDarkMode,
-                      ),
-                      const SizedBox(height: 12),
-                      SecurityInfoItem(
-                        icon: Icons.people_alt_outlined,
-                        text:
-                            'Never share your recovery phrase or private key with anyone',
-                        isDarkMode: isDarkMode,
-                      ),
-                      const SizedBox(height: 12),
-                      SecurityInfoItem(
-                        icon: Icons.warning_amber_rounded,
-                        text: 'Lost recovery phrases cannot be recovered',
-                        isDarkMode: isDarkMode,
-                      ),
-                    ],
-                  ),
-                ),
-
-                const Spacer(),
-
-                if (!_walletCreated)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isCreating
-                          ? null
-                          : () async {
-                              setState(() {
-                                _isCreating = true;
-                              });
-
-                              try {
-                                await walletProvider.createWallet();
-                                if (mounted) {
-                                  setState(() {
-                                    _walletCreated = true;
-                                    _isCreating = false;
-                                  });
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  SnackbarUtil.showSnackbar(
-                                    context: context,
-                                    message: "Error: ${e.toString()}",
-                                  );
-
-                                  setState(() {
-                                    _isCreating = false;
-                                  });
-                                }
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shadowColor: primaryColor.withOpacity(0.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text(
-                        'Create Wallet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  Column(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDarkMode
-                                  ? Colors.black.withOpacity(0.2)
-                                  : Colors.grey.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: primaryColor.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.key_rounded,
-                                        color: primaryColor,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      'Recovery Phrase',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDarkMode
-                                            ? Colors.white
-                                            : const Color(0xFF1A1A2E),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    _phraseVisible
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: primaryColor,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _phraseVisible = !_phraseVisible;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: isDarkMode
-                                    ? const Color(0xFF1A1A2E)
-                                    : const Color(0xFFF5F7FF),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: primaryColor.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: _phraseVisible
-                                  ? Text(
-                                      walletProvider.wallet?.mnemonic ?? '',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: isDarkMode
-                                            ? Colors.white
-                                            : const Color(0xFF1A1A2E),
-                                        height: 1.5,
-                                      ),
-                                    )
-                                  : const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 8.0),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            '• • • • • • • • • • • •',
-                                            style: TextStyle(
-                                              fontSize: 24,
-                                              letterSpacing: 2,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(ClipboardData(
-                                  text: walletProvider.wallet?.mnemonic ?? '',
-                                ));
-                                SnackbarUtil.showSnackbar(
-                                  context: context,
-                                  message:
-                                      'Recovery phrase copied to clipboard',
-                                  isError: false,
-                                  icon: Icons.check_circle,
-                                );
-                              },
-                              icon: const Icon(Icons.copy_rounded),
-                              label: const Text('Copy to Clipboard'),
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor:
-                                    isDarkMode ? Colors.white : Colors.black87,
-                                backgroundColor: isDarkMode
-                                    ? Colors.grey[800]
-                                    : Colors.grey[200],
-                                elevation: 0,
-                                minimumSize: const Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                  builder: (context) => const MainApp()),
-                              (route) => false,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            elevation: 4,
-                            shadowColor: primaryColor.withOpacity(0.4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text(
-                            'I\'ve Saved My Recovery Phrase',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
+          child: _mnemonicConfirmed
+              ? _buildConfirmationScreen()
+              : _buildMnemonicScreen(),
         ),
       ),
     );
   }
-}
 
-class SecurityInfoItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool isDarkMode;
+  Widget _buildMnemonicScreen() {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final primaryColor =
+        isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
 
-  const SecurityInfoItem({
-    Key? key,
-    required this.icon,
-    required this.text,
-    required this.isDarkMode,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: isDarkMode ? Colors.white70 : Colors.black54,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your Recovery Phrase',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Write down these 12 words in order and keep them in a safe place. Anyone with this phrase can access your wallet.',
+            style: TextStyle(
+              fontSize: 16,
               color: isDarkMode ? Colors.white70 : Colors.black54,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+
+          // Recovery phrase display
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDarkMode ? const Color(0xFF252543) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDarkMode ? Colors.white24 : Colors.grey[300]!,
+              ),
+            ),
+            child: _displayMnemonic
+                ? _buildMnemonicGrid()
+                : Center(
+                    child: Text(
+                      'Tap to reveal recovery phrase',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _copyToClipboard,
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copy'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: primaryColor,
+                    elevation: 0,
+                    side: BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _displayMnemonic = !_displayMnemonic;
+                    });
+                  },
+                  icon: Icon(_displayMnemonic
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  label: Text(_displayMnemonic ? 'Hide' : 'Show'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: primaryColor,
+                    elevation: 0,
+                    side: BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          if (_error != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: theme.colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Continue button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _mnemonicConfirmed = true;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('I\'ve saved my recovery phrase'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMnemonicGrid() {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 2.5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: _mnemonic.length,
+      itemBuilder: (context, index) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.black38 : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDarkMode ? Colors.white24 : Colors.grey[300]!,
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                '${index + 1}.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white54 : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _mnemonic[index],
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildConfirmationScreen() {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final primaryColor =
+        isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Important Security Note',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Before proceeding, please confirm you understand:',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Security confirmations
+          _buildSecurityItem(
+            icon: Icons.lock,
+            title:
+                'Your recovery phrase is the only way to restore your wallet',
+            isDarkMode: isDarkMode,
+          ),
+
+          _buildSecurityItem(
+            icon: Icons.shield,
+            title:
+                'Keep your recovery phrase offline and never share it with anyone',
+            isDarkMode: isDarkMode,
+          ),
+
+          _buildSecurityItem(
+            icon: Icons.warning_amber_rounded,
+            title:
+                'If you lose your recovery phrase, you will lose access to your funds',
+            isDarkMode: isDarkMode,
+          ),
+
+          const Spacer(),
+
+          if (_error != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: theme.colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      _mnemonicConfirmed = false;
+                    });
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Go Back'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _createWallet,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Create Wallet'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityItem({
+    required IconData icon,
+    required String title,
+    required bool isDarkMode,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.white10 : Colors.grey[200],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.4,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

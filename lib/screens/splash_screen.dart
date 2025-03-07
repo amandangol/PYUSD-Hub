@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/authentication/screen/authentication_screen.dart';
 import 'dart:async';
 import '../main.dart';
 import '../providers/wallet_provider.dart';
@@ -62,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
             Navigator.of(context).pushReplacement(
               PageRouteBuilder(
                 pageBuilder: (context, animation, secondaryAnimation) =>
-                    const MainApp(),
+                    const AuthenticationScreen(),
                 transitionsBuilder:
                     (context, animation, secondaryAnimation, child) {
                   var begin = const Offset(1.0, 0.0);

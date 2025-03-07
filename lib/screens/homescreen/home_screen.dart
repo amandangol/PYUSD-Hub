@@ -91,9 +91,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
-    // Determine if we have any wallet connected
-    final hasWallet = walletProvider.hasWallet;
-
     // Get the current wallet address - either from the local wallet or WalletConnect
     final currentWalletAddress = walletProvider.getCurrentAddress() ?? '';
 

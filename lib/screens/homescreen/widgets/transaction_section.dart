@@ -39,7 +39,6 @@ class _TransactionsSectionState extends State<TransactionsSection> {
 
     // Limit to 4 transactions for the home screen
     final displayTransactions = filteredTransactions.take(3).toList();
-    final hasMoreTransactions = filteredTransactions.length > 3;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../models/transaction.dart';
 import '../providers/network_provider.dart';

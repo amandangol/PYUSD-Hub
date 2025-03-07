@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/authentication/screen/authentication_screen.dart';
 import 'package:pyusd_forensics/providers/network_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/wallet_provider.dart';
@@ -9,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../utils/formataddress_utils.dart';
 import '../utils/snackbar_utils.dart';
-import 'welcome_screen.dart';
+import 'wallet_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -114,7 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ListTile(
                             title: const Text('Wallet Address'),
                             subtitle: Text(
-                              FormataddressUtils.formatAddress(
+                              FormatterUtils.formatAddress(
                                   walletProvider.wallet?.address ?? ''),
                               style: TextStyle(
                                 fontFamily: 'monospace',
@@ -280,8 +281,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ListTile(
                             title: const Text('Network Settings'),
                             subtitle: Text(
-                              walletProvider.currentNetworkName ??
-                                  'Ethereum Mainnet',
+                              walletProvider.currentNetworkName,
                               style:
                                   TextStyle(color: textColor.withOpacity(0.7)),
                             ),
@@ -718,7 +718,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   itemBuilder: (context, index) {
                     final network = networks[index];
                     final currentNetworkName =
-                        walletProvider.currentNetworkName ?? 'Ethereum Mainnet';
+                        walletProvider.currentNetworkName;
                     final isSelected = network['name'] == currentNetworkName;
 
                     return Card(
@@ -828,7 +828,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const WelcomeScreen()),
+                      builder: (context) => const AuthenticationScreen()),
                   (route) => false,
                 );
               }
