@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../providers/network_provider.dart';
 
 enum TransactionDirection { incoming, outgoing }
