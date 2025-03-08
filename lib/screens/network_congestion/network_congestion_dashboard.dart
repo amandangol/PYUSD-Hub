@@ -62,7 +62,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       children: [
                         _buildDashboardTab(provider, status),
                         _buildPYUSDStatsTab(provider),
-                        _buildTrafficVisualizationTab(provider),
+                        Placeholder()
                       ],
                     ),
           floatingActionButton: FloatingActionButton(
@@ -278,7 +278,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(
+                  titlesData: const FlTitlesData(
                     show: true,
                     rightTitles:
                         AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -353,7 +353,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(
+                  titlesData: const FlTitlesData(
                     show: true,
                     rightTitles:
                         AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -397,8 +397,9 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
 
   Widget _buildPYUSDStatsTab(NetworkCongestionProvider provider) {
     final currentData = provider.currentData;
-    if (currentData == null)
+    if (currentData == null) {
       return const Center(child: Text('No data available'));
+    }
 
     return SingleChildScrollView(
       child: Padding(
@@ -533,7 +534,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(
+                  titlesData: const FlTitlesData(
                     show: true,
                     rightTitles:
                         AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -559,7 +560,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       color: Colors.blue,
                       barWidth: 3,
                       isStrokeCapRound: true,
-                      dotData: FlDotData(show: false),
+                      dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
                         color: Colors.blue.withOpacity(0.2),
@@ -607,7 +608,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(
+                  titlesData: const FlTitlesData(
                     show: true,
                     rightTitles:
                         AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -633,7 +634,7 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       color: Colors.green,
                       barWidth: 3,
                       isStrokeCapRound: true,
-                      dotData: FlDotData(show: false),
+                      dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
                         color: Colors.green.withOpacity(0.2),
@@ -653,32 +654,32 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
+      child: const Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'What is PYUSD?',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'PYUSD is a regulated stablecoin pegged to the US dollar. It runs on the Ethereum blockchain and is designed for payments, savings, and international transfers.',
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               'Impact on Network Congestion',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'As a popular stablecoin, PYUSD transactions can contribute to overall network congestion on Ethereum. High transaction volume can lead to higher gas fees and longer confirmation times for all Ethereum users.',
             ),
           ],
@@ -686,368 +687,4 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
       ),
     );
   }
-
-  Widget _buildTrafficVisualizationTab(NetworkCongestionProvider provider) {
-    return const NetworkTrafficVisualization();
-  }
-}
-
-class NetworkTrafficVisualization extends StatefulWidget {
-  const NetworkTrafficVisualization({Key? key}) : super(key: key);
-
-  @override
-  State<NetworkTrafficVisualization> createState() =>
-      _NetworkTrafficVisualizationState();
-}
-
-class _NetworkTrafficVisualizationState
-    extends State<NetworkTrafficVisualization>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  List<VehicleData> _vehicles = [];
-  List<BuildingData> _buildings = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 50),
-    )..addListener(() {
-        _updateVehicles();
-        setState(() {});
-      });
-
-    _generateBuildings();
-    _generateVehicles();
-    _controller.repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _generateBuildings() {
-    _buildings = List.generate(6, (index) {
-      return BuildingData(
-        height: 100 + (index * 20.0),
-        width: 60 + (index % 3 * 20.0),
-        color: Colors.grey.shade800,
-        hasLights: index % 2 == 0,
-      );
-    });
-  }
-
-  void _generateVehicles() {
-    final provider =
-        Provider.of<NetworkCongestionProvider>(context, listen: false);
-    final utilization = provider.currentData?.networkUtilization ?? 50.0;
-
-    // Number of vehicles based on congestion
-    final vehicleCount = ((utilization / 100.0) * 15).round() + 5;
-
-    // Generate vehicles
-    _vehicles = List.generate(vehicleCount, (index) {
-      final isBlue = index % 5 == 0; // PYUSD transactions are blue
-
-      return VehicleData(
-        speed: isBlue
-            ? 2.0 + (Random().nextDouble() * 2.0)
-            : 1.0 + (Random().nextDouble() * 3.0),
-        size: isBlue ? 20.0 : 15.0 + (Random().nextDouble() * 10.0),
-        color: isBlue
-            ? Colors.blue
-            : [
-                Colors.red,
-                Colors.green,
-                Colors.amber,
-                Colors.purple
-              ][Random().nextInt(4)],
-        lane: Random().nextInt(3),
-      );
-    });
-  }
-
-  void _updateVehicles() {
-    for (int i = 0; i < _vehicles.length; i++) {
-      final vehicle = _vehicles[i];
-      final newX = (vehicle.position.dx - vehicle.speed) %
-          MediaQuery.of(context).size.width;
-
-      _vehicles[i] = VehicleData(
-        speed: vehicle.speed,
-        size: vehicle.size,
-        color: vehicle.color,
-        lane: vehicle.lane,
-        position: Offset(newX, 100.0 + (vehicle.lane * 50.0)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<NetworkCongestionProvider>(
-      builder: (context, provider, child) {
-        final utilization = provider.currentData?.networkUtilization ?? 50.0;
-        final status = provider.getNetworkStatus();
-
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Network Traffic Visualization',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: status.color,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Current Congestion: ${utilization.toStringAsFixed(1)}%',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '• Blue vehicles represent PYUSD transactions',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                      Text(
-                        '• Other vehicles represent regular Ethereum transactions',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                color: Colors.grey[900],
-                child: CustomPaint(
-                  painter: TrafficPainter(
-                    vehicles: _vehicles,
-                    buildings: _buildings,
-                    congestionLevel: utilization / 100.0,
-                  ),
-                  child: Container(),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class TrafficPainter extends CustomPainter {
-  final List<VehicleData> vehicles;
-  final List<BuildingData> buildings;
-  final double congestionLevel;
-
-  TrafficPainter({
-    required this.vehicles,
-    required this.buildings,
-    required this.congestionLevel,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Draw sky
-    final skyPaint = Paint()..color = Colors.black;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), skyPaint);
-
-    // Draw stars
-    final starPaint = Paint()..color = Colors.white;
-    for (int i = 0; i < 100; i++) {
-      final x = Random().nextDouble() * size.width;
-      final y = Random().nextDouble() * size.height * 0.5;
-      final starSize = Random().nextDouble() * 2.0;
-      canvas.drawCircle(Offset(x, y), starSize, starPaint);
-    }
-
-    // Draw buildings
-    for (int i = 0; i < buildings.length; i++) {
-      final building = buildings[i];
-      final buildingPaint = Paint()..color = building.color;
-
-      final x = i * (size.width / buildings.length);
-      final y = size.height - building.height;
-
-      canvas.drawRect(
-        Rect.fromLTWH(x, y, building.width, building.height),
-        buildingPaint,
-      );
-
-      // Draw windows
-      if (building.hasLights) {
-        final windowPaint = Paint()..color = Colors.yellow.withOpacity(0.8);
-        final windowRows = (building.height / 20).floor();
-        final windowCols = (building.width / 15).floor();
-
-        for (int row = 0; row < windowRows; row++) {
-          for (int col = 0; col < windowCols; col++) {
-            if (Random().nextBool()) {
-              canvas.drawRect(
-                Rect.fromLTWH(
-                  x + col * 15 + 3,
-                  y + row * 20 + 3,
-                  10,
-                  15,
-                ),
-                windowPaint,
-              );
-            }
-          }
-        }
-      }
-    }
-
-    // Draw road
-    final roadPaint = Paint()..color = Colors.grey[800]!;
-    canvas.drawRect(
-      Rect.fromLTWH(0, size.height - 180, size.width, 180),
-      roadPaint,
-    );
-
-    // Draw lane markings
-    final markingPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    for (int i = 0; i < 2; i++) {
-      final y = size.height - 130 + (i * 50);
-
-      for (int j = 0; j < (size.width / 40).ceil(); j++) {
-        canvas.drawLine(
-          Offset(j * 40, y),
-          Offset(j * 40 + 20, y),
-          markingPaint,
-        );
-      }
-    }
-
-    // Draw vehicles
-    for (final vehicle in vehicles) {
-      final vehiclePaint = Paint()..color = vehicle.color;
-
-      final y = size.height - 155 + (vehicle.lane * 50);
-
-      // Draw vehicle body
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            vehicle.position.dx,
-            y,
-            vehicle.size * 1.5,
-            vehicle.size,
-          ),
-          const Radius.circular(5),
-        ),
-        vehiclePaint,
-      );
-
-      // Draw windows
-      final windowPaint = Paint()..color = Colors.white.withOpacity(0.7);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            vehicle.position.dx + vehicle.size * 0.8,
-            y + vehicle.size * 0.2,
-            vehicle.size * 0.4,
-            vehicle.size * 0.4,
-          ),
-          const Radius.circular(3),
-        ),
-        windowPaint,
-      );
-
-      // Draw headlights
-      final headlightPaint = Paint()..color = Colors.yellow.withOpacity(0.8);
-      canvas.drawCircle(
-        Offset(
-            vehicle.position.dx + vehicle.size * 1.45, y + vehicle.size * 0.3),
-        vehicle.size * 0.1,
-        headlightPaint,
-      );
-      canvas.drawCircle(
-        Offset(
-            vehicle.position.dx + vehicle.size * 1.45, y + vehicle.size * 0.7),
-        vehicle.size * 0.1,
-        headlightPaint,
-      );
-    }
-
-    // Draw traffic congestion indicator
-    final statusTextStyle = TextStyle(
-      color: congestionLevel < 0.3
-          ? Colors.green
-          : congestionLevel < 0.7
-              ? Colors.orange
-              : Colors.red,
-      fontSize: 18,
-      fontWeight: FontWeight.bold,
-    );
-
-    final textSpan = TextSpan(
-      text:
-          'Network Congestion: ${(congestionLevel * 100).toStringAsFixed(1)}%',
-      style: statusTextStyle,
-    );
-
-    final textPainter = TextPainter(
-      text: textSpan,
-      textDirection: ui.TextDirection.ltr, // Correct usage
-    );
-
-    textPainter.layout();
-    textPainter.paint(canvas, Offset(20, 20));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class VehicleData {
-  final double speed;
-  final double size;
-  final Color color;
-  final int lane;
-  final Offset position;
-
-  const VehicleData({
-    required this.speed,
-    required this.size,
-    required this.color,
-    required this.lane,
-    this.position = const Offset(0, 0),
-  });
-}
-
-class BuildingData {
-  final double height;
-  final double width;
-  final Color color;
-  final bool hasLights;
-
-  const BuildingData({
-    required this.height,
-    required this.width,
-    required this.color,
-    this.hasLights = false,
-  });
 }

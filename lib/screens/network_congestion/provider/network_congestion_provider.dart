@@ -183,20 +183,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       throw Exception('Could not determine pending transaction count');
     } catch (e) {
       print('Error getting pending transactions: $e');
-      // Fallback: Use more conservative estimate based on current network conditions
-      // Fallback: Use more conservative estimate based on current network conditions
-      final gasPrice = await client.getGasPrice();
-      final gasPriceGwei = gasPrice.getInWei ~/
-          BigInt.from(1000000000); // Use integer division (~/)
-
-// Convert gasPriceGwei to int for comparison
-      if (gasPriceGwei.toInt() > 100) {
-        return 15000; // High congestion estimate
-      } else if (gasPriceGwei.toInt() > 50) {
-        return 8000; // Medium congestion estimate
-      } else {
-        return 3000; // Low congestion estimate
-      }
+      throw Exception('Failed to fetch pending transaction count');
     }
   }
 
@@ -314,10 +301,7 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       // Fallback: use a simpler formula based on gas price
       // Higher gas price generally indicates higher network load
-      final normalizedGasPrice = (gasPrice - 10) / 190;
-      final clampedGasPrice = normalizedGasPrice.clamp(0.0, 1.0);
-
-      return (clampedGasPrice * 100).clamp(0.0, 100.0);
+      throw Exception('Failed to fetch network utlization');
     }
   }
 
