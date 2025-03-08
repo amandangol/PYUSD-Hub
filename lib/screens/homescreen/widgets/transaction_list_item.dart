@@ -33,8 +33,8 @@ class _TransactionItemState extends State<TransactionItem> {
     if (tx.tokenSymbol != null) {
       int decimalPlaces = tx.tokenDecimals!;
 
-      print(
-          'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
+      // print(
+      //     'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
 
       return '${tx.value.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {

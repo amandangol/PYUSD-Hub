@@ -55,6 +55,9 @@ dependencies:
   package_info_plus: ^8.3.0
   share_plus: ^10.1.4
   path_provider: ^2.1.5
+  web_socket_channel: ^3.0.2
+  googleapis: ^13.1.0
+  googleapis_auth: ^1.3.1
 
 dev_dependencies:
   flutter_test:
@@ -82,6 +85,7 @@ flutter:
     - assets/images/
     - .env
     - assets/icon/icon.png
+    - assets/keys/service-account.json
   #   - images/a_dot_ham.jpeg
 
 flutter_icons:

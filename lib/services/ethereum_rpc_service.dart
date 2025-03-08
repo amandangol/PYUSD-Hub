@@ -176,10 +176,10 @@ class EthereumRpcService {
             final double valueEth = valueWei / BigInt.from(10).pow(18);
 
             // Debug log to check values
-            print('Raw Value: $valueEth');
-            print('Token Symbol: ${tx['tokenSymbol']}');
-            print('Formatted Value: $valueWei ${tx['tokenSymbol']}');
-            print('Raw token value from API: ${tx['value']}');
+            // print('Raw Value: $valueEth');
+            // print('Token Symbol: ${tx['tokenSymbol']}');
+            // print('Formatted Value: $valueWei ${tx['tokenSymbol']}');
+            // print('Raw token value from API: ${tx['value']}');
 
             return TransactionModel(
               hash: tx['hash'],
@@ -240,11 +240,11 @@ class EthereumRpcService {
                 tokenValueWei / BigInt.from(10).pow(tokenDecimals);
 
             // Debug log to help troubleshoot
-            print('Raw Value: $tokenValueWei');
-            print('Token Symbol: ${tx['tokenSymbol']}');
-            print('Token Decimals: $tokenDecimals');
-            print('Formatted Value: $tokenValue ${tx['tokenSymbol']}');
-            print('Raw token value from API: ${tx['value']}');
+            // print('Raw Value: $tokenValueWei');
+            // print('Token Symbol: ${tx['tokenSymbol']}');
+            // print('Token Decimals: $tokenDecimals');
+            // print('Formatted Value: $tokenValue ${tx['tokenSymbol']}');
+            // print('Raw token value from API: ${tx['value']}');
 
             return TransactionModel(
               hash: tx['hash'],

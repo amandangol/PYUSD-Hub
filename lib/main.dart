@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/providers/transactiondetail_provider.dart';
-import 'package:pyusd_forensics/screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Import all providers
 import 'providers/network_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/transactiondetail_provider.dart';
+import 'screens/network_congestion/provider/network_congestion_provider.dart';
+import 'screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
+
+// Import all screens
 import 'screens/homescreen/home_screen.dart';
+import 'screens/network_congestion/network_congestion_dashboard.dart';
 import 'screens/pyusd_dashboard/PYUSD_dashboardScreen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 
-// Modify your main function:
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
   await dotenv.load(fileName: ".env");
 
   // Initialize SharedPreferences
@@ -44,6 +51,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get RPC URLs from environment or use defaults
+    final mainnetHttpEndpoint = dotenv.env['MAINNET_RPC_URL'] ??
+        'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
+
+    final mainnetWsEndpoint = dotenv.env['MAINNET_WS_URL'] ??
+        'wss://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
+
+    // Create network congestion provider
+    final networkCongestionProvider = NetworkCongestionProvider(
+      mainnetHttpEndpoint,
+      mainnetWsEndpoint,
+    );
+
+    // Start monitoring
+    networkCongestionProvider.startMonitoring();
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<NetworkProvider>(
@@ -59,6 +82,9 @@ class MyApp extends StatelessWidget {
           create: (context) => PYUSDAnalyticsProvider(),
         ),
         ChangeNotifierProvider.value(
+          value: networkCongestionProvider,
+        ),
+        ChangeNotifierProvider.value(
           value: themeProvider,
         ),
       ],
@@ -71,6 +97,9 @@ class MyApp extends StatelessWidget {
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             home: const SplashScreen(),
+            routes: {
+              '/main': (context) => const MainApp(),
+            },
             debugShowCheckedModeBanner: false,
           );
         },
@@ -89,15 +118,16 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const PYUSDDashboardScreen(),
-    const HomeScreen(), // Replace with NetworkScreen when available
-    const SettingsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // Define all screens
+    final List<Widget> _screens = [
+      const HomeScreen(),
+      const PYUSDDashboardScreen(), // Assuming this is the analytics screen
+      const NetworkCongestionDashboard(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
