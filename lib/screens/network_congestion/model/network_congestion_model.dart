@@ -1,45 +1,43 @@
-// lib/model/network_congestion_model.dart
 import 'package:flutter/material.dart';
 
 class NetworkCongestionData {
-  final String timestamp;
   final double gasPrice;
   final int pendingTransactions;
   final int pyusdTransactions;
   final double pyusdVolume;
   final double networkUtilization;
-
-  // Additional fields for enhanced monitoring
-  final int blockGasUsed;
-  final int blockGasLimit;
-  final double baseFee;
-  final Map<String, dynamic>? pyusdPendingData;
-  final Map<String, dynamic>? crossChainData;
+  final DateTime timestamp;
+  final bool isEstimated;
 
   NetworkCongestionData({
-    required this.timestamp,
     required this.gasPrice,
     required this.pendingTransactions,
     required this.pyusdTransactions,
     required this.pyusdVolume,
     required this.networkUtilization,
-    this.blockGasUsed = 0,
-    this.blockGasLimit = 0,
-    this.baseFee = 0,
-    this.pyusdPendingData,
-    this.crossChainData,
-  });
+    DateTime? timestamp,
+    this.isEstimated = false,
+  }) : timestamp = timestamp ?? DateTime.now();
 
-  // Helper method to calculate PYUSD's impact on network
-  double getPyusdNetworkImpact() {
-    if (pendingTransactions == 0) return 0;
-    return (pyusdTransactions / pendingTransactions) * 100;
-  }
-
-  // Calculate block utilization percentage
-  double getBlockUtilization() {
-    if (blockGasLimit == 0) return 0;
-    return (blockGasUsed / blockGasLimit) * 100;
+  // Create a copy with updated values
+  NetworkCongestionData copyWith({
+    double? gasPrice,
+    int? pendingTransactions,
+    int? pyusdTransactions,
+    double? pyusdVolume,
+    double? networkUtilization,
+    DateTime? timestamp,
+    bool? isEstimated,
+  }) {
+    return NetworkCongestionData(
+      gasPrice: gasPrice ?? this.gasPrice,
+      pendingTransactions: pendingTransactions ?? this.pendingTransactions,
+      pyusdTransactions: pyusdTransactions ?? this.pyusdTransactions,
+      pyusdVolume: pyusdVolume ?? this.pyusdVolume,
+      networkUtilization: networkUtilization ?? this.networkUtilization,
+      timestamp: timestamp ?? this.timestamp,
+      isEstimated: isEstimated ?? this.isEstimated,
+    );
   }
 }
 
@@ -48,28 +46,39 @@ class NetworkStatus {
   final String description;
   final Color color;
 
-  NetworkStatus({
+  const NetworkStatus({
     required this.level,
     required this.description,
     required this.color,
   });
+
+  static NetworkStatus fromUtilization(double utilization) {
+    if (utilization < 30.0) {
+      return const NetworkStatus(
+        level: 'Low',
+        description:
+            'Network traffic is light. Transactions should process quickly with low fees.',
+        color: Colors.green,
+      );
+    } else if (utilization < 70.0) {
+      return const NetworkStatus(
+        level: 'Medium',
+        description:
+            'Moderate network congestion. Expect average transaction times and fees.',
+        color: Colors.orange,
+      );
+    } else {
+      return const NetworkStatus(
+        level: 'High',
+        description:
+            'Network is highly congested. Transactions may be delayed and fees elevated.',
+        color: Colors.red,
+      );
+    }
+  }
 }
 
-// Model for cross-chain data
-class CrossChainPYUSDData {
-  final String chainName;
-  final String contractAddress;
-  final int transactionCount;
-  final double volume;
-  final double gasPrice;
-  final double networkUtilization;
-
-  CrossChainPYUSDData({
-    required this.chainName,
-    required this.contractAddress,
-    required this.transactionCount,
-    required this.volume,
-    required this.gasPrice,
-    required this.networkUtilization,
-  });
+enum NetworkType {
+  ethereumMainnet,
+  sepoliaTestnet,
 }

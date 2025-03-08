@@ -9,7 +9,10 @@ import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/transactiondetail_provider.dart';
 import 'screens/network_congestion/provider/network_congestion_provider.dart';
+import 'screens/network_congestion/service/network_congestion_service.dart';
 import 'screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
+
+// Import the service and provider for network congestion
 
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
@@ -58,17 +61,16 @@ class MyApp extends StatelessWidget {
     final mainnetWsEndpoint = dotenv.env['MAINNET_WS_URL'] ??
         'wss://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
 
-    // Create network congestion provider
-    final networkCongestionProvider = NetworkCongestionProvider(
-      mainnetHttpEndpoint,
-      mainnetWsEndpoint,
-    );
-
-    // Start monitoring
-    networkCongestionProvider.startMonitoring();
+    // Create network congestion service
+    // final networkCongestionService = NetworkCongestionService();
 
     return MultiProvider(
       providers: [
+        // Network service provider
+        // Provider<NetworkCongestionService>.value(
+        //   value: networkCongestionService,
+        // ),
+        // All other providers
         ChangeNotifierProvider<NetworkProvider>(
           create: (_) => NetworkProvider(),
         ),
@@ -81,8 +83,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => PYUSDAnalyticsProvider(),
         ),
-        ChangeNotifierProvider.value(
-          value: networkCongestionProvider,
+        ChangeNotifierProvider(
+          create: (context) => NetworkCongestionProvider(),
         ),
         ChangeNotifierProvider.value(
           value: themeProvider,
@@ -123,7 +125,7 @@ class _MainAppState extends State<MainApp> {
     // Define all screens
     final List<Widget> _screens = [
       const HomeScreen(),
-      const PYUSDDashboardScreen(), // Assuming this is the analytics screen
+      const HomeScreen(),
       const NetworkCongestionDashboard(),
       const SettingsScreen(),
     ];
