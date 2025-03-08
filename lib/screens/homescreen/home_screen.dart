@@ -7,7 +7,7 @@ import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
 import '../transactions/receive_transaction/receive_screen.dart';
 import '../transactions/send_transaction/send_screen.dart';
-import '../settings_screen.dart';
+import '../settingscreen/settings_screen.dart';
 import 'widgets/action_button.dart';
 import 'widgets/balance_card.dart';
 import 'widgets/network_status_card.dart';
@@ -138,10 +138,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   context,
                   MaterialPageRoute(
                       builder: (context) => const SettingsScreen()),
-                ).then((_) {
-                  // Refresh after returning from settings, but don't force
-                  _refreshWalletData();
-                });
+                );
               },
             ),
           ],

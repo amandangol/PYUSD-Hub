@@ -4,7 +4,6 @@ import 'package:pyusd_forensics/services/wallet_service.dart';
 
 import '../authentication/screen/create_wallet_screen.dart';
 import '../authentication/screen/import_wallet_screen.dart';
-import '../authentication/service/auth_navigator.dart';
 
 class WalletSelectionScreen extends StatelessWidget {
   const WalletSelectionScreen({Key? key}) : super(key: key);
@@ -18,7 +17,7 @@ class WalletSelectionScreen extends StatelessWidget {
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
     // Access the WalletService through provider
-    final walletService = Provider.of<WalletService>(context, listen: false);
+    Provider.of<WalletService>(context, listen: false);
 
     return Scaffold(
       backgroundColor: backgroundColor,

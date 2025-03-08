@@ -354,7 +354,7 @@ class WalletProvider extends ChangeNotifier {
       return ethBalance >= totalCost;
     } catch (e) {
       print('Error checking balance: $e');
-      // Fall back to a simplified check without gas calculations
+      // Fall back to a simplified check withoutp gas calculations
       return ethBalance >= amount;
     }
   }
