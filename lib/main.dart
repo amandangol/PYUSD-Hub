@@ -14,6 +14,8 @@ import 'screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
 import 'screens/network_congestion/network_congestion_dashboard.dart';
+import 'screens/pyusd_stats/provider/pyusd_stat_provider.dart';
+import 'screens/pyusd_stats/pyusd_stat_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/wallet_selection_screen.dart';
@@ -70,6 +72,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
         ),
+        ChangeNotifierProvider(
+          create: (context) => PyusdStatsProvider(),
+        ),
         Provider<WalletService>(
           create: (_) => WalletService(),
         ),
@@ -112,7 +117,7 @@ class _MainAppState extends State<MainApp> {
     // Define all screens
     final List<Widget> _screens = [
       const HomeScreen(),
-      const HomeScreen(),
+      const PyusdStatsScreen(),
       const NetworkCongestionDashboard(),
       const SettingsScreen(),
     ];

@@ -153,12 +153,12 @@ class NetworkCongestionProvider with ChangeNotifier {
       final response = await _makeRpcCall(
           client, 'eth_getBlockByNumber', ['pending', false]);
 
-      print('Method 1 response: $response'); // Debug log
+      // print('Method 1 response: $response'); // Debug log
 
       if (response != null && response['result'] != null) {
         final List<dynamic> transactions =
             response['result']['transactions'] as List<dynamic>;
-        print('Method 1 tx count: ${transactions.length}');
+        // print('Method 1 tx count: ${transactions.length}');
         return transactions.length;
       }
 
@@ -194,7 +194,7 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<Map<String, dynamic>> _getPYUSDMetrics(
       Web3Client client, int currentBlockNumber) async {
     try {
-      print('Current block number: $currentBlockNumber');
+      // print('Current block number: $currentBlockNumber');
 
       // Get the "finalized" block number which is more stable
       final finalizedBlockResponse = await _makeRpcCall(
@@ -211,7 +211,7 @@ class NetworkCongestionProvider with ChangeNotifier {
             blockHex.startsWith('0x') ? blockHex.substring(2) : blockHex,
             radix: 16);
 
-        print('Using finalized block: $finalizedBlock');
+        // print('Using finalized block: $finalizedBlock');
 
         // Look back 100 blocks from finalized block
         fromBlock = finalizedBlock - 1000 < 0 ? 0 : finalizedBlock - 1000;
@@ -222,7 +222,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         fromBlock = currentBlockNumber - 100 < 0 ? 0 : currentBlockNumber - 100;
       }
 
-      print('Analyzing PYUSD activity from block $fromBlock to $toBlock');
+      // print('Analyzing PYUSD activity from block $fromBlock to $toBlock');
 
       // Topics for Transfer events (keccak256 hash of Transfer(address,address,uint256))
       const transferEventSignature =
@@ -241,13 +241,13 @@ class NetworkCongestionProvider with ChangeNotifier {
         'topics': [transferEventSignature],
       };
 
-      print('PYUSD log query params: $params');
+      // print('PYUSD log query params: $params');
 
       final response = await _makeRpcCall(client, 'eth_getLogs', [params]);
 
       if (response == null || response['result'] == null) {
-        print(
-            'No PYUSD logs returned or error in response: ${response?['error']}');
+        // print(
+        //     'No PYUSD logs returned or error in response: ${response?['error']}');
         return {
           'transactionCount': 0,
           'volume': 0.0,
@@ -255,7 +255,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       }
 
       final logs = response['result'] as List<dynamic>;
-      print('PYUSD logs fetched: ${logs.length}');
+      // print('PYUSD logs fetched: ${logs.length}');
 
       // Process logs to calculate metrics
       for (var log in logs) {
@@ -281,15 +281,15 @@ class NetworkCongestionProvider with ChangeNotifier {
       }
 
       transactionCount = uniqueTxHashes.length;
-      print(
-          'Final metrics - Tx count: $transactionCount, Volume: $totalVolume');
+      // print(
+      //     'Final metrics - Tx count: $transactionCount, Volume: $totalVolume');
 
       return {
         'transactionCount': transactionCount,
         'volume': totalVolume,
       };
     } catch (e) {
-      print('Error getting PYUSD metrics: $e');
+      // print('Error getting PYUSD metrics: $e');
       // Provide informed estimates based on typical PYUSD activity
       return {
         'transactionCount': 0,
@@ -420,8 +420,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         return decodedResponse;
       }
 
-      print('RPC call for $method failed with status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      // print('RPC call for $method failed with status: ${response.statusCode}');
+      // print('Response body: ${response.body}');
       return null;
     } catch (e) {
       print('RPC call error for $method: $e');

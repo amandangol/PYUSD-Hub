@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../common/pyusd_appbar.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
 import '../transactions/receive_transaction/receive_screen.dart';
@@ -96,52 +97,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return Scaffold(
         backgroundColor: backgroundColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Row(
-            children: [
-              Image.asset(
-                'assets/images/pyusdlogo.png',
-                height: 24,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.paid, size: 24);
-                },
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'PYUSD Wallet',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            // Wallet selector dropdown will go here in the future
-            // if (hasWallet)
-            //   IconButton(
-            //     icon: Icon(
-            //       Icons.refresh,
-            //       color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-            //     ),
-            //     onPressed: () => _refreshWalletData(forceRefresh: true),
-            //   ),
-            IconButton(
-              icon: Icon(
-                Icons.settings_outlined,
-                color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const SettingsScreen()),
-                );
-              },
-            ),
-          ],
+        appBar: PyusdAppBar(
+          isDarkMode: isDarkMode,
+          hasWallet: true, // Set to true when wallet is available
+          onSettingsPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          },
+          onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
         ),
         body: _buildWalletContent(
             walletProvider, isDarkMode, primaryColor, currentWalletAddress));
