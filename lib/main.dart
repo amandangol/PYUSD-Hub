@@ -9,17 +9,15 @@ import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/transactiondetail_provider.dart';
 import 'screens/network_congestion/provider/network_congestion_provider.dart';
-import 'screens/network_congestion/service/network_congestion_service.dart';
 import 'screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
-
-// Import the service and provider for network congestion
 
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
 import 'screens/network_congestion/network_congestion_dashboard.dart';
-import 'screens/pyusd_dashboard/PYUSD_dashboardScreen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/wallet_selection_screen.dart';
+import 'services/wallet_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -55,22 +53,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Get RPC URLs from environment or use defaults
-    final mainnetHttpEndpoint = dotenv.env['MAINNET_RPC_URL'] ??
-        'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
-
-    final mainnetWsEndpoint = dotenv.env['MAINNET_WS_URL'] ??
-        'wss://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
-
-    // Create network congestion service
-    // final networkCongestionService = NetworkCongestionService();
-
     return MultiProvider(
       providers: [
-        // Network service provider
-        // Provider<NetworkCongestionService>.value(
-        //   value: networkCongestionService,
-        // ),
-        // All other providers
         ChangeNotifierProvider<NetworkProvider>(
           create: (_) => NetworkProvider(),
         ),
@@ -85,6 +69,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
+        ),
+        Provider<WalletService>(
+          create: (_) => WalletService(),
         ),
         ChangeNotifierProvider.value(
           value: themeProvider,

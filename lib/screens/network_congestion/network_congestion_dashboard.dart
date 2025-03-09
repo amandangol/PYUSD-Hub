@@ -44,6 +44,11 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
         return Scaffold(
           appBar: AppBar(
             title: const Text('PYUSD Network Traffic'),
+            actions: [
+              IconButton(
+                  onPressed: () => provider.startMonitoring,
+                  icon: const Icon(Icons.refresh))
+            ],
             bottom: TabBar(
               controller: _tabController,
               tabs: const [
@@ -62,13 +67,9 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       children: [
                         _buildDashboardTab(provider, status),
                         _buildPYUSDStatsTab(provider),
-                        Placeholder()
+                        Placeholder(),
                       ],
                     ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => provider.startMonitoring(),
-            child: const Icon(Icons.refresh),
-          ),
         );
       },
     );
@@ -254,7 +255,9 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
     final spots = historicalData
         .asMap()
         .entries
-        .map((entry) => FlSpot(entry.key.toDouble(), entry.value.gasPrice))
+        .map((entry) => FlSpot(
+            entry.value.timestamp.millisecondsSinceEpoch.toDouble(),
+            entry.value.gasPrice))
         .toList();
 
     return Card(
@@ -272,24 +275,40 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 15),
             SizedBox(
               height: 200,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: const FlTitlesData(
+                  titlesData: FlTitlesData(
                     show: true,
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
-                        showTitles: false,
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final DateTime date =
+                              DateTime.fromMillisecondsSinceEpoch(
+                                  value.toInt());
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('HH:mm').format(date),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        },
+                        reservedSize: 30,
                       ),
                     ),
-                    leftTitles: AxisTitles(
+                    leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 42,
@@ -304,14 +323,39 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       color: Colors.purple,
                       barWidth: 3,
                       isStrokeCapRound: true,
-                      dotData: FlDotData(show: false),
+                      dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
                         color: Colors.purple.withOpacity(0.2),
                       ),
                     ),
                   ],
+                  minX: spots.isNotEmpty ? spots.first.x : 0,
+                  maxX: spots.isNotEmpty ? spots.last.x : 0,
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlockRangeIndicator(int fromBlock, int toBlock) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            const Icon(Icons.data_usage, color: Colors.blue),
+            const SizedBox(width: 8),
+            Text(
+              'Analyzing blocks: $fromBlock to $toBlock',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -328,8 +372,9 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
     final spots = historicalData
         .asMap()
         .entries
-        .map((entry) =>
-            FlSpot(entry.key.toDouble(), entry.value.networkUtilization))
+        .map((entry) => FlSpot(
+            entry.value.timestamp.millisecondsSinceEpoch.toDouble(),
+            entry.value.networkUtilization))
         .toList();
 
     return Card(
@@ -353,18 +398,34 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: const FlTitlesData(
+                  titlesData: FlTitlesData(
                     show: true,
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
-                        showTitles: false,
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final DateTime date =
+                              DateTime.fromMillisecondsSinceEpoch(
+                                  value.toInt());
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('HH:mm').format(date),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        },
+                        reservedSize: 30,
                       ),
                     ),
-                    leftTitles: AxisTitles(
+                    leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 42,
@@ -379,13 +440,15 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       color: Colors.teal,
                       barWidth: 3,
                       isStrokeCapRound: true,
-                      dotData: FlDotData(show: false),
+                      dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
                         color: Colors.teal.withOpacity(0.2),
                       ),
                     ),
                   ],
+                  minX: spots.isNotEmpty ? spots.first.x : 0,
+                  maxX: spots.isNotEmpty ? spots.last.x : 0,
                 ),
               ),
             ),
@@ -510,7 +573,8 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
         .asMap()
         .entries
         .map((entry) => FlSpot(
-            entry.key.toDouble(), entry.value.pyusdTransactions.toDouble()))
+            entry.value.timestamp.millisecondsSinceEpoch.toDouble(),
+            entry.value.pyusdTransactions.toDouble()))
         .toList();
 
     return Card(
@@ -534,18 +598,34 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: const FlTitlesData(
+                  titlesData: FlTitlesData(
                     show: true,
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
-                        showTitles: false,
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final DateTime date =
+                              DateTime.fromMillisecondsSinceEpoch(
+                                  value.toInt());
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('HH:mm').format(date),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        },
+                        reservedSize: 30,
                       ),
                     ),
-                    leftTitles: AxisTitles(
+                    leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 42,
@@ -567,6 +647,8 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       ),
                     ),
                   ],
+                  minX: spots.isNotEmpty ? spots.first.x : 0,
+                  maxX: spots.isNotEmpty ? spots.last.x : 0,
                 ),
               ),
             ),
@@ -584,7 +666,9 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
     final spots = historicalData
         .asMap()
         .entries
-        .map((entry) => FlSpot(entry.key.toDouble(), entry.value.pyusdVolume))
+        .map((entry) => FlSpot(
+            entry.value.timestamp.millisecondsSinceEpoch.toDouble(),
+            entry.value.pyusdVolume))
         .toList();
 
     return Card(
@@ -608,18 +692,34 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: false),
-                  titlesData: const FlTitlesData(
+                  titlesData: FlTitlesData(
                     show: true,
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
-                        showTitles: false,
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final DateTime date =
+                              DateTime.fromMillisecondsSinceEpoch(
+                                  value.toInt());
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('HH:mm').format(date),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        },
+                        reservedSize: 30,
                       ),
                     ),
-                    leftTitles: AxisTitles(
+                    leftTitles: const AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 42,
@@ -641,6 +741,8 @@ class _NetworkCongestionDashboardState extends State<NetworkCongestionDashboard>
                       ),
                     ),
                   ],
+                  minX: spots.isNotEmpty ? spots.first.x : 0,
+                  maxX: spots.isNotEmpty ? spots.last.x : 0,
                 ),
               ),
             ),

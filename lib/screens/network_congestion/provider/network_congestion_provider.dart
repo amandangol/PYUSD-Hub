@@ -16,7 +16,7 @@ class NetworkCongestionProvider with ChangeNotifier {
     NetworkType.sepoliaTestnet:
         'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
     NetworkType.ethereumMainnet:
-        'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+        'https://blockchain.googleapis.com/v1/projects/t-bounty-433704-e4/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyB54i4uTgCx_T-mEnTssreiBTxZgsemXPc'
   };
 
   // PYUSD contract address (on Ethereum)
@@ -116,13 +116,14 @@ class NetworkCongestionProvider with ChangeNotifier {
       // 2. Get pending transactions using eth_getBlockByNumber for 'pending' block
       final pendingTxCount = await _getPendingTransactionCount(client);
 
-      // 3. Get PYUSD specific metrics by analyzing contract events
-      final pyusdMetrics = await _getPYUSDMetrics(client);
-
-      // 4. Get current block to calculate network activity
+      // 3. Get current block to calculate network activity
       final blockNumber = await client.getBlockNumber();
 
-      // Calculate network utilization based on the collected metrics
+      // 4. Get PYUSD specific metrics by analyzing contract events
+      // Only looking at the most recent blocks to avoid RPC timeouts/failures
+      final pyusdMetrics = await _getPYUSDMetrics(client, blockNumber);
+
+      // 5. Calculate network utilization based on the collected metrics
       final utilization = await _calculateNetworkUtilization(
         client,
         gasPriceGwei.toDouble(),
@@ -131,13 +132,13 @@ class NetworkCongestionProvider with ChangeNotifier {
       );
 
       return NetworkCongestionData(
-        gasPrice: gasPriceGwei.toDouble(),
-        pendingTransactions: pendingTxCount,
-        pyusdTransactions: pyusdMetrics['transactionCount'] as int,
-        pyusdVolume: pyusdMetrics['volume'] as double,
-        networkUtilization: utilization,
-        isEstimated: false,
-      );
+          gasPrice: gasPriceGwei.toDouble(),
+          pendingTransactions: pendingTxCount,
+          pyusdTransactions: pyusdMetrics['transactionCount'] as int,
+          pyusdVolume: pyusdMetrics['volume'] as double,
+          networkUtilization: utilization,
+          isEstimated: false,
+          timestamp: DateTime.now());
     } catch (e) {
       print('Error in _fetchLiveNetworkData: $e');
       throw Exception('Failed to fetch network data: $e');
@@ -152,9 +153,12 @@ class NetworkCongestionProvider with ChangeNotifier {
       final response = await _makeRpcCall(
           client, 'eth_getBlockByNumber', ['pending', false]);
 
+      print('Method 1 response: $response'); // Debug log
+
       if (response != null && response['result'] != null) {
         final List<dynamic> transactions =
             response['result']['transactions'] as List<dynamic>;
+        print('Method 1 tx count: ${transactions.length}');
         return transactions.length;
       }
 
@@ -187,50 +191,98 @@ class NetworkCongestionProvider with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> _getPYUSDMetrics(Web3Client client) async {
+  Future<Map<String, dynamic>> _getPYUSDMetrics(
+      Web3Client client, int currentBlockNumber) async {
     try {
-      // 1. Get current block number
-      final blockNumber = await client.getBlockNumber();
+      print('Current block number: $currentBlockNumber');
 
-      // 2. Define block range for analysis (last 1000 blocks ≈ ~3.5 hours)
-      final fromBlock = blockNumber - 1000 < 0 ? 0 : blockNumber - 1000;
+      // Get the "finalized" block number which is more stable
+      final finalizedBlockResponse = await _makeRpcCall(
+          client, 'eth_getBlockByNumber', ['finalized', false]);
 
-      // 3. Topics for Transfer events (keccak256 hash of Transfer(address,address,uint256))
-      final transferEventSignature =
+      int fromBlock;
+      int toBlock;
+
+      if (finalizedBlockResponse != null &&
+          finalizedBlockResponse['result'] != null &&
+          finalizedBlockResponse['result']['number'] != null) {
+        final blockHex = finalizedBlockResponse['result']['number'] as String;
+        final finalizedBlock = int.parse(
+            blockHex.startsWith('0x') ? blockHex.substring(2) : blockHex,
+            radix: 16);
+
+        print('Using finalized block: $finalizedBlock');
+
+        // Look back 100 blocks from finalized block
+        fromBlock = finalizedBlock - 1000 < 0 ? 0 : finalizedBlock - 1000;
+        toBlock = finalizedBlock; // Use finalized block as toBlock
+      } else {
+        // Fallback to looking at last 100 blocks from current
+        toBlock = currentBlockNumber;
+        fromBlock = currentBlockNumber - 100 < 0 ? 0 : currentBlockNumber - 100;
+      }
+
+      print('Analyzing PYUSD activity from block $fromBlock to $toBlock');
+
+      // Topics for Transfer events (keccak256 hash of Transfer(address,address,uint256))
+      const transferEventSignature =
           '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
-      // 4. Get logs for Transfer events from the PYUSD contract
-      final logs = await _getContractLogs(client, pyusdContractAddress,
-          fromBlock, blockNumber, [transferEventSignature]);
-
-      // 5. Process logs to calculate metrics
+      // Initialize metrics
       int transactionCount = 0;
       double totalVolume = 0.0;
-
       final Set<String> uniqueTxHashes = {};
 
-      if (logs != null) {
-        for (var log in logs) {
-          // Add transaction hash to set of unique transactions
+      // Fetch logs in a single request (Alchemy supports larger block ranges)
+      final params = {
+        'address': pyusdContractAddress,
+        'fromBlock': '0x${fromBlock.toRadixString(16)}',
+        'toBlock': '0x${toBlock.toRadixString(16)}',
+        'topics': [transferEventSignature],
+      };
+
+      print('PYUSD log query params: $params');
+
+      final response = await _makeRpcCall(client, 'eth_getLogs', [params]);
+
+      if (response == null || response['result'] == null) {
+        print(
+            'No PYUSD logs returned or error in response: ${response?['error']}');
+        return {
+          'transactionCount': 0,
+          'volume': 0.0,
+        };
+      }
+
+      final logs = response['result'] as List<dynamic>;
+      print('PYUSD logs fetched: ${logs.length}');
+
+      // Process logs to calculate metrics
+      for (var log in logs) {
+        // Add transaction hash to set of unique transactions
+        if (log['transactionHash'] != null) {
           uniqueTxHashes.add(log['transactionHash'] as String);
-
-          // Parse transfer amount from data field
-          if (log['data'] != null) {
-            final data = log['data'] as String;
-            if (data.length >= 66) {
-              // Valid data length for uint256
-              // Convert hex value to BigInt and then to double
-              final amountHex = data.substring(2); // Remove '0x' prefix
-              final amount = BigInt.parse(amountHex, radix: 16);
-
-              // PYUSD has 6 decimals
-              totalVolume += amount.toDouble() / 1000000;
-            }
-          }
         }
 
-        transactionCount = uniqueTxHashes.length;
+        // Parse transfer amount from data field
+        if (log['data'] != null) {
+          final data = log['data'] as String;
+          if (data.length >= 66) {
+            // Valid data length for uint256
+            // Convert hex value to BigInt and then to double
+            final amountHex = data.substring(2); // Remove '0x' prefix
+            final amount = BigInt.parse(amountHex, radix: 16);
+
+            // PYUSD has 6 decimals
+            final volumeAmount = amount.toDouble() / 1000000;
+            totalVolume += volumeAmount;
+          }
+        }
       }
+
+      transactionCount = uniqueTxHashes.length;
+      print(
+          'Final metrics - Tx count: $transactionCount, Volume: $totalVolume');
 
       return {
         'transactionCount': transactionCount,
@@ -240,9 +292,53 @@ class NetworkCongestionProvider with ChangeNotifier {
       print('Error getting PYUSD metrics: $e');
       // Provide informed estimates based on typical PYUSD activity
       return {
-        'transactionCount': 600,
-        'volume': 1200000.0,
+        'transactionCount': 0,
+        'volume': 0.0,
       };
+    }
+  }
+
+  Future<void> _fetchLogsAndProcess(
+      Web3Client client,
+      Map<String, dynamic> params,
+      Set<String> uniqueTxHashes,
+      Function(double) onVolumeUpdate) async {
+    try {
+      final response = await _makeRpcCall(client, 'eth_getLogs', [params]);
+
+      if (response == null || response['result'] == null) {
+        print(
+            'No PYUSD logs returned or error in response: ${response?['error']}');
+        return;
+      }
+
+      final logs = response['result'] as List<dynamic>;
+      print('PYUSD logs fetched: ${logs.length}');
+
+      // Process logs to calculate metrics
+      for (var log in logs) {
+        // Add transaction hash to set of unique transactions
+        if (log['transactionHash'] != null) {
+          uniqueTxHashes.add(log['transactionHash'] as String);
+        }
+
+        // Parse transfer amount from data field
+        if (log['data'] != null) {
+          final data = log['data'] as String;
+          if (data.length >= 66) {
+            // Valid data length for uint256
+            // Convert hex value to BigInt and then to double
+            final amountHex = data.substring(2); // Remove '0x' prefix
+            final amount = BigInt.parse(amountHex, radix: 16);
+
+            // PYUSD has 6 decimals
+            final volumeAmount = amount.toDouble() / 1000000;
+            onVolumeUpdate(volumeAmount);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching logs: $e');
     }
   }
 
@@ -298,10 +394,8 @@ class NetworkCongestionProvider with ChangeNotifier {
       return utilization.clamp(0.0, 100.0);
     } catch (e) {
       print('Error calculating network utilization: $e');
-
-      // Fallback: use a simpler formula based on gas price
-      // Higher gas price generally indicates higher network load
-      throw Exception('Failed to fetch network utlization');
+      // Fallback to using a simple gas price based estimate
+      return (gasPrice / 200 * 100).clamp(0.0, 100.0);
     }
   }
 
@@ -325,37 +419,13 @@ class NetworkCongestionProvider with ChangeNotifier {
             json.decode(response.body) as Map<String, dynamic>;
         return decodedResponse;
       }
+
+      print('RPC call for $method failed with status: ${response.statusCode}');
+      print('Response body: ${response.body}');
       return null;
     } catch (e) {
       print('RPC call error for $method: $e');
       return null;
-    }
-  }
-
-  // Helper method to get logs from a contract
-  Future<List<dynamic>?> _getContractLogs(
-      Web3Client client,
-      String contractAddress,
-      int fromBlock,
-      int toBlock,
-      List<String> topics) async {
-    try {
-      final response = await _makeRpcCall(client, 'eth_getLogs', [
-        {
-          'address': contractAddress,
-          'fromBlock': '0x${fromBlock.toRadixString(16)}',
-          'toBlock': '0x${toBlock.toRadixString(16)}',
-          'topics': topics,
-        }
-      ]);
-
-      if (response != null && response['result'] != null) {
-        return response['result'] as List<dynamic>;
-      }
-      return [];
-    } catch (e) {
-      print('Error getting contract logs: $e');
-      return [];
     }
   }
 

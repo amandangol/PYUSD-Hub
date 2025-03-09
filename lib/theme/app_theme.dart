@@ -16,7 +16,7 @@ class AppTheme {
   static const Color _darkErrorColor = Color(0xFFCF6679);
 
   // Text themes
-  static final TextTheme _lightTextTheme = TextTheme(
+  static const TextTheme _lightTextTheme = TextTheme(
     displayLarge: TextStyle(
         fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
     displayMedium: TextStyle(
@@ -36,7 +36,7 @@ class AppTheme {
         fontSize: 14, fontWeight: FontWeight.w500, color: _lightPrimaryColor),
   );
 
-  static final TextTheme _darkTextTheme = TextTheme(
+  static const TextTheme _darkTextTheme = TextTheme(
     displayLarge: TextStyle(
         fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
     displayMedium: TextStyle(
@@ -62,7 +62,7 @@ class AppTheme {
     brightness: Brightness.light,
     primaryColor: _lightPrimaryColor,
     scaffoldBackgroundColor: _lightBackgroundColor,
-    colorScheme: ColorScheme.light(
+    colorScheme: const ColorScheme.light(
       primary: _lightPrimaryColor,
       secondary: _lightAccentColor,
       surface: _lightSurfaceColor,
@@ -73,7 +73,7 @@ class AppTheme {
     appBarTheme: AppBarTheme(
       elevation: 0,
       backgroundColor: _lightBackgroundColor,
-      iconTheme: IconThemeData(color: Colors.black87),
+      iconTheme: const IconThemeData(color: Colors.black87),
       titleTextStyle: _lightTextTheme.titleLarge,
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
@@ -95,29 +95,29 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _lightPrimaryColor),
+        borderSide: const BorderSide(color: _lightPrimaryColor),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _lightErrorColor),
+        borderSide: const BorderSide(color: _lightErrorColor),
       ),
-      contentPadding: EdgeInsets.all(20),
+      contentPadding: const EdgeInsets.all(20),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: _lightPrimaryColor,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         elevation: 2,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: _lightPrimaryColor,
-        side: BorderSide(color: _lightPrimaryColor),
+        side: const BorderSide(color: _lightPrimaryColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -127,7 +127,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: _lightSurfaceColor,
       selectedItemColor: _lightPrimaryColor,
       unselectedItemColor: Colors.black54,
@@ -150,7 +150,7 @@ class AppTheme {
     brightness: Brightness.dark,
     primaryColor: _darkPrimaryColor,
     scaffoldBackgroundColor: _darkBackgroundColor,
-    colorScheme: ColorScheme.dark(
+    colorScheme: const ColorScheme.dark(
       primary: _darkPrimaryColor,
       secondary: _darkAccentColor,
       surface: _darkSurfaceColor,
@@ -161,7 +161,7 @@ class AppTheme {
     appBarTheme: AppBarTheme(
       elevation: 0,
       backgroundColor: _darkBackgroundColor,
-      iconTheme: IconThemeData(color: Colors.white),
+      iconTheme: const IconThemeData(color: Colors.white),
       titleTextStyle: _darkTextTheme.titleLarge,
       systemOverlayStyle: SystemUiOverlayStyle.light,
     ),
@@ -179,34 +179,34 @@ class AppTheme {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.white24),
+        borderSide: const BorderSide(color: Colors.white24),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _darkPrimaryColor),
+        borderSide: const BorderSide(color: _darkPrimaryColor),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _darkErrorColor),
+        borderSide: const BorderSide(color: _darkErrorColor),
       ),
-      contentPadding: EdgeInsets.all(20),
-      hintStyle: TextStyle(color: Colors.white38),
+      contentPadding: const EdgeInsets.all(20),
+      hintStyle: const TextStyle(color: Colors.white38),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: _darkPrimaryColor,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         elevation: 2,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: _darkPrimaryColor,
-        side: BorderSide(color: _darkPrimaryColor),
+        side: const BorderSide(color: _darkPrimaryColor),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -216,14 +216,14 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: _darkSurfaceColor,
       selectedItemColor: _darkPrimaryColor,
       unselectedItemColor: Colors.white70,
       elevation: 8,
       type: BottomNavigationBarType.fixed,
     ),
-    dividerTheme: DividerThemeData(
+    dividerTheme: const DividerThemeData(
       color: Colors.white24,
       thickness: 1,
     ),
