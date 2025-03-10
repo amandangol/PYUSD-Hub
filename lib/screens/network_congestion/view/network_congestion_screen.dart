@@ -17,14 +17,26 @@ class NetworkDashboardScreen extends StatefulWidget {
   State<NetworkDashboardScreen> createState() => _NetworkDashboardScreenState();
 }
 
-class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
+class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    // Initialize tab controller with 4 tabs
+    _tabController = TabController(length: 4, vsync: this);
+
     // Fetch data when screen is first loaded
     Future.microtask(() =>
         Provider.of<NetworkCongestionProvider>(context, listen: false)
             .initialize());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -41,6 +53,17 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
             },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
+            Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
+            Tab(icon: Icon(Icons.storage), text: 'Blocks'),
+            Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
+          ],
+          isScrollable: false,
+          indicatorWeight: 3,
+        ),
       ),
       body: Consumer<NetworkCongestionProvider>(
         builder: (context, provider, child) {
@@ -56,36 +79,21 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
             onRefresh: () async {
               await provider.refresh();
             },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Network Status Overview
-                  _buildNetworkStatusSection(congestionData),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Overview Tab
+                _buildOverviewTab(congestionData),
 
-                  const SizedBox(height: 24),
+                // Gas Tab
+                _buildGasTab(congestionData),
 
-                  // Gas Price Chart
-                  _buildGasPriceSection(congestionData),
+                // Blocks Tab
+                _buildBlocksTab(provider),
 
-                  const SizedBox(height: 24),
-
-                  // PYUSD Transaction Activity
-                  _buildPyusdActivitySection(provider),
-
-                  const SizedBox(height: 24),
-
-                  // Recent Blocks
-                  _buildRecentBlocksSection(provider),
-
-                  const SizedBox(height: 24),
-
-                  // Network Metrics
-                  _buildNetworkMetricsSection(congestionData),
-                ],
-              ),
+                // Transactions Tab
+                _buildTransactionsTab(provider),
+              ],
             ),
           );
         },
@@ -93,9 +101,227 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
     );
   }
 
+  // Tab Content Builders
+  Widget _buildOverviewTab(NetworkCongestionData congestionData) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Global status widget with refresh info
+          _buildStatusCard(congestionData),
+
+          const SizedBox(height: 16),
+
+          // Network Status Overview
+          _buildNetworkStatusSection(congestionData),
+
+          const SizedBox(height: 16),
+
+          // Network Queue Status
+          _buildNetworkQueueSection(congestionData),
+
+          const SizedBox(height: 16),
+
+          // Network Metrics
+          _buildNetworkMetricsSection(congestionData),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGasTab(NetworkCongestionData congestionData) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gas Price Overview Card
+          _buildGasOverviewCard(congestionData),
+
+          const SizedBox(height: 16),
+
+          // Gas Price Trend Chart
+          _buildGasPriceSection(congestionData),
+
+          const SizedBox(height: 16),
+
+          // Gas Fee Estimator (new component)
+          _buildGasFeeEstimator(congestionData),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlocksTab(NetworkCongestionProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Block Information Overview
+          _buildBlockInfoOverview(provider),
+
+          const SizedBox(height: 16),
+
+          // Recent Blocks List (expanded with more details)
+          _buildRecentBlocksSection(provider, expandedView: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionsTab(NetworkCongestionProvider provider) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Transaction Activity Overview
+          _buildTransactionOverview(provider),
+
+          const SizedBox(height: 16),
+
+          // Recent PYUSD Transactions (expanded view)
+          _buildPyusdActivitySection(provider, expandedView: true),
+        ],
+      ),
+    );
+  }
+
+  // Status Card with Last Refreshed and Last Block Timestamp
+  Widget _buildStatusCard(NetworkCongestionData congestionData) {
+    // Convert Unix timestamp to DateTime
+    final lastBlockTime = congestionData.lastBlockTimestamp > 0
+        ? DateTime.fromMillisecondsSinceEpoch(
+            congestionData.lastBlockTimestamp * 1000)
+        : null;
+
+    final lastRefreshed = congestionData.lastRefreshed;
+
+    // Calculate time difference for last block
+    final now = DateTime.now();
+    final lastBlockDiff =
+        lastBlockTime != null ? now.difference(lastBlockTime) : null;
+    final lastBlockAgo =
+        lastBlockDiff != null ? _formatTimeDifference(lastBlockDiff) : 'N/A';
+
+    // Calculate time difference for last refresh
+    final lastRefreshDiff = now.difference(lastRefreshed);
+    final lastRefreshAgo = _formatTimeDifference(lastRefreshDiff);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Last Block',
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color:
+                            lastBlockDiff != null && lastBlockDiff.inMinutes > 2
+                                ? Colors.orange
+                                : Colors.green,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          lastBlockTime != null
+                              ? DateFormat('HH:mm:ss').format(lastBlockTime)
+                              : 'N/A',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    lastBlockAgo,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color:
+                          lastBlockDiff != null && lastBlockDiff.inMinutes > 2
+                              ? Colors.orange
+                              : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 30,
+              width: 1,
+              color: Colors.grey.withOpacity(0.3),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('Last Refreshed',
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Icon(
+                        Icons.refresh,
+                        size: 14,
+                        color: lastRefreshDiff.inMinutes > 5
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('HH:mm:ss').format(lastRefreshed),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    lastRefreshAgo,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: lastRefreshDiff.inMinutes > 5
+                          ? Colors.orange
+                          : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper method to format time difference
+  String _formatTimeDifference(Duration difference) {
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'just now';
+    }
+  }
+
+  // Network Status Section (modified for cleaner look)
   Widget _buildNetworkStatusSection(NetworkCongestionData congestionData) {
     return Card(
-      elevation: 4,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -153,27 +379,218 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
     );
   }
 
-  Widget _buildStatusItem(String label, String value, IconData icon) {
-    return Row(
+  // Network Queue Section (with improved layout)
+  Widget _buildNetworkQueueSection(NetworkCongestionData congestionData) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Network Queue Status',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildQueueStatItem(
+                  'Pending Queue Size',
+                  congestionData.pendingQueueSize.toString(),
+                  Icons.pending,
+                  congestionData.pendingQueueSize > 10000
+                      ? Colors.red
+                      : congestionData.pendingQueueSize > 5000
+                          ? Colors.orange
+                          : Colors.green,
+                ),
+                _buildQueueStatItem(
+                  'Average Block Size',
+                  '${(congestionData.averageBlockSize / 1024).toStringAsFixed(2)} KB',
+                  Icons.storage,
+                  Colors.blue,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Network Metrics section
+  Widget _buildNetworkMetricsSection(NetworkCongestionData congestionData) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Network Performance Metrics',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Expanded(
+                  child: _buildMetricItem(
+                    'Network Latency',
+                    '${congestionData.networkLatency.toStringAsFixed(0)} ms',
+                    congestionData.networkLatency > 500
+                        ? Colors.orange
+                        : Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: _buildMetricItem(
+                    'Block Time',
+                    '${congestionData.blockTime.toStringAsFixed(1)} sec',
+                    congestionData.blockTime > 15
+                        ? Colors.orange
+                        : Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Network Utilization',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: congestionData.gasUsagePercentage / 100,
+              backgroundColor: Colors.grey[200],
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(4),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                congestionData.gasUsagePercentage > 90
+                    ? Colors.red
+                    : congestionData.gasUsagePercentage > 70
+                        ? Colors.orange
+                        : Colors.green,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${congestionData.gasUsagePercentage.toStringAsFixed(1)}%',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Gas Tab Components
+
+  // New Gas Overview Card
+  Widget _buildGasOverviewCard(NetworkCongestionData congestionData) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Current Gas Prices',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildPriorityGasCard(
+                  'Low Priority',
+                  '${(congestionData.currentGasPrice * 0.8).toStringAsFixed(2)}',
+                  'Slower',
+                  Colors.green,
+                ),
+                _buildPriorityGasCard(
+                  'Medium Priority',
+                  '${congestionData.currentGasPrice.toStringAsFixed(2)}',
+                  'Standard',
+                  Colors.blue,
+                ),
+                _buildPriorityGasCard(
+                  'High Priority',
+                  '${(congestionData.currentGasPrice * 1.2).toStringAsFixed(2)}',
+                  'Faster',
+                  Colors.orange,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriorityGasCard(
+      String title, String price, String speed, Color color) {
+    return Column(
       children: [
-        Icon(icon, size: 16),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 14)),
-        const Spacer(),
         Text(
-          value,
+          title,
           style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$price Gwei',
+          style: TextStyle(
+            fontSize: 18,
             fontWeight: FontWeight.bold,
-            fontSize: 14,
+            color: color,
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            speed,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
     );
   }
 
+  // Gas Price Section (improved)
   Widget _buildGasPriceSection(NetworkCongestionData congestionData) {
     return Card(
-      elevation: 4,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -204,23 +621,23 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
             ),
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildGasInfoItem(
                   'Current',
-                  '${congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
+                  '${congestionData.currentGasPrice.toStringAsFixed(2)} Gwei',
                   congestionData.currentGasPrice >
                           congestionData.averageGasPrice
                       ? Colors.orange
                       : Colors.green,
                 ),
                 _buildGasInfoItem(
-                  'Average',
-                  '${congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
+                  'Average (24h)',
+                  '${congestionData.averageGasPrice.toStringAsFixed(2)} Gwei',
                   Colors.blue,
                 ),
                 _buildGasInfoItem(
-                  'Diff',
+                  'Change',
                   '${((congestionData.currentGasPrice / congestionData.averageGasPrice) * 100 - 100).toStringAsFixed(1)}%',
                   congestionData.currentGasPrice >
                           congestionData.averageGasPrice
@@ -235,87 +652,291 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
     );
   }
 
-  Widget _buildGasInfoItem(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
+  // New Gas Fee Estimator
+  Widget _buildGasFeeEstimator(NetworkCongestionData congestionData) {
+    // These are estimates - in a real app, you'd calculate these values
+    final lowGwei = congestionData.currentGasPrice * 0.8;
+    final mediumGwei = congestionData.currentGasPrice;
+    final highGwei = congestionData.currentGasPrice * 1.2;
 
-  Widget _buildPyusdActivitySection(NetworkCongestionProvider provider) {
+    // Assume average ETH transfer gas usage
+    const gasUsed = 21000;
+
+    // Calculate USD cost (example ETH price = $3000)
+    const ethPrice = 3000.0;
+    final gweiToEth = 0.000000001;
+
+    final lowCostEth = lowGwei * gasUsed * gweiToEth;
+    final mediumCostEth = mediumGwei * gasUsed * gweiToEth;
+    final highCostEth = highGwei * gasUsed * gweiToEth;
+
+    final lowCostUsd = lowCostEth * ethPrice;
+    final mediumCostUsd = mediumCostEth * ethPrice;
+    final highCostUsd = highCostEth * ethPrice;
+
     return Card(
-      elevation: 4,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // const Text(
-            //   'PYUSD Transaction Activity',
-            //   style: TextStyle(
-            //     fontSize: 18,
-            //     fontWeight: FontWeight.bold,
-            //   ),
-            // ),
-            const SizedBox(height: 16),
             const Text(
-              'Recent PYUSD Transactions',
+              'Transaction Fee Estimator',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            provider.recentPyusdTransactions.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        'No recent PYUSD transactions detected',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
+            const Text(
+              'Estimated costs for a standard ETH transfer',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(3),
+                1: FlexColumnWidth(2),
+                2: FlexColumnWidth(2),
+                3: FlexColumnWidth(3),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                const TableRow(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey, width: 0.5),
                     ),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: provider.recentPyusdTransactions.length > 5
-                        ? 5
-                        : provider.recentPyusdTransactions.length,
-                    itemBuilder: (context, index) {
-                      final tx = provider.recentPyusdTransactions[index];
-                      return TransactionListItem(transaction: tx);
-                    },
                   ),
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text('Priority',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    Text('Gas Price',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Time', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Cost (USD)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                TableRow(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey, width: 0.5),
+                    ),
+                  ),
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                      child: Text('Low', style: TextStyle(color: Colors.green)),
+                    ),
+                    Text('${lowGwei.toStringAsFixed(1)} Gwei'),
+                    const Text('~5 min'),
+                    Text('\$${lowCostUsd.toStringAsFixed(4)}'),
+                  ],
+                ),
+                TableRow(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey, width: 0.5),
+                    ),
+                  ),
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                      child:
+                          Text('Medium', style: TextStyle(color: Colors.blue)),
+                    ),
+                    Text('${mediumGwei.toStringAsFixed(1)} Gwei'),
+                    const Text('~2 min'),
+                    Text('\$${mediumCostUsd.toStringAsFixed(4)}'),
+                  ],
+                ),
+                TableRow(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                      child:
+                          Text('High', style: TextStyle(color: Colors.orange)),
+                    ),
+                    Text('${highGwei.toStringAsFixed(1)} Gwei'),
+                    const Text('<1 min'),
+                    Text('\$${highCostUsd.toStringAsFixed(4)}'),
+                  ],
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRecentBlocksSection(NetworkCongestionProvider provider) {
+  // Blocks Tab Components
+
+  Widget _buildBlockInfoOverview(NetworkCongestionProvider provider) {
+    // Get the latest block if available
+    final latestBlock =
+        provider.recentBlocks.isNotEmpty ? provider.recentBlocks[0] : null;
+
+    // Parse block number
+    int blockNumber = 0;
+    if (latestBlock != null && latestBlock['number'] != null) {
+      final numStr = latestBlock['number'].toString();
+      blockNumber = numStr.startsWith('0x')
+          ? int.parse(numStr.substring(2), radix: 16)
+          : int.tryParse(numStr) ?? 0;
+    }
+
     return Card(
-      elevation: 4,
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Block Information',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (blockNumber > 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Latest: #$blockNumber',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Block statistics
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 2.5,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildBlockStatCard(
+                  'Avg Block Time',
+                  provider.congestionData.averageBlockTime > 0
+                      ? '${provider.congestionData.averageBlockTime.toStringAsFixed(1)} sec'
+                      : 'Loading...',
+                  Icons.timer,
+                  Colors.blue,
+                ),
+                _buildBlockStatCard(
+                  'Blocks/Hour',
+                  provider.congestionData.blocksPerHour > 0
+                      ? '~${provider.congestionData.blocksPerHour}'
+                      : 'Loading...',
+                  Icons.av_timer,
+                  Colors.green,
+                ),
+                _buildBlockStatCard(
+                  'Avg Tx/Block',
+                  provider.congestionData.averageTxPerBlock > 0
+                      ? '${provider.congestionData.averageTxPerBlock}'
+                      : 'Loading...',
+                  Icons.sync_alt,
+                  Colors.purple,
+                ),
+                _buildBlockStatCard(
+                  'Gas Limit',
+                  provider.congestionData.gasLimit > 0
+                      ? '${(provider.congestionData.gasLimit / 1000000).toStringAsFixed(1)}M'
+                      : 'Loading...',
+                  Icons.local_gas_station,
+                  Colors.orange,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlockStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Enhanced Recent Blocks List
+  Widget _buildRecentBlocksSection(NetworkCongestionProvider provider,
+      {bool expandedView = false}) {
+    return Card(
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -343,138 +964,162 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
                       ),
                     ),
                   )
-                : ListView.builder(
+                : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: provider.recentBlocks.length > 3
-                        ? 3
-                        : provider.recentBlocks.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemCount: expandedView
+                        ? provider.recentBlocks.length
+                        : (provider.recentBlocks.length > 3
+                            ? 3
+                            : provider.recentBlocks.length),
                     itemBuilder: (context, index) {
                       final block = provider.recentBlocks[index];
 
-                      // Safely parse hexadecimal values
-                      int blockNumber = 0;
-                      int timestamp = 0;
-                      int gasUsed = 0;
-                      int gasLimit =
-                          1; // Default to 1 to avoid division by zero
+                      // Parse block data
+                      final blockNumberHex =
+                          block['number'] as String? ?? '0x0';
+                      final blockNumber =
+                          int.parse(blockNumberHex.substring(2), radix: 16);
 
-                      try {
-                        // Check if values have '0x' prefix and parse accordingly
-                        if (block['number'] != null) {
-                          final numStr = block['number'].toString();
-                          blockNumber = numStr.startsWith('0x')
-                              ? int.parse(numStr.substring(2), radix: 16)
-                              : int.tryParse(numStr) ?? 0;
-                        }
-
-                        if (block['timestamp'] != null) {
-                          final timeStr = block['timestamp'].toString();
-                          timestamp = timeStr.startsWith('0x')
-                              ? int.parse(timeStr.substring(2), radix: 16)
-                              : int.tryParse(timeStr) ?? 0;
-                        }
-
-                        if (block['gasUsed'] != null) {
-                          final gasUsedStr = block['gasUsed'].toString();
-                          gasUsed = gasUsedStr.startsWith('0x')
-                              ? int.parse(gasUsedStr.substring(2), radix: 16)
-                              : int.tryParse(gasUsedStr) ?? 0;
-                        }
-
-                        if (block['gasLimit'] != null) {
-                          final gasLimitStr = block['gasLimit'].toString();
-                          gasLimit = gasLimitStr.startsWith('0x')
-                              ? int.parse(gasLimitStr.substring(2), radix: 16)
-                              : int.tryParse(gasLimitStr) ?? 1;
-                        }
-                      } catch (e) {
-                        // Handle parsing errors
-                        print('Error parsing block data: $e');
-                      }
-
-                      final date =
+                      // Parse timestamp
+                      final timestampHex =
+                          block['timestamp'] as String? ?? '0x0';
+                      final timestamp =
+                          int.parse(timestampHex.substring(2), radix: 16);
+                      final blockTime =
                           DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-                      final formattedDate =
-                          DateFormat('MMM dd, HH:mm:ss').format(date);
 
-                      // Safely handle transactions list
-                      final List txList = block['transactions'] ?? [];
-                      final txCount = txList.length;
+                      // Parse transactions
+                      final transactions =
+                          block['transactions'] as List<dynamic>? ?? [];
 
-                      // Calculate gas percentage
-                      final gasPercentage =
-                          gasLimit > 0 ? (gasUsed / gasLimit) * 100 : 0;
+                      // Parse gas used and gas limit
+                      final gasUsedHex = block['gasUsed'] as String? ?? '0x0';
+                      final gasLimitHex = block['gasLimit'] as String? ?? '0x0';
+                      final gasUsed =
+                          int.parse(gasUsedHex.substring(2), radix: 16);
+                      final gasLimit =
+                          int.parse(gasLimitHex.substring(2), radix: 16);
 
-                      // Etherscan URL for the block
-                      final etherscanUrl =
-                          'https://etherscan.io/block/$blockNumber';
+                      // Calculate utilization
+                      final utilization = (gasUsed / gasLimit) * 100;
 
-                      return Card(
-                        elevation: 2,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 4),
+                        title: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '#$blockNumber',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('HH:mm:ss').format(blockTime),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${transactions.length} txs',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: expandedView
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      Text(
-                                        'Block #$blockNumber',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
+                                      const Text(
+                                        'Miner: ',
+                                        style: TextStyle(fontSize: 12),
                                       ),
-                                      const SizedBox(width: 8),
-                                      // Add the Etherscan link icon here
-                                      InkWell(
-                                        onTap: () {
-                                          launchUrl(Uri.parse(etherscanUrl));
-                                        },
-                                        child: const Icon(
-                                          Icons.open_in_new,
-                                          size: 16,
-                                          color: Colors.blue,
+                                      Text(
+                                        '${(block['miner'] as String? ?? '0x').substring(0, 10)}...',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontFamily: 'monospace',
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Text(
-                                    formattedDate,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                    ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Gas Usage',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            LinearProgressIndicator(
+                                              value: utilization / 100,
+                                              backgroundColor: Colors.grey[200],
+                                              minHeight: 6,
+                                              borderRadius:
+                                                  BorderRadius.circular(3),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                utilization > 90
+                                                    ? Colors.red
+                                                    : utilization > 70
+                                                        ? Colors.orange
+                                                        : Colors.green,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${utilization.toStringAsFixed(1)}% (${(gasUsed / 1000000).toStringAsFixed(2)}M/${(gasLimit / 1000000).toStringAsFixed(2)}M)',
+                                              style:
+                                                  const TextStyle(fontSize: 10),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _buildBlockInfoItem(
-                                      'Transactions', '$txCount'),
-                                  _buildBlockInfoItem(
-                                    'Gas Used',
-                                    '${gasPercentage.toStringAsFixed(1)}%',
-                                    gasPercentage > 90
-                                        ? Colors.red
-                                        : gasPercentage > 70
-                                            ? Colors.orange
-                                            : Colors.green,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                              )
+                            : null,
+                        trailing: IconButton(
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          onPressed: () async {
+                            // Open block explorer to view block details
+                            final url =
+                                'https://etherscan.io/block/$blockNumber';
+                            if (await canLaunch(url)) {
+                              await launch(url);
+                            }
+                          },
                         ),
+                        onTap: () {
+                          // Show block details
+                          // This would be implemented to show more details
+                        },
                       );
                     },
                   ),
@@ -484,28 +1129,14 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
     );
   }
 
-  Widget _buildBlockInfoItem(String label, String value, [Color? valueColor]) {
-    return Row(
-      children: [
-        Text(
-          '$label: ',
-          style: const TextStyle(fontSize: 14),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: valueColor,
-          ),
-        ),
-      ],
-    );
-  }
+  // Transactions Tab Components
 
-  Widget _buildNetworkMetricsSection(NetworkCongestionData congestionData) {
+  // Transaction Activity Overview
+  Widget _buildTransactionOverview(NetworkCongestionProvider provider) {
+    final data = provider.congestionData;
+
     return Card(
-      elevation: 4,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -513,52 +1144,63 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Network Performance Metrics',
+              'PYUSD Transaction Overview',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+            // Transaction statistics
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 Expanded(
-                  child: _buildMetricItem(
-                    'Network Latency',
-                    '${congestionData.networkLatency.toStringAsFixed(0)} ms',
-                    congestionData.networkLatency > 500
-                        ? Colors.orange
-                        : Colors.green,
+                  child: StatsCard(
+                    title: 'Last 24h',
+                    value: '1,284',
+                    icon: Icons.swap_horiz,
+                    color: Colors.blue,
+                    description: 'PYUSD txs',
                   ),
                 ),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: _buildMetricItem(
-                    'Block Time',
-                    '${congestionData.blockTime.toStringAsFixed(1)} sec',
-                    congestionData.blockTime > 15
-                        ? Colors.orange
-                        : Colors.green,
+                  child: StatsCard(
+                    title: 'Volume 24h',
+                    value: '\$2.76M',
+                    icon: Icons.attach_money,
+                    color: Colors.green,
+                    description: 'PYUSD transferred',
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: congestionData.gasUsagePercentage / 100,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                congestionData.gasUsagePercentage > 90
-                    ? Colors.red
-                    : congestionData.gasUsagePercentage > 70
-                        ? Colors.orange
-                        : Colors.green,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Network Utilization: ${congestionData.gasUsagePercentage.toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 12),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Expanded(
+                  child: StatsCard(
+                    title: 'Avg Confirmation',
+                    value: '${data.blockTime.toStringAsFixed(1)}s',
+                    icon: Icons.access_time,
+                    color: Colors.orange,
+                    description: 'For PYUSD txs',
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: StatsCard(
+                    title: 'Active Users',
+                    value: '876',
+                    icon: Icons.people,
+                    color: Colors.purple,
+                    description: 'Unique wallets',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -566,26 +1208,188 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
     );
   }
 
-  Widget _buildMetricItem(String label, String value, Color valueColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-          ),
-          textAlign: TextAlign.center,
+  // PYUSD Activity Section
+  Widget _buildPyusdActivitySection(NetworkCongestionProvider provider,
+      {bool expandedView = false}) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Recent PYUSD Transactions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            provider.recentPyusdTransactions.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text(
+                        'No recent PYUSD transactions detected',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemCount: expandedView
+                        ? provider.recentPyusdTransactions.length
+                        : (provider.recentPyusdTransactions.length > 3
+                            ? 3
+                            : provider.recentPyusdTransactions.length),
+                    itemBuilder: (context, index) {
+                      final transaction =
+                          provider.recentPyusdTransactions[index];
+
+                      return TransactionListItem(
+                        transaction: transaction,
+                        // expandedView: expandedView,
+                      );
+                    },
+                  ),
+            if (!expandedView && provider.recentPyusdTransactions.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Center(
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.list),
+                    label: const Text('View All Transactions'),
+                    onPressed: () {
+                      // Switch to transactions tab
+                      _tabController.animateTo(3);
+                    },
+                  ),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 4),
+      ),
+    );
+  }
+
+  // Helper methods for building repeated UI elements
+
+  Widget _buildStatusItem(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: Colors.grey[600],
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQueueStatItem(
+      String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          size: 32,
+          color: color,
+        ),
+        const SizedBox(height: 8),
         Text(
           value,
           style: TextStyle(
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: valueColor,
+            color: color,
           ),
-          textAlign: TextAlign.center,
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricItem(String label, String value, Color color) {
+    return Card(
+      elevation: 0,
+      color: Colors.grey[100],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGasInfoItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
         ),
       ],
     );

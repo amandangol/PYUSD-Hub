@@ -9,7 +9,17 @@ class NetworkCongestionData {
   final double blockTime;
   final int confirmedPyusdTxCount;
   final int pendingPyusdTxCount;
+  final int lastBlockNumber;
+  final int lastBlockTimestamp;
+  final int pendingQueueSize;
+  final double averageBlockSize;
+  final DateTime lastRefreshed;
+  final double averageBlockTime;
+  final int blocksPerHour;
+  final int averageTxPerBlock;
+  final int gasLimit;
 
+  // Update constructor by adding these parameters
   NetworkCongestionData({
     required this.currentGasPrice,
     required this.averageGasPrice,
@@ -21,9 +31,18 @@ class NetworkCongestionData {
     required this.blockTime,
     required this.confirmedPyusdTxCount,
     required this.pendingPyusdTxCount,
+    required this.lastBlockNumber,
+    required this.lastBlockTimestamp,
+    required this.pendingQueueSize,
+    required this.averageBlockSize,
+    required this.lastRefreshed,
+    required this.averageBlockTime,
+    required this.blocksPerHour,
+    required this.averageTxPerBlock,
+    required this.gasLimit,
   });
 
-  // Helper method to update specific fields
+  // Update copyWith method by adding these parameters
   NetworkCongestionData copyWith({
     double? currentGasPrice,
     double? averageGasPrice,
@@ -35,6 +54,15 @@ class NetworkCongestionData {
     double? blockTime,
     int? confirmedPyusdTxCount,
     int? pendingPyusdTxCount,
+    int? lastBlockNumber,
+    int? lastBlockTimestamp,
+    int? pendingQueueSize,
+    double? averageBlockSize,
+    DateTime? lastRefreshed,
+    double? averageBlockTime,
+    int? blocksPerHour,
+    int? averageTxPerBlock,
+    int? gasLimit,
   }) {
     return NetworkCongestionData(
       currentGasPrice: currentGasPrice ?? this.currentGasPrice,
@@ -49,6 +77,15 @@ class NetworkCongestionData {
       confirmedPyusdTxCount:
           confirmedPyusdTxCount ?? this.confirmedPyusdTxCount,
       pendingPyusdTxCount: pendingPyusdTxCount ?? this.pendingPyusdTxCount,
+      lastBlockNumber: lastBlockNumber ?? this.lastBlockNumber,
+      lastBlockTimestamp: lastBlockTimestamp ?? this.lastBlockTimestamp,
+      pendingQueueSize: pendingQueueSize ?? this.pendingQueueSize,
+      averageBlockSize: averageBlockSize ?? this.averageBlockSize,
+      lastRefreshed: lastRefreshed ?? this.lastRefreshed,
+      averageBlockTime: averageBlockTime ?? this.averageBlockTime,
+      blocksPerHour: blocksPerHour ?? this.blocksPerHour,
+      averageTxPerBlock: averageTxPerBlock ?? this.averageTxPerBlock,
+      gasLimit: gasLimit ?? this.gasLimit,
     );
   }
 
@@ -73,8 +110,16 @@ class NetworkCongestionData {
     double latencyFactor =
         (networkLatency > 1000) ? 10 : (networkLatency / 1000) * 10;
 
-    int total =
-        (gasFactor + utilizationFactor + pendingFactor + latencyFactor).round();
+    // 5. Consider pending queue size
+    double queueFactor =
+        (pendingQueueSize > 2000) ? 10 : (pendingQueueSize / 2000) * 10;
+
+    int total = (gasFactor +
+            utilizationFactor +
+            pendingFactor +
+            latencyFactor +
+            queueFactor)
+        .round();
     return total > 100 ? 100 : total;
   }
 
@@ -103,6 +148,53 @@ class NetworkCongestionData {
       return '#FF9800'; // Orange
     } else {
       return '#F44336'; // Red
+    }
+  }
+
+  // Get formatted time since last refresh
+  String get refreshTimeAgo {
+    final now = DateTime.now();
+    final difference = now.difference(lastRefreshed);
+
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds}s ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return '${difference.inHours}h ago';
+    }
+  }
+
+  // Get formatted timestamp for the last block
+  String get blockTimeFormatted {
+    final date = DateTime.fromMillisecondsSinceEpoch(lastBlockTimestamp * 1000);
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
+  }
+
+  // Get estimated transaction confirmation time in minutes based on congestion
+  double get estimatedConfirmationMinutes {
+    final level = congestionLevel;
+    if (level < 30) {
+      return 0.5; // 30 seconds
+    } else if (level < 60) {
+      return 2.0; // 2 minutes
+    } else if (level < 80) {
+      return 5.0; // 5 minutes
+    } else {
+      return 10.0; // 10 minutes
+    }
+  }
+
+  // Get recommended gas price for fast confirmation (in Gwei)
+  double get recommendedGasPrice {
+    if (congestionLevel < 30) {
+      return currentGasPrice * 1.1; // 10% above current
+    } else if (congestionLevel < 60) {
+      return currentGasPrice * 1.2; // 20% above current
+    } else if (congestionLevel < 80) {
+      return currentGasPrice * 1.5; // 50% above current
+    } else {
+      return currentGasPrice * 2.0; // Double the current
     }
   }
 }
