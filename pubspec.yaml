@@ -86,6 +86,7 @@ flutter:
     - .env
     - assets/icon/icon.png
     - assets/keys/service-account.json
+    - assets/config/api_config.json
   #   - images/a_dot_ham.jpeg
 
 flutter_icons:

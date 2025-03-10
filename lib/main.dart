@@ -8,17 +8,13 @@ import 'providers/network_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/transactiondetail_provider.dart';
-import 'screens/network_congestion/provider/network_congestion_provider.dart';
-import 'screens/pyusd_dashboard/provider/pyusd_analytics_provider.dart';
 
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
-import 'screens/network_congestion/network_congestion_dashboard.dart';
-import 'screens/pyusd_stats/provider/pyusd_stat_provider.dart';
-import 'screens/pyusd_stats/pyusd_stat_screen.dart';
+import 'screens/network_congestion/provider/network_congestion_provider.dart';
+import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/wallet_selection_screen.dart';
 import 'services/wallet_service.dart';
 import 'theme/app_theme.dart';
 
@@ -67,13 +63,7 @@ class MyApp extends StatelessWidget {
           create: (context) => TransactionDetailProvider(),
         ),
         ChangeNotifierProvider(
-          create: (context) => PYUSDAnalyticsProvider(),
-        ),
-        ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => PyusdStatsProvider(),
         ),
         Provider<WalletService>(
           create: (_) => WalletService(),
@@ -117,8 +107,8 @@ class _MainAppState extends State<MainApp> {
     // Define all screens
     final List<Widget> _screens = [
       const HomeScreen(),
-      const PyusdStatsScreen(),
-      const NetworkCongestionDashboard(),
+      const NetworkDashboardScreen(), // Dashboard screen for network congestion
+      const HomeScreen(), // Placeholder for analytics (could be replaced)
       const SettingsScreen(),
     ];
 
@@ -145,12 +135,12 @@ class _MainAppState extends State<MainApp> {
             label: 'Wallet',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
+            icon: Icon(Icons.speed),
+            label: 'Network',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.network_check),
-            label: 'Network',
+            icon: Icon(Icons.analytics),
+            label: 'Insights',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

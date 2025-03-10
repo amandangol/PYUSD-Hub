@@ -165,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               // Network Status Card
               const SizedBox(height: 24),
-              EnhancedNetworkStatusCard(
+              NetworkStatusCard(
                 isDarkMode: isDarkMode,
               ),
 

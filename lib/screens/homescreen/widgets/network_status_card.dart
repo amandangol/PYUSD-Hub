@@ -3,22 +3,21 @@ import 'package:provider/provider.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/wallet_provider.dart';
 
-class EnhancedNetworkStatusCard extends StatefulWidget {
+class NetworkStatusCard extends StatefulWidget {
   final bool isDarkMode;
   final bool initialShowNetworkSelector;
 
-  const EnhancedNetworkStatusCard({
+  const NetworkStatusCard({
     Key? key,
     required this.isDarkMode,
     this.initialShowNetworkSelector = false,
   }) : super(key: key);
 
   @override
-  State<EnhancedNetworkStatusCard> createState() =>
-      _EnhancedNetworkStatusCardState();
+  State<NetworkStatusCard> createState() => _NetworkStatusCardState();
 }
 
-class _EnhancedNetworkStatusCardState extends State<EnhancedNetworkStatusCard> {
+class _NetworkStatusCardState extends State<NetworkStatusCard> {
   late bool showNetworkSelector;
 
   @override

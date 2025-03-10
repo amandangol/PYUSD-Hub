@@ -1,0 +1,6 @@
+{
+    "sepolia_endpoint": "ttps://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q",
+    "mainnet_endpoint": "https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q",
+    "service_account_path": "assets/keys/service-account.json"
+  }
+  
