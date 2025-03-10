@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pyusd_forensics/utils/formataddress_utils.dart';
+import 'package:pyusd_forensics/utils/formatter_utils.dart';
 
 import '../../../utils/snackbar_utils.dart';
 

@@ -4,10 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Import all providers
+import 'authentication/provider/auth_provider.dart';
 import 'providers/network_provider.dart';
+import 'providers/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
-import 'providers/transactiondetail_provider.dart';
 
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
@@ -15,7 +16,8 @@ import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
-import 'services/wallet_service.dart';
+import 'screens/transactions/transaction_details/provider/transactiondetail_provider.dart';
+import 'authentication/service/wallet_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -50,14 +52,40 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get RPC URLs from environment or use defaults
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<NetworkProvider>(
-          create: (_) => NetworkProvider(),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(),
         ),
         ChangeNotifierProvider(
-          create: (context) => WalletProvider(),
+          create: (_) => NetworkProvider(),
+        ),
+        ChangeNotifierProxyProvider2<AuthProvider, NetworkProvider,
+            WalletProvider>(
+          create: (context) => WalletProvider(
+            authProvider: context.read<AuthProvider>(),
+            networkProvider: context.read<NetworkProvider>(),
+          ),
+          update: (context, authProvider, networkProvider, previous) =>
+              WalletProvider(
+            authProvider: authProvider,
+            networkProvider: networkProvider,
+          ),
+        ),
+        ChangeNotifierProxyProvider3<AuthProvider, NetworkProvider,
+            WalletProvider, TransactionProvider>(
+          create: (context) => TransactionProvider(
+            authProvider: context.read<AuthProvider>(),
+            networkProvider: context.read<NetworkProvider>(),
+            walletProvider: context.read<WalletProvider>(),
+          ),
+          update: (context, authProvider, networkProvider, walletProvider,
+                  previous) =>
+              TransactionProvider(
+            authProvider: authProvider,
+            networkProvider: networkProvider,
+            walletProvider: walletProvider,
+          ),
         ),
         ChangeNotifierProvider(
           create: (context) => TransactionDetailProvider(),

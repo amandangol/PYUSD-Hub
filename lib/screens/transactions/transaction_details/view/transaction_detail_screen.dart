@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/utils/formataddress_utils.dart';
+import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../models/transaction.dart';
-import '../../../providers/network_provider.dart';
-import '../../../providers/transactiondetail_provider.dart';
-import '../../../utils/datetime_utils.dart';
+import '../model/transaction.dart';
+import '../../../../providers/network_provider.dart';
+import '../provider/transactiondetail_provider.dart';
+import '../../../../utils/datetime_utils.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;

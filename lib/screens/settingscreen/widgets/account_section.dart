@@ -1,16 +1,16 @@
 // lib/widgets/settings/account_section.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../providers/wallet_provider.dart';
-import '../../../utils/formataddress_utils.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
+import '../../../utils/formatter_utils.dart';
 import '../../../utils/snackbar_utils.dart';
 
 class AccountSection extends StatelessWidget {
-  final WalletProvider walletProvider;
+  final AuthProvider authProvider;
 
   const AccountSection({
     Key? key,
-    required this.walletProvider,
+    required this.authProvider,
   }) : super(key: key);
 
   @override
@@ -33,8 +33,7 @@ class AccountSection extends StatelessWidget {
           ListTile(
             title: const Text('Wallet Address'),
             subtitle: Text(
-              FormatterUtils.formatAddress(
-                  walletProvider.wallet?.address ?? ''),
+              FormatterUtils.formatAddress(authProvider.wallet?.address ?? ''),
               style: TextStyle(
                 fontFamily: 'monospace',
                 color: textColor.withOpacity(0.7),
@@ -44,7 +43,7 @@ class AccountSection extends StatelessWidget {
             onTap: () {
               // Copy address logic
               Clipboard.setData(
-                ClipboardData(text: walletProvider.wallet?.address ?? ''),
+                ClipboardData(text: authProvider.wallet?.address ?? ''),
               );
               SnackbarUtil.showSnackbar(
                 context: context,
@@ -58,7 +57,7 @@ class AccountSection extends StatelessWidget {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               // Navigate to private key export with security checks
-              _showPrivateKeyDialog(context, walletProvider.wallet);
+              _showPrivateKeyDialog(context, authProvider.wallet);
             },
           ),
           const Divider(height: 1),
@@ -67,7 +66,7 @@ class AccountSection extends StatelessWidget {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               // Navigate to recovery phrase backup with security checks
-              _showRecoveryPhraseDialog(context, walletProvider.wallet);
+              _showRecoveryPhraseDialog(context, authProvider.wallet);
             },
           ),
         ],

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/providers/network_provider.dart';
+import 'package:pyusd_forensics/providers/transaction_provider.dart';
 import 'package:web3dart/web3dart.dart';
 import '../../../providers/wallet_provider.dart';
 import '../../../utils/snackbar_utils.dart';
@@ -43,7 +45,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   }
 
   Future<void> _fetchGasPrice() async {
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
 
     try {
       setState(() {
@@ -51,7 +54,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       });
 
       // Get current network gas price
-      _gasPrice = await walletProvider.getCurrentGasPrice();
+      _gasPrice = await transactionProvider.getCurrentGasPrice();
 
       // If we have a valid address and amount, estimate gas
       if (_isValidAddress && _amountController.text.isNotEmpty) {
@@ -76,7 +79,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       return;
     }
 
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
     double? amount = double.tryParse(_amountController.text);
 
     if (amount == null || amount <= 0) {
@@ -94,12 +98,12 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       int estimatedGas;
 
       if (_selectedAsset == 'PYUSD') {
-        estimatedGas = await walletProvider.estimateTokenTransferGas(
+        estimatedGas = await transactionProvider.estimateTokenTransferGas(
           recipient.hex,
           amount,
         );
       } else {
-        estimatedGas = await walletProvider.estimateEthTransferGas(
+        estimatedGas = await transactionProvider.estimateEthTransferGas(
           recipient.hex,
           amount,
         );
@@ -148,6 +152,9 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
+
     final address = _addressController.text.trim();
     final amount = double.parse(_amountController.text);
 
@@ -192,8 +199,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
 
     // Confirm transaction details
-    final confirmed =
-        await _showConfirmationDialog(context, address, amount, walletProvider);
+    final confirmed = await _showConfirmationDialog(context, address, amount);
 
     if (confirmed != true) return;
 
@@ -205,14 +211,14 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       String txHash;
 
       if (_selectedAsset == 'PYUSD') {
-        txHash = await walletProvider.sendPYUSD(
+        txHash = await transactionProvider.sendPYUSD(
           address,
           amount,
           gasPrice: _gasPrice,
           gasLimit: _estimatedGas,
         );
       } else {
-        txHash = await walletProvider.sendETH(
+        txHash = await transactionProvider.sendETH(
           address,
           amount,
           gasPrice: _gasPrice,
@@ -247,7 +253,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     BuildContext context,
     String address,
     double amount,
-    WalletProvider walletProvider,
   ) async {
     return showDialog<bool>(
       context: context,
@@ -269,7 +274,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
               Text(
                   'Total Amount (with gas): ${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH'),
             const SizedBox(height: 8),
-            Text('Network: ${walletProvider.currentNetworkName}'),
+            // Text('Network: ${networkProvider.currentNetworkName}'),
             const SizedBox(height: 12),
             const Text('Please confirm this transaction details.',
                 style:
@@ -306,6 +311,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
+    final networkProvider = Provider.of<NetworkProvider>(context);
 
     // Determine available balance based on selected asset
     final availableBalance = _selectedAsset == 'PYUSD'
@@ -359,7 +365,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                 availableBalance: availableBalance,
                 maxSendableEth: maxSendableEth,
                 estimatedGasFee: _estimatedGasFee,
-                networkName: walletProvider.currentNetworkName,
+                networkName: networkProvider.currentNetworkName,
               ),
 
               // Recipient Address Input

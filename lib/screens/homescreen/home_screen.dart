@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
+import 'package:pyusd_forensics/providers/network_provider.dart';
+import 'package:pyusd_forensics/providers/transaction_provider.dart';
 import '../../common/pyusd_appbar.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
@@ -66,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final walletProvider =
             Provider.of<WalletProvider>(context, listen: false);
 
-        await walletProvider.refreshWalletData();
+        await walletProvider.refreshBalances();
 
         // Mark initial refresh as done to prevent duplicate refreshes
         _initialRefreshDone = true;
@@ -85,6 +88,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final transactionProvider = Provider.of<TransactionProvider>(context);
+    final networkProvider = Provider.of<NetworkProvider>(context);
+
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
@@ -93,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
     // Get the current wallet address - either from the local wallet or WalletConnect
-    final currentWalletAddress = walletProvider.getCurrentAddress() ?? '';
+    final currentWalletAddress = authProvider.getCurrentAddress() ?? '';
 
     return Scaffold(
         backgroundColor: backgroundColor,
@@ -108,12 +115,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
           onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
         ),
-        body: _buildWalletContent(
-            walletProvider, isDarkMode, primaryColor, currentWalletAddress));
+        body: _buildWalletContent(walletProvider, transactionProvider,
+            networkProvider, isDarkMode, primaryColor, currentWalletAddress));
   }
 
-  Widget _buildWalletContent(WalletProvider walletProvider, bool isDarkMode,
-      Color primaryColor, String walletAddress) {
+  Widget _buildWalletContent(
+      WalletProvider walletProvider,
+      TransactionProvider transactionProvider,
+      NetworkProvider networkProvider,
+      bool isDarkMode,
+      Color primaryColor,
+      String walletAddress) {
     return RefreshIndicator(
       onRefresh: () => _refreshWalletData(forceRefresh: true),
       child: SingleChildScrollView(
@@ -130,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 walletAddress: walletAddress,
                 isRefreshing: walletProvider.isBalanceRefreshing,
                 primaryColor: primaryColor,
-                networkName: walletProvider.currentNetworkName,
+                networkName: networkProvider.currentNetwork.toString(),
               ),
 
               // Action Buttons
@@ -171,9 +183,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               const SizedBox(height: 24),
               TransactionsSection(
-                transactions: walletProvider.transactions,
+                transactions: transactionProvider.transactions,
                 currentAddress: walletAddress,
-                isLoading: walletProvider.isLoading &&
+                isLoading: transactionProvider.isLoading &&
                     !walletProvider.isBalanceRefreshing,
                 isDarkMode: isDarkMode,
                 primaryColor: primaryColor, // Added primaryColor parameter

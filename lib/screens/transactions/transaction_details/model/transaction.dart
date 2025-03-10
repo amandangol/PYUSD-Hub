@@ -1,4 +1,4 @@
-import '../providers/network_provider.dart';
+import '../../../../providers/network_provider.dart';
 
 enum TransactionDirection { incoming, outgoing }
 
@@ -43,14 +43,14 @@ class TransactionDetailModel extends TransactionModel {
   final int confirmations;
 
   TransactionDetailModel({
-    required String hash,
-    required String from,
-    required String to,
-    required double value,
-    required DateTime timestamp,
-    required TransactionDirection direction,
-    required TransactionStatus status,
-    required NetworkType networkType,
+    required super.hash,
+    required super.from,
+    required super.to,
+    required super.value,
+    required super.timestamp,
+    required super.direction,
+    required super.status,
+    required super.networkType,
     required this.blockNumber,
     required this.gasLimit,
     required this.gasPrice,
@@ -59,20 +59,8 @@ class TransactionDetailModel extends TransactionModel {
     required this.nonce,
     required this.input,
     required this.confirmations,
-    String? tokenSymbol,
-    String? tokenContractAddress,
-    int? tokenDecimals,
-  }) : super(
-          hash: hash,
-          from: from,
-          to: to,
-          value: value,
-          timestamp: timestamp,
-          direction: direction,
-          status: status,
-          networkType: networkType,
-          tokenSymbol: tokenSymbol,
-          tokenContractAddress: tokenContractAddress,
-          tokenDecimals: tokenDecimals,
-        );
+    super.tokenSymbol,
+    super.tokenContractAddress,
+    super.tokenDecimals,
+  });
 }

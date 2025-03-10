@@ -34,9 +34,12 @@ class TransactionListItem extends StatelessWidget {
     final isPending = transaction['blockNumber'] == null;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Row(
           children: [
             Expanded(
@@ -56,8 +59,8 @@ class TransactionListItem extends StatelessWidget {
                   Clipboard.setData(ClipboardData(text: txHash));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Transaction hash copied to clipboard'),
-                      duration: Duration(seconds: 2),
+                      content: Text('Hash copied'),
+                      duration: Duration(seconds: 1),
                     ),
                   );
                 }
@@ -69,32 +72,38 @@ class TransactionListItem extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 4),
             Text(
               from.isNotEmpty
                   ? 'From: ${from.substring(0, min(8, from.length))}...${from.substring(max(0, from.length - 6))}'
                   : 'From: Unknown',
               style: const TextStyle(fontSize: 12),
             ),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (value > 0)
                   Text(
                     'Value: ${value.toStringAsFixed(4)} ETH',
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: isPending ? Colors.orange : Colors.green,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     isPending ? 'Pending' : 'Confirmed',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -102,13 +111,16 @@ class TransactionListItem extends StatelessWidget {
             ),
           ],
         ),
-        onTap: () {
-          // Navigate to transaction details or open in etherscan
-          if (txHash.isNotEmpty) {
+        trailing: IconButton(
+          icon: const Icon(Icons.open_in_new, size: 20),
+          onPressed: () async {
             final url = 'https://etherscan.io/tx/$txHash';
-            launchUrl(Uri.parse(url));
-          }
-        },
+            if (await canLaunch(url)) {
+              await launch(url);
+            }
+          },
+          tooltip: 'View on Etherscan',
+        ),
       ),
     );
   }

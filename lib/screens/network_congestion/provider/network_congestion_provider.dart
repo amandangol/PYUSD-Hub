@@ -650,7 +650,6 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   void _handleSubscriptionUpdate(Map<String, dynamic> params) {
-    final subscriptionId = params['subscription'];
     final result = params['result'];
 
     if (result.containsKey('hash')) {
@@ -699,7 +698,7 @@ class NetworkCongestionProvider with ChangeNotifier {
     }
   }
 
-  // OPTIMIZED: More efficient network stats fetching
+  //More efficient network stats fetching
   Future<void> _fetchNetworkStats() async {
     try {
       // Create a list of promises for parallel execution

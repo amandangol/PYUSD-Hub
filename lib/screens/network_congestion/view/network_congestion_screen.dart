@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../model/networkcongestion_model.dart';
 import '../provider/network_congestion_provider.dart';
@@ -664,7 +665,7 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
 
     // Calculate USD cost (example ETH price = $3000)
     const ethPrice = 3000.0;
-    final gweiToEth = 0.000000001;
+    const gweiToEth = 0.000000001;
 
     final lowCostEth = lowGwei * gasUsed * gweiToEth;
     final mediumCostEth = mediumGwei * gasUsed * gweiToEth;
@@ -1055,7 +1056,8 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
                                         style: TextStyle(fontSize: 12),
                                       ),
                                       Text(
-                                        '${(block['miner'] as String? ?? '0x').substring(0, 10)}...',
+                                        FormatterUtils.formatAddress(
+                                            '${(block['miner'] as String?)}'),
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontFamily: 'monospace',
@@ -1128,8 +1130,6 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
       ),
     );
   }
-
-  // Transactions Tab Components
 
   // Transaction Activity Overview
   Widget _buildTransactionOverview(NetworkCongestionProvider provider) {

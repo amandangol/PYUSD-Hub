@@ -2,16 +2,15 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../providers/network_provider.dart';
-import '../../../providers/wallet_provider.dart';
 import '../../../utils/snackbar_utils.dart';
 
 class NetworkSection extends StatelessWidget {
-  final WalletProvider walletProvider;
+  final NetworkProvider networkProvider;
 
   const NetworkSection({
-    Key? key,
-    required this.walletProvider,
-  }) : super(key: key);
+    super.key,
+    required this.networkProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,12 +31,12 @@ class NetworkSection extends StatelessWidget {
           ListTile(
             title: const Text('Network Settings'),
             subtitle: Text(
-              walletProvider.currentNetworkName,
+              networkProvider.currentNetworkName,
               style: TextStyle(color: textColor.withOpacity(0.7)),
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              _showNetworkDialog(context, walletProvider);
+              _showNetworkDialog(context, networkProvider);
             },
           ),
           const Divider(height: 1),
@@ -123,7 +122,8 @@ class NetworkSection extends StatelessWidget {
     }
   }
 
-  void _showNetworkDialog(BuildContext context, WalletProvider walletProvider) {
+  void _showNetworkDialog(
+      BuildContext context, NetworkProvider networkProvider) {
     final networks = [
       {
         'name': 'Ethereum Mainnet',
@@ -202,7 +202,7 @@ class NetworkSection extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final network = networks[index];
                     final currentNetworkName =
-                        walletProvider.currentNetworkName;
+                        networkProvider.currentNetworkName;
                     final isSelected = network['name'] == currentNetworkName;
 
                     return Card(
@@ -242,7 +242,7 @@ class NetworkSection extends StatelessWidget {
                             : null,
                         onTap: () {
                           // Call wallet provider to switch network
-                          walletProvider
+                          networkProvider
                               .switchNetwork(NetworkType.sepoliaTestnet);
                           Navigator.pop(context);
 

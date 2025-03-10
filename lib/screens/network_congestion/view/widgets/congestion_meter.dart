@@ -7,11 +7,11 @@ class CongestionMeter extends StatelessWidget {
   final String description;
 
   const CongestionMeter({
-    Key? key,
+    super.key,
     required this.level,
     required this.label,
     required this.description,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -19,7 +19,6 @@ class NetworkCongestionData {
   final int averageTxPerBlock;
   final int gasLimit;
 
-  // Update constructor by adding these parameters
   NetworkCongestionData({
     required this.currentGasPrice,
     required this.averageGasPrice,
@@ -42,7 +41,6 @@ class NetworkCongestionData {
     required this.gasLimit,
   });
 
-  // Update copyWith method by adding these parameters
   NetworkCongestionData copyWith({
     double? currentGasPrice,
     double? averageGasPrice,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'dart:async';
 import '../main.dart';
 import '../providers/wallet_provider.dart';
@@ -41,11 +42,11 @@ class _SplashScreenState extends State<SplashScreen>
     if (_isInitializing) return;
     _isInitializing = true;
 
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
       // Initialize wallet only once
-      await walletProvider.initWallet();
+      await authProvider.initWallet();
 
       if (mounted) {
         setState(() {});

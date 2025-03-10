@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'package:pyusd_forensics/main.dart';
 import '../../providers/wallet_provider.dart';
 import '../../widgets/loading_overlay.dart';
@@ -35,9 +36,8 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
     });
 
     try {
-      final walletProvider =
-          Provider.of<WalletProvider>(context, listen: false);
-      await walletProvider
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider
           .importWalletFromMnemonic(_mnemonicController.text.trim());
 
       if (mounted) {

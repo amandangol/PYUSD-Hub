@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/utils/datetime_utils.dart';
-import '../../../models/transaction.dart';
+import '../../transactions/transaction_details/model/transaction.dart';
 import '../../../providers/network_provider.dart';
-import '../../../providers/transactiondetail_provider.dart';
-import '../../../utils/formataddress_utils.dart';
-import '../../transactions/transaction_details/transaction_detail_screen.dart';
+import '../../../utils/formatter_utils.dart';
+import '../../transactions/transaction_details/provider/transactiondetail_provider.dart';
+import '../../transactions/transaction_details/view/transaction_detail_screen.dart';
 
 class TransactionItem extends StatefulWidget {
   final TransactionModel transaction;
@@ -14,12 +14,12 @@ class TransactionItem extends StatefulWidget {
   final Color cardColor;
 
   const TransactionItem({
-    Key? key,
+    super.key,
     required this.transaction,
     required this.currentAddress,
     required this.isDarkMode,
     required this.cardColor,
-  }) : super(key: key);
+  });
 
   @override
   State<TransactionItem> createState() => _TransactionItemState();

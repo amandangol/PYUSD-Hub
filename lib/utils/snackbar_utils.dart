@@ -7,7 +7,7 @@ class SnackbarUtil {
     bool isError = false,
     Duration duration = const Duration(seconds: 3),
     SnackBarAction? action,
-    IconData? icon, // Optional icon
+    IconData? icon,
   }) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;

@@ -10,7 +10,7 @@ class DateTimeUtils {
       } else if (input is DateTime) {
         dateTime = input;
       } else {
-        throw FormatException('Invalid date format');
+        throw const FormatException('Invalid date format');
       }
 
       final DateFormat formatter = DateFormat('MMM dd, yyyy • HH:mm:ss');
@@ -19,15 +19,4 @@ class DateTimeUtils {
       return 'Invalid date';
     }
   }
-}
-
-void main() {
-  // Testing with DateTime object
-  print(DateTimeUtils.formatDateTime(DateTime.now()));
-
-  // Testing with String timestamp
-  print(DateTimeUtils.formatDateTime("2024-03-07T14:30:00Z"));
-
-  // Testing with an invalid input
-  print(DateTimeUtils.formatDateTime("invalid-date"));
 }

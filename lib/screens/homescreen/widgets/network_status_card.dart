@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/network_provider.dart';
-import '../../../providers/wallet_provider.dart';
 
 class NetworkStatusCard extends StatefulWidget {
   final bool isDarkMode;
   final bool initialShowNetworkSelector;
 
   const NetworkStatusCard({
-    Key? key,
+    super.key,
     required this.isDarkMode,
     this.initialShowNetworkSelector = false,
-  }) : super(key: key);
+  });
 
   @override
   State<NetworkStatusCard> createState() => _NetworkStatusCardState();
@@ -28,8 +27,8 @@ class _NetworkStatusCardState extends State<NetworkStatusCard> {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
-    final currentNetwork = walletProvider.currentNetwork;
+    final networkProvider = Provider.of<NetworkProvider>(context);
+    final currentNetwork = networkProvider.currentNetwork;
     final cardColor =
         widget.isDarkMode ? const Color(0xFF252543) : Colors.white;
 
@@ -177,7 +176,7 @@ class _NetworkStatusCardState extends State<NetworkStatusCard> {
                     isSelected: currentNetwork == NetworkType.sepoliaTestnet,
                     isDarkMode: widget.isDarkMode,
                     onTap: () {
-                      walletProvider.switchNetwork(NetworkType.sepoliaTestnet);
+                      networkProvider.switchNetwork(NetworkType.sepoliaTestnet);
                       setState(() {
                         showNetworkSelector = false;
                       });
@@ -189,7 +188,8 @@ class _NetworkStatusCardState extends State<NetworkStatusCard> {
                     isSelected: currentNetwork == NetworkType.ethereumMainnet,
                     isDarkMode: widget.isDarkMode,
                     onTap: () {
-                      walletProvider.switchNetwork(NetworkType.ethereumMainnet);
+                      networkProvider
+                          .switchNetwork(NetworkType.ethereumMainnet);
                       setState(() {
                         showNetworkSelector = false;
                       });

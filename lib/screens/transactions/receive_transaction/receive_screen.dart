@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/utils/formataddress_utils.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
+import 'package:pyusd_forensics/providers/network_provider.dart';
+import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -14,12 +15,16 @@ import '../../../providers/wallet_provider.dart';
 import '../../../utils/snackbar_utils.dart';
 
 class ReceiveScreen extends StatelessWidget {
-  const ReceiveScreen({Key? key}) : super(key: key);
+  const ReceiveScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
-    final address = walletProvider.getCurrentAddress() ?? '';
+    final networkProvider = Provider.of<NetworkProvider>(context);
+
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    final address = authProvider.getCurrentAddress() ?? '';
 
     // Get the token balance
     final tokenBalance = walletProvider.tokenBalance;
@@ -61,7 +66,7 @@ class ReceiveScreen extends StatelessWidget {
               color: textColor,
             ),
             onPressed: () {
-              walletProvider.refreshWalletData(forceRefresh: true);
+              walletProvider.refreshBalances(forceRefresh: true);
             },
           ),
         ],
@@ -175,7 +180,7 @@ class ReceiveScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    walletProvider.currentNetworkName,
+                                    networkProvider.currentNetworkName,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,

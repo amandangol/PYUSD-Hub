@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/providers/network_provider.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/wallet_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../utils/formataddress_utils.dart';
+import '../../utils/formatter_utils.dart';
 import '../../utils/snackbar_utils.dart';
 import '../wallet_selection_screen.dart';
 
@@ -63,6 +63,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final walletProvider = Provider.of<WalletProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     final backgroundColor = theme.scaffoldBackgroundColor;
@@ -115,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             title: const Text('Wallet Address'),
                             subtitle: Text(
                               FormatterUtils.formatAddress(
-                                  walletProvider.wallet?.address ?? ''),
+                                  authProvider.wallet?.address ?? ''),
                               style: TextStyle(
                                 fontFamily: 'monospace',
                                 color: textColor.withOpacity(0.7),
@@ -126,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // Copy address logic
                               Clipboard.setData(
                                 ClipboardData(
-                                    text: walletProvider.wallet?.address ?? ''),
+                                    text: authProvider.wallet?.address ?? ''),
                               );
                               SnackbarUtil.showSnackbar(
                                 context: context,
@@ -142,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: () {
                               // Navigate to private key export with security checks
                               _showPrivateKeyDialog(
-                                  context, walletProvider.wallet);
+                                  context, authProvider.wallet);
                             },
                           ),
                           const Divider(height: 1),
@@ -153,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: () {
                               // Navigate to recovery phrase backup with security checks
                               _showRecoveryPhraseDialog(
-                                  context, walletProvider.wallet);
+                                  context, authProvider.wallet);
                             },
                           ),
                         ],
@@ -280,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ListTile(
                             title: const Text('Network Settings'),
                             subtitle: Text(
-                              walletProvider.currentNetworkName,
+                              "Sepolia Testnet",
                               style:
                                   TextStyle(color: textColor.withOpacity(0.7)),
                             ),
@@ -710,68 +712,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: networks.length,
-                  itemBuilder: (context, index) {
-                    final network = networks[index];
-                    final currentNetworkName =
-                        walletProvider.currentNetworkName;
-                    final isSelected = network['name'] == currentNetworkName;
+              // Expanded(
+              //   child: ListView.builder(
+              //     shrinkWrap: true,
+              //     itemCount: networks.length,
+              //     itemBuilder: (context, index) {
+              //       final network = networks[index];
+              //       final currentNetworkName =
+              //           walletProvider.currentNetworkName;
+              //       final isSelected = network['name'] == currentNetworkName;
 
-                    return Card(
-                      elevation: isSelected ? 2 : 0,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.transparent,
-                          width: 1,
-                        ),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              (network['color'] as Color).withOpacity(0.2),
-                          child: Icon(
-                            network['icon'] as IconData,
-                            color: network['color'] as Color,
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          network['name'] as String,
-                          style: TextStyle(
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        subtitle: Text('Chain ID: ${network['chainId']}'),
-                        trailing: isSelected
-                            ? Icon(Icons.check_circle,
-                                color: Theme.of(context).colorScheme.primary)
-                            : null,
-                        onTap: () {
-                          // Call wallet provider to switch network
-                          walletProvider
-                              .switchNetwork(NetworkType.sepoliaTestnet);
-                          Navigator.pop(context);
+              //       return Card(
+              //         elevation: isSelected ? 2 : 0,
+              //         margin: const EdgeInsets.symmetric(vertical: 4),
+              //         shape: RoundedRectangleBorder(
+              //           borderRadius: BorderRadius.circular(8),
+              //           side: BorderSide(
+              //             color: isSelected
+              //                 ? Theme.of(context).colorScheme.primary
+              //                 : Colors.transparent,
+              //             width: 1,
+              //           ),
+              //         ),
+              //         child: ListTile(
+              //           leading: CircleAvatar(
+              //             backgroundColor:
+              //                 (network['color'] as Color).withOpacity(0.2),
+              //             child: Icon(
+              //               network['icon'] as IconData,
+              //               color: network['color'] as Color,
+              //               size: 20,
+              //             ),
+              //           ),
+              //           title: Text(
+              //             network['name'] as String,
+              //             style: TextStyle(
+              //               fontWeight: isSelected
+              //                   ? FontWeight.bold
+              //                   : FontWeight.normal,
+              //             ),
+              //           ),
+              //           subtitle: Text('Chain ID: ${network['chainId']}'),
+              //           trailing: isSelected
+              //               ? Icon(Icons.check_circle,
+              //                   color: Theme.of(context).colorScheme.primary)
+              //               : null,
+              //           onTap: () {
+              //             // Call wallet provider to switch network
+              //             walletProvider
+              //                 .switchNetwork(NetworkType.sepoliaTestnet);
+              //             Navigator.pop(context);
 
-                          // Show confirmation
-                          SnackbarUtil.showSnackbar(
-                            context: context,
-                            message: 'Switched to ${network['name']}',
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
+              //             // Show confirmation
+              //             SnackbarUtil.showSnackbar(
+              //               context: context,
+              //               message: 'Switched to ${network['name']}',
+              //             );
+              //           },
+              //         ),
+              //       );
+              //     },
+              //   ),
+              // ),
               const SizedBox(height: 8),
               const Text(
                 'Note: Switching networks may require reloading your wallet data',

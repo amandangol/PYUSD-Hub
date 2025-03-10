@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'package:pyusd_forensics/main.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
@@ -20,7 +21,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
@@ -163,7 +164,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                               });
 
                               try {
-                                await walletProvider.createWallet();
+                                await authProvider.createWallet();
                                 if (mounted) {
                                   setState(() {
                                     _walletCreated = true;
@@ -283,7 +284,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                               ),
                               child: _phraseVisible
                                   ? Text(
-                                      walletProvider.wallet?.mnemonic ?? '',
+                                      authProvider.wallet?.mnemonic ?? '',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500,
@@ -315,7 +316,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                             ElevatedButton.icon(
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(
-                                  text: walletProvider.wallet?.mnemonic ?? '',
+                                  text: authProvider.wallet?.mnemonic ?? '',
                                 ));
                                 SnackbarUtil.showSnackbar(
                                   context: context,
