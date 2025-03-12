@@ -11,8 +11,8 @@ import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../providers/wallet_provider.dart';
-import '../../../utils/snackbar_utils.dart';
+import '../../../../providers/wallet_provider.dart';
+import '../../../../utils/snackbar_utils.dart';
 
 class ReceiveScreen extends StatelessWidget {
   const ReceiveScreen({super.key});

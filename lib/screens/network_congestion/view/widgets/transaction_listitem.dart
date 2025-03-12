@@ -85,7 +85,7 @@ class TransactionListItem extends StatelessWidget {
               children: [
                 if (value > 0)
                   Text(
-                    'Value: ${value.toStringAsFixed(4)} ETH',
+                    'Value: ${value.toStringAsFixed(3)} ETH',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

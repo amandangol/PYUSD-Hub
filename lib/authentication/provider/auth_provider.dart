@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/wallet.dart';
+import '../model/wallet.dart';
 import '../service/wallet_service.dart';
 
 class AuthProvider extends ChangeNotifier {

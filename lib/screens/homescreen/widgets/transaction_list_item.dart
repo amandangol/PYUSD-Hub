@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/utils/datetime_utils.dart';
-import '../../transactions/transaction_details/model/transaction.dart';
+import '../../transactions/model/transaction_model.dart';
 import '../../../providers/network_provider.dart';
 import '../../../utils/formatter_utils.dart';
-import '../../transactions/transaction_details/provider/transactiondetail_provider.dart';
-import '../../transactions/transaction_details/view/transaction_detail_screen.dart';
+import '../../transactions/provider/transactiondetail_provider.dart';
+import '../../transactions/view/transaction_details/transaction_detail_screen.dart';
 
 class TransactionItem extends StatefulWidget {
   final TransactionModel transaction;
@@ -31,14 +31,12 @@ class _TransactionItemState extends State<TransactionItem> {
   // Helper method to format amount - updated to match the detail screen formatting
   String _formatAmount(TransactionModel tx) {
     if (tx.tokenSymbol != null) {
-      int decimalPlaces = tx.tokenDecimals!;
-
       // print(
       //     'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
 
-      return '${tx.value.toStringAsFixed(2)} ${tx.tokenSymbol}';
+      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {
-      return '${tx.value.toStringAsFixed(6)} ETH';
+      return '${tx.amount.toStringAsFixed(6)} ETH';
     }
   }
 
@@ -102,7 +100,7 @@ class _TransactionItemState extends State<TransactionItem> {
               print('  From: ${detailsToShow.from}');
               print('  To: ${detailsToShow.to}');
               print(
-                  '  Value: ${detailsToShow.value} ${detailsToShow.tokenSymbol ?? 'ETH'}');
+                  '  Value: ${detailsToShow.amount} ${detailsToShow.tokenSymbol ?? 'ETH'}');
               print('  Gas Used: ${detailsToShow.gasUsed}');
               print('  Gas Price: ${detailsToShow.gasPrice} Gwei');
               print('  Fee: ${detailsToShow.fee} ETH');

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../transaction_details/model/transaction.dart';
-import '../../../providers/network_provider.dart';
-import '../../homescreen/widgets/transaction_list_item.dart';
-import '../transaction_details/provider/transactiondetail_provider.dart';
+import '../../model/transaction_model.dart';
+import '../../../../providers/network_provider.dart';
+import '../../../homescreen/widgets/transaction_list_item.dart';
+import '../../provider/transactiondetail_provider.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
   final List<TransactionModel> transactions;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../homescreen/widgets/custom_textfield.dart';
+
+import 'custom_textfield.dart';
 
 class AmountCard extends StatelessWidget {
   final TextEditingController amountController;

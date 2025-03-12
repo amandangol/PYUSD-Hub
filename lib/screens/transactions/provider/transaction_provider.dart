@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../authentication/provider/auth_provider.dart';
-import '../screens/transactions/transaction_details/model/transaction.dart';
-import '../services/ethereum_rpc_service.dart';
-import 'network_provider.dart';
-import 'wallet_provider.dart';
+import '../../../authentication/provider/auth_provider.dart';
+import '../../../services/ethereum_rpc_service.dart';
+import '../../../providers/network_provider.dart';
+import '../../../providers/wallet_provider.dart';
+import '../model/transaction_model.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
@@ -24,12 +24,19 @@ class TransactionProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isFetchingTransactions = false;
   String? _error;
+  bool _disposed = false;
+  bool _hasMoreTransactions = true;
+  int _currentPage = 1;
+  static const int _perPage = 20;
+  DateTime? _lastRefresh;
+  static const _cacheValidDuration = Duration(minutes: 2);
 
   // Getters
   List<TransactionModel> get transactions =>
       _transactionsByNetwork[_networkProvider.currentNetwork] ?? [];
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get hasMoreTransactions => _hasMoreTransactions;
 
   // Constructor with dependency injection
   TransactionProvider({
@@ -61,36 +68,221 @@ class TransactionProvider extends ChangeNotifier {
     fetchTransactions(forceRefresh: true);
   }
 
-  // Fetch transactions
-  Future<void> fetchTransactions({bool forceRefresh = false}) async {
-    if (!_authProvider.hasWallet) return;
-    if (_isFetchingTransactions && !forceRefresh) return;
+  // Add this method to the TransactionProvider class
 
-    final address = _authProvider.getCurrentAddress();
-    if (address == null || address.isEmpty) return;
+  // Check if transactions are being fetched
+  bool get isFetchingTransactions => _isFetchingTransactions;
 
-    _isFetchingTransactions = true;
-    _setLoading(true);
+  // Get transactions with optional filtering
+  List<TransactionModel> getFilteredTransactions({
+    TransactionDirection? direction,
+    String? tokenSymbol,
+  }) {
+    final allTransactions = transactions;
 
+    return allTransactions.where((tx) {
+      // Filter by direction if specified
+      if (direction != null && tx.direction != direction) {
+        return false;
+      }
+
+      // Filter by token symbol if specified
+      if (tokenSymbol != null) {
+        if (tokenSymbol == 'ETH') {
+          return tx.tokenSymbol ==
+              null; // ETH transactions have no token symbol
+        } else {
+          return tx.tokenSymbol == tokenSymbol;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  // Add this method to fetch transaction details
+  Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
       final currentNetwork = _networkProvider.currentNetwork;
+      final address = _authProvider.getCurrentAddress() ?? '';
 
-      // Fetch transactions (last 20)
-      final transactions = await _rpcService.getTransactions(
+      return await _rpcService.getTransactionDetails(
         rpcUrl,
+        txHash,
+        currentNetwork,
+        address,
+      );
+    } catch (e) {
+      _setError('Failed to get transaction details: $e');
+      return null;
+    }
+  }
+
+// Add this method to fetch transactions
+  Future<void> fetchTransactions({bool forceRefresh = false}) async {
+    final address = _authProvider.getCurrentAddress();
+    if (address == null || address.isEmpty) {
+      return;
+    }
+
+    // Skip if already loading
+    if (_isFetchingTransactions) return;
+
+    // Check if cache is valid
+    if (!forceRefresh && _lastRefresh != null) {
+      final timeSinceLastRefresh = DateTime.now().difference(_lastRefresh!);
+      if (timeSinceLastRefresh < _cacheValidDuration &&
+          transactions.isNotEmpty) {
+        return;
+      }
+    }
+
+    _isFetchingTransactions = true;
+    notifyListeners();
+
+    try {
+      final currentNetwork = _networkProvider.currentNetwork;
+
+      // Reset data if forced refresh
+      if (forceRefresh) {
+        _currentPage = 1;
+        _hasMoreTransactions = true;
+        _transactionsByNetwork[currentNetwork] = [];
+      }
+
+      // Skip if we already loaded all transactions
+      if (!_hasMoreTransactions && !forceRefresh) {
+        _isFetchingTransactions = false;
+        notifyListeners();
+        return;
+      }
+
+      // Fetch normal transactions
+      final ethTxs = await _rpcService.getTransactions(
         address,
         currentNetwork,
-        limit: 20,
+        page: _currentPage,
+        perPage: _perPage,
       );
 
-      _transactionsByNetwork[currentNetwork] = transactions;
+      // Fetch token transactions
+      final tokenTxs = await _rpcService.getTokenTransactions(
+        address,
+        currentNetwork,
+        page: _currentPage,
+        perPage: _perPage,
+      );
+
+      // Process and combine transactions
+      List<TransactionModel> newTransactions = [];
+
+      // Process ETH transactions
+      for (final tx in ethTxs) {
+        // Skip contract deployments where 'to' is null
+        if (tx['to'] == null || tx['to'] == '') continue;
+
+        final direction = _compareAddresses(tx['from'], address)
+            ? TransactionDirection.outgoing
+            : TransactionDirection.incoming;
+
+        final status = int.parse(tx['isError'] ?? '0') == 0
+            ? TransactionStatus.confirmed
+            : TransactionStatus.failed;
+
+        final timestamp = DateTime.fromMillisecondsSinceEpoch(
+            int.parse(tx['timeStamp']) * 1000);
+
+        newTransactions.add(TransactionModel(
+          hash: tx['hash'],
+          timestamp: timestamp,
+          from: tx['from'],
+          to: tx['to'] ?? '',
+          amount: double.parse(tx['value']) / 1e18,
+          gasUsed: double.parse(tx['gasUsed']),
+          gasPrice: double.parse(tx['gasPrice']) / 1e9,
+          status: status,
+          direction: direction,
+          confirmations: int.parse(tx['confirmations']),
+          network: currentNetwork,
+        ));
+      }
+
+      // Process token transactions
+      for (final tx in tokenTxs) {
+        final direction = _compareAddresses(tx['from'], address)
+            ? TransactionDirection.outgoing
+            : TransactionDirection.incoming;
+
+        final status = TransactionStatus
+            .confirmed; // Token txs are always confirmed in Etherscan API
+
+        final timestamp = DateTime.fromMillisecondsSinceEpoch(
+            int.parse(tx['timeStamp']) * 1000);
+
+        // Token amount with proper decimals
+        final decimals = int.parse(tx['tokenDecimal']);
+        final rawAmount = BigInt.parse(tx['value']);
+        final tokenAmount =
+            rawAmount.toDouble() / BigInt.from(10).pow(decimals).toDouble();
+
+        newTransactions.add(TransactionModel(
+          hash: tx['hash'],
+          timestamp: timestamp,
+          from: tx['from'],
+          to: tx['to'],
+          amount: tokenAmount,
+          gasUsed: double.parse(tx['gasUsed']),
+          gasPrice: double.parse(tx['gasPrice']) / 1e9,
+          status: status,
+          direction: direction,
+          confirmations: int.parse(tx['confirmations']),
+          tokenSymbol: tx['tokenSymbol'],
+          tokenName: tx['tokenName'],
+          tokenDecimals: decimals,
+          tokenContractAddress: tx['contractAddress'],
+          network: currentNetwork,
+        ));
+      }
+
+      // Sort by timestamp, newest first
+      newTransactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      // Determine if we have more transactions
+      _hasMoreTransactions = newTransactions.length >= _perPage;
+      _currentPage++;
+
+      // Add to existing transactions
+      if (_transactionsByNetwork[currentNetwork] == null) {
+        _transactionsByNetwork[currentNetwork] = [];
+      }
+
+      if (forceRefresh) {
+        _transactionsByNetwork[currentNetwork] = newTransactions;
+      } else {
+        _transactionsByNetwork[currentNetwork]!.addAll(newTransactions);
+      }
+
+      // Update last refresh time
+      _lastRefresh = DateTime.now();
     } catch (e) {
-      print('Error fetching transactions: $e');
+      _setError('Failed to fetch transactions: $e');
     } finally {
       _isFetchingTransactions = false;
-      _setLoading(false);
+      notifyListeners();
     }
+  }
+
+// Load more transactions
+  Future<void> loadMoreTransactions() async {
+    if (!_hasMoreTransactions || _isFetchingTransactions) return;
+    await fetchTransactions();
+  }
+
+// Helper method to compare addresses (case-insensitive)
+  bool _compareAddresses(String? address1, String? address2) {
+    if (address1 == null || address2 == null) return false;
+    return address1.toLowerCase() == address2.toLowerCase();
   }
 
   // Send ETH to another address
@@ -115,7 +307,7 @@ class TransactionProvider extends ChangeNotifier {
       // Force refresh after transaction
       await Future.delayed(const Duration(seconds: 2));
       await _walletProvider.refreshBalances(forceRefresh: true);
-      await fetchTransactions(forceRefresh: true);
+      // await fetchTransactions(forceRefresh: true);
 
       return txHash;
     } catch (e) {
@@ -156,7 +348,7 @@ class TransactionProvider extends ChangeNotifier {
       // Force refresh after transaction
       await Future.delayed(const Duration(seconds: 2));
       await _walletProvider.refreshBalances(forceRefresh: true);
-      await fetchTransactions(forceRefresh: true);
+      // await fetchTransactions(forceRefresh: true);
 
       return txHash;
     } catch (e) {
@@ -168,24 +360,24 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  // Get transaction details
-  Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
-    try {
-      final rpcUrl = _networkProvider.currentRpcEndpoint;
-      final currentNetwork = _networkProvider.currentNetwork;
-      final address = _authProvider.getCurrentAddress() ?? '';
+  // // Get transaction details
+  // Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
+  //   try {
+  //     final rpcUrl = _networkProvider.currentRpcEndpoint;
+  //     final currentNetwork = _networkProvider.currentNetwork;
+  //     final address = _authProvider.getCurrentAddress() ?? '';
 
-      return await _rpcService.getTransactionDetails(
-        rpcUrl,
-        txHash,
-        currentNetwork,
-        address,
-      );
-    } catch (e) {
-      _setError('Failed to get transaction details: $e');
-      return null;
-    }
-  }
+  //     return await _rpcService.getTransactionDetails(
+  //       rpcUrl,
+  //       txHash,
+  //       currentNetwork,
+  //       address,
+  //     );
+  //   } catch (e) {
+  //     _setError('Failed to get transaction details: $e');
+  //     return null;
+  //   }
+  // }
 
   // Estimate gas for ETH transfer
   Future<int> estimateEthTransferGas(String toAddress, double amount) async {
@@ -317,29 +509,28 @@ class TransactionProvider extends ChangeNotifier {
 
   // Helper methods
   void _setLoading(bool loading) {
+    if (_disposed) return;
     _isLoading = loading;
     notifyListeners();
   }
 
   void _setError(String? errorMsg) {
+    if (_disposed) return;
     _error = errorMsg;
     print('TransactionProvider error: $errorMsg');
     notifyListeners();
   }
 
   void clearError() {
+    if (_disposed) return;
     _error = null;
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _networkProvider.removeListener(_onNetworkChanged);
     super.dispose();
   }
-}
-
-void updateDependencies(AuthProvider authProvider,
-    NetworkProvider networkProvider, WalletProvider walletProvider) {
-  // Update if references have changed
 }

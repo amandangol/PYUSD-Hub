@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../transactions/all_transactions/all_transaction_screen.dart';
-import '../../transactions/transaction_details/model/transaction.dart';
+import '../../transactions/view/all_transactions/all_transaction_screen.dart';
+import '../../transactions/model/transaction_model.dart';
 import 'transaction_list_item.dart';
 
 class TransactionsSection extends StatefulWidget {

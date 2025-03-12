@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:web3dart/web3dart.dart';
-import '../../../homescreen/widgets/custom_textfield.dart';
+import 'custom_textfield.dart';
 
 class RecipientCard extends StatelessWidget {
   final TextEditingController addressController;

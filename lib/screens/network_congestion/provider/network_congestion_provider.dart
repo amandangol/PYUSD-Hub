@@ -940,7 +940,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
         return data['result'];
       } else {
-        print('HTTP error: ${response.statusCode}, Body: ${response.body}');
+        // print('HTTP error: ${response.statusCode}, Body: ${response.body}');
         return null;
       }
     } catch (e) {

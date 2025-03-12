@@ -8,6 +8,8 @@ class WalletProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
+  final Map<NetworkType, DateTime> _lastRefreshTimes = {};
+  final Duration _cacheDuration = const Duration(minutes: 3);
 
   // Balances
   final Map<NetworkType, double> _balances = {};
@@ -21,8 +23,8 @@ class WalletProvider extends ChangeNotifier {
 
   // State
   bool _isBalanceRefreshing = false;
-  bool _isRefreshingBalance = false;
   String? _error;
+  bool _isDisposed = false;
 
   // Timer for auto-refresh
   Timer? _refreshTimer;
@@ -34,6 +36,13 @@ class WalletProvider extends ChangeNotifier {
   bool get isBalanceRefreshing => _isBalanceRefreshing;
   String? get error => _error;
   NetworkType get currentNetwork => _networkProvider.currentNetwork;
+
+  bool _isCacheValid(NetworkType network) {
+    final lastRefresh = _lastRefreshTimes[network];
+    if (lastRefresh == null) return false;
+
+    return DateTime.now().difference(lastRefresh) < _cacheDuration;
+  }
 
   // Constructor with dependency injection
   WalletProvider({
@@ -79,24 +88,38 @@ class WalletProvider extends ChangeNotifier {
   // Refresh balances
   Future<void> refreshBalances({bool forceRefresh = false}) async {
     if (!_authProvider.hasWallet) return;
-    if (_isRefreshingBalance && !forceRefresh) return;
 
     final address = _authProvider.getCurrentAddress();
     if (address == null || address.isEmpty) return;
 
-    _isRefreshingBalance = true;
+    final currentNetwork = _networkProvider.currentNetwork;
+
+    // Check if we really need to refresh
+    if (!forceRefresh && _isCacheValid(currentNetwork)) {
+      // Use cached data
+      return;
+    }
+
+    // Only set loading state if we're actually going to refresh
     _isBalanceRefreshing = true;
     notifyListeners();
 
     try {
       await _refreshBalances(address);
+
+      // Update cache timestamp
+      _lastRefreshTimes[currentNetwork] = DateTime.now();
+
       clearError();
     } catch (e) {
-      _setError('Error refreshing balances: $e');
+      if (!_isDisposed) {
+        _setError('Error refreshing balances: $e');
+      }
     } finally {
-      _isRefreshingBalance = false;
-      _isBalanceRefreshing = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isBalanceRefreshing = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -151,6 +174,7 @@ class WalletProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _refreshTimer?.cancel();
     _networkProvider.removeListener(_onNetworkChanged);
     super.dispose();

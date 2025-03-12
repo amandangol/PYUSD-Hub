@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../model/transaction.dart';
+import '../../model/transaction_model.dart';
 import '../../../../providers/network_provider.dart';
-import '../provider/transactiondetail_provider.dart';
+import '../../provider/transactiondetail_provider.dart';
 import '../../../../utils/datetime_utils.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
@@ -492,15 +492,27 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             _buildDetailRow(
               title: 'Status',
               value: _getStatusTextWithConfirmations(),
-              valueColor: _getStatusColor(widget.transaction.status),
+              valueColor: _getStatusColor(_detailedTransaction!.status),
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Block',
-              value: _detailedTransaction!.blockNumber > 0
-                  ? _detailedTransaction!.blockNumber.toString()
+              value: _detailedTransaction!.blockNumber != 'Pending'
+                  ? _detailedTransaction!.blockNumber
                   : 'Pending',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
+            ),
+            _buildDetailRow(
+              title: 'Block Hash',
+              value: _detailedTransaction!.blockHash != 'Pending'
+                  ? FormatterUtils.formatHash(_detailedTransaction!.blockHash)
+                  : 'Pending',
+              canCopy: _detailedTransaction!.blockHash != 'Pending',
+              data: _detailedTransaction!.blockHash != 'Pending'
+                  ? _detailedTransaction!.blockHash
+                  : null,
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
@@ -535,6 +547,20 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 textColor: textColor,
                 subtitleColor: subtitleColor,
               ),
+              if (_detailedTransaction!.tokenName != null)
+                _buildDetailRow(
+                  title: 'Token Name',
+                  value: _detailedTransaction!.tokenName!,
+                  textColor: textColor,
+                  subtitleColor: subtitleColor,
+                ),
+              if (_detailedTransaction!.tokenDecimals != null)
+                _buildDetailRow(
+                  title: 'Token Decimals',
+                  value: _detailedTransaction!.tokenDecimals.toString(),
+                  textColor: textColor,
+                  subtitleColor: subtitleColor,
+                ),
               _buildDetailRow(
                 title: 'Token Contract',
                 value: FormatterUtils.formatHash(
@@ -551,6 +577,25 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
+            if (_detailedTransaction!.isError &&
+                _detailedTransaction!.errorMessage != null)
+              _buildDetailRow(
+                title: 'Error',
+                value: _detailedTransaction!.errorMessage!,
+                valueColor: Colors.red,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+              ),
+            if (_detailedTransaction!.data != null &&
+                _detailedTransaction!.data!.length > 2)
+              _buildDetailRow(
+                title: 'Transaction Data',
+                value: FormatterUtils.formatHash(_detailedTransaction!.data!),
+                canCopy: true,
+                data: _detailedTransaction!.data,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+              ),
           ],
         ),
       ),
@@ -593,7 +638,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             _buildDetailRow(
               title: 'Gas Limit',
               value:
-                  '${_detailedTransaction!.gasLimit.toStringAsFixed(0)} units',
+                  '${_detailedTransaction!.gasUsed.toStringAsFixed(0)} units',
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
@@ -619,7 +664,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             _buildDetailRow(
               title: 'Transaction Fee',
-              value: '${_detailedTransaction!.fee.toStringAsFixed(15)} ETH',
+              value: '${_detailedTransaction!.fee.toStringAsFixed(8)} ETH',
               valueColor: widget.isDarkMode ? Colors.orange : Colors.deepOrange,
               textColor: textColor,
               subtitleColor: subtitleColor,
@@ -693,9 +738,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   String _formatAmount(TransactionDetailModel tx) {
     if (tx.tokenSymbol != null) {
-      return '${tx.value.toStringAsFixed(2)} ${tx.tokenSymbol}';
+      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {
-      return '${tx.value.toStringAsFixed(6)} ETH';
+      return '${tx.amount.toStringAsFixed(6)} ETH';
     }
   }
 
@@ -746,8 +791,22 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   String _calculateGasEfficiency() {
-    final double efficiency =
-        (_detailedTransaction!.gasUsed / _detailedTransaction!.gasLimit) * 100;
-    return '${efficiency.toStringAsFixed(1)}%';
+    // Check if gasPrice is not zero to avoid division by zero
+    if (_detailedTransaction!.gasPrice <= 0) {
+      return 'N/A';
+    }
+
+    // Calculate what percentage of the gas limit was actually used
+    final double gasLimit = _detailedTransaction!
+        .gasUsed; // Assuming gasUsed here is actually gas limit
+    final double gasUsed = _detailedTransaction!.gasUsed;
+
+    // If we have both values, calculate efficiency
+    if (gasLimit > 0 && gasUsed > 0) {
+      final double efficiency = (gasUsed / gasLimit) * 100;
+      return '${efficiency.toStringAsFixed(1)}%';
+    }
+
+    return 'N/A';
   }
 }

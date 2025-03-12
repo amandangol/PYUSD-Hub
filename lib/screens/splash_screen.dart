@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'dart:async';
 import '../main.dart';
-import '../providers/wallet_provider.dart';
 import '../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {

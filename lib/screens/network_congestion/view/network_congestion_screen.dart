@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,7 +11,7 @@ import 'widgets/stats_card.dart';
 import 'widgets/transaction_listitem.dart';
 
 class NetworkDashboardScreen extends StatefulWidget {
-  const NetworkDashboardScreen({Key? key}) : super(key: key);
+  const NetworkDashboardScreen({super.key});
 
   @override
   State<NetworkDashboardScreen> createState() => _NetworkDashboardScreenState();

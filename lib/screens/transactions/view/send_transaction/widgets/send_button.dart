@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../providers/wallet_provider.dart';
+import '../../../../../providers/wallet_provider.dart';
 
 class SendButton extends StatelessWidget {
   final String selectedAsset;

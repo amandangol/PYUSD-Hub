@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
-import '../screens/transactions/transaction_details/model/transaction.dart';
 import '../providers/network_provider.dart';
+import '../screens/transactions/transaction_details/model/transaction.dart';
 
 class EthereumRpcService {
   static const String erc20TransferAbi =
@@ -142,145 +142,6 @@ class EthereumRpcService {
     }
   }
 
-  // Get recent transactions for an address
-  Future<List<TransactionModel>> getTransactions(
-      String rpcUrl, String address, NetworkType networkType,
-      {int limit = 10}) async {
-    if (address.isEmpty) return [];
-
-    try {
-      final String apiDomain = _getEtherscanDomain(networkType);
-
-      // Common query parameters
-      final Map<String, String> commonParams = {
-        'address': address,
-        'startblock': '0',
-        'endblock': '99999999',
-        'page': '1',
-        'offset': limit.toString(),
-        'sort': 'desc',
-        'apikey': _etherscanApiKey,
-      };
-
-      // Get normal ETH transactions
-      final Uri ethTxUrl = Uri.https(apiDomain, '/api', {
-        'module': 'account',
-        'action': 'txlist',
-        ...commonParams,
-      });
-
-      // Get ERC20 token transactions
-      final Uri tokenTxUrl = Uri.https(apiDomain, '/api', {
-        'module': 'account',
-        'action': 'tokentx',
-        ...commonParams,
-      });
-
-      // Execute requests in parallel
-      final futures = await Future.wait([
-        http.get(ethTxUrl),
-        http.get(tokenTxUrl),
-      ]);
-
-      final ethResponse = futures[0];
-      final tokenResponse = futures[1];
-
-      List<TransactionModel> allTransactions = [];
-
-      // Process ETH transactions
-      if (ethResponse.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(ethResponse.body);
-
-        if (jsonResponse['status'] == '1' && jsonResponse['result'] is List) {
-          final List<dynamic> txList = jsonResponse['result'];
-
-          // Convert raw JSON to TransactionModel objects
-          allTransactions.addAll(txList.map((tx) {
-            final bool isOutgoing =
-                address.toLowerCase() == tx['from'].toString().toLowerCase();
-            final BigInt valueWei = _parseBigInt(tx['value']);
-            final double valueEth = valueWei / BigInt.from(10).pow(18);
-
-            return TransactionModel(
-              hash: tx['hash'],
-              from: tx['from'],
-              to: tx['to'],
-              value: valueEth,
-              timestamp: DateTime.fromMillisecondsSinceEpoch(
-                  int.parse(tx['timeStamp']) * 1000),
-              networkType: networkType,
-              direction: isOutgoing
-                  ? TransactionDirection.outgoing
-                  : TransactionDirection.incoming,
-              status: tx['txreceipt_status'] == '1'
-                  ? TransactionStatus.confirmed
-                  : TransactionStatus.failed,
-            );
-          }));
-        }
-      }
-
-      // Process token transactions
-      if (tokenResponse.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse =
-            jsonDecode(tokenResponse.body);
-
-        if (jsonResponse['status'] == '1' && jsonResponse['result'] is List) {
-          final List<dynamic> txList = jsonResponse['result'];
-
-          // Convert raw JSON to TransactionModel objects
-          allTransactions.addAll(txList.map((tx) {
-            final bool isOutgoing =
-                address.toLowerCase() == tx['from'].toString().toLowerCase();
-            final int tokenDecimals = int.parse(tx['tokenDecimal']);
-
-            // Handle different value formats safely
-            BigInt tokenValueWei;
-            if (tx['value'] is String) {
-              final String valueStr = tx['value'];
-              tokenValueWei = valueStr.startsWith('0x')
-                  ? _parseBigInt(valueStr)
-                  : BigInt.parse(valueStr);
-            } else {
-              tokenValueWei = BigInt.from(tx['value'] as int? ?? 0);
-            }
-
-            final double tokenValue =
-                tokenValueWei / BigInt.from(10).pow(tokenDecimals);
-
-            return TransactionModel(
-              hash: tx['hash'],
-              from: tx['from'],
-              to: tx['to'],
-              value: tokenValue,
-              timestamp: DateTime.fromMillisecondsSinceEpoch(
-                  int.parse(tx['timeStamp']) * 1000),
-              networkType: networkType,
-              direction: isOutgoing
-                  ? TransactionDirection.outgoing
-                  : TransactionDirection.incoming,
-              status: TransactionStatus.confirmed,
-              tokenSymbol: tx['tokenSymbol'],
-              tokenContractAddress: tx['contractAddress'],
-              tokenDecimals: tokenDecimals,
-            );
-          }));
-        }
-      }
-
-      // Sort all transactions by timestamp (newest first)
-      allTransactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-      // Limit the combined result
-      return allTransactions.length > limit
-          ? allTransactions.sublist(0, limit)
-          : allTransactions;
-    } catch (e) {
-      print('Error fetching transactions: $e');
-      return [];
-    }
-  }
-
   // Extract token information from transaction input data
   Future<(String, double, int?)> _extractTokenTransferData(
       String rpcUrl, Map<String, dynamic> tx, String to) async {
@@ -325,172 +186,6 @@ class EthereumRpcService {
     }
 
     return (actualTo, tokenValue, tokenDecimals);
-  }
-
-  // Get detailed transaction information using JSON RPC
-  Future<TransactionDetailModel?> getTransactionDetails(
-    String rpcUrl,
-    String txHash,
-    NetworkType networkType,
-    String currentAddress,
-  ) async {
-    if (txHash.isEmpty) return null;
-
-    try {
-      // Execute requests in parallel to improve performance
-      final futures = await Future.wait([
-        _makeRpcCall(rpcUrl, 'eth_getTransactionByHash', [txHash]),
-        _makeRpcCall(rpcUrl, 'eth_getTransactionReceipt', [txHash]),
-      ]);
-
-      final txResponse = futures[0];
-      final receiptResponse = futures[1];
-
-      if (txResponse['result'] == null) {
-        throw Exception('Transaction not found');
-      }
-
-      final tx = txResponse['result'];
-      final receipt = receiptResponse['result'];
-
-      // Get block info only if transaction is confirmed
-      final blockResponse = tx['blockHash'] != null
-          ? await _makeRpcCall(
-              rpcUrl, 'eth_getBlockByHash', [tx['blockHash'], false])
-          : {'result': null};
-
-      final block = blockResponse['result'];
-
-      // Parse basic transaction data
-      final String from = tx['from'];
-      final String to = tx['to'] ?? 'Contract Creation';
-      final BigInt valueWei = _parseBigInt(tx['value']);
-      final double valueEth = EtherAmount.fromBigInt(
-        EtherUnit.wei,
-        valueWei,
-      ).getValueInUnit(EtherUnit.ether);
-
-      // Parse gas data
-      final BigInt gasLimit = _parseBigInt(tx['gas']);
-      final BigInt gasUsed =
-          receipt != null ? _parseBigInt(receipt['gasUsed']) : BigInt.zero;
-      final BigInt gasPrice = _parseBigInt(tx['gasPrice']);
-      final double feeEth = EtherAmount.fromBigInt(
-        EtherUnit.wei,
-        gasUsed * gasPrice,
-      ).getValueInUnit(EtherUnit.ether);
-
-      // Parse timestamp
-      final BigInt timestamp =
-          block != null ? _parseBigInt(block['timestamp']) : BigInt.zero;
-      final DateTime dateTime =
-          DateTime.fromMillisecondsSinceEpoch(timestamp.toInt() * 1000);
-
-      // Determine transaction status
-      TransactionStatus status;
-      if (receipt == null) {
-        status = TransactionStatus.pending;
-      } else if (receipt['status'] == '0x1') {
-        status = TransactionStatus.confirmed;
-      } else {
-        status = TransactionStatus.failed;
-      }
-
-      // Get block number
-      final BigInt blockNumber =
-          block != null ? _parseBigInt(block['number']) : BigInt.zero;
-
-      // Token transfer variables
-      String? tokenSymbol;
-      String? tokenContractAddress;
-      int? tokenDecimals;
-      double tokenValue = 0.0;
-      String actualTo = to;
-
-      // Check if this is a token transfer
-      if (tx['input'].startsWith('0xa9059cbb')) {
-        tokenContractAddress = to;
-
-        // Extract token transfer details
-        final tokenTransferData =
-            await _extractTokenTransferData(rpcUrl, tx, to);
-        actualTo = tokenTransferData.$1;
-        tokenValue = tokenTransferData.$2;
-        tokenDecimals = tokenTransferData.$3;
-
-        // Try to fetch token symbol
-        try {
-          // Symbol function signature: '0x95d89b41'
-          final symbolResponse = await _makeRpcCall(
-            rpcUrl,
-            'eth_call',
-            [
-              {'to': tokenContractAddress, 'data': '0x95d89b41'},
-              'latest'
-            ],
-          );
-
-          final String symbolHex = symbolResponse['result'];
-          if (symbolHex.length > 2) {
-            final String hexString =
-                symbolHex.substring(130).replaceAll('00', '');
-            tokenSymbol = String.fromCharCodes(
-              List.generate(
-                hexString.length ~/ 2,
-                (i) =>
-                    int.parse(hexString.substring(i * 2, i * 2 + 2), radix: 16),
-              ),
-            );
-          } else {
-            tokenSymbol = 'Unknown Token';
-          }
-        } catch (e) {
-          print('Error fetching token symbol: $e');
-          tokenSymbol = 'Unknown Token';
-        }
-      }
-
-      // Determine transaction direction
-      final bool isOutgoing =
-          currentAddress.toLowerCase() == from.toLowerCase();
-      final TransactionDirection direction = isOutgoing
-          ? TransactionDirection.outgoing
-          : TransactionDirection.incoming;
-
-      // Get confirmations if transaction is confirmed
-      final int confirmations = block != null
-          ? await _calculateConfirmations(rpcUrl, blockNumber)
-          : 0;
-
-      // Create transaction detail model
-      return TransactionDetailModel(
-        hash: txHash,
-        from: from,
-        to: actualTo,
-        value: tokenContractAddress != null ? tokenValue : valueEth,
-        timestamp: dateTime,
-        blockNumber: blockNumber.toInt(),
-        gasLimit: gasLimit.toDouble(),
-        gasPrice: EtherAmount.fromBigInt(
-          EtherUnit.wei,
-          gasPrice,
-        ).getValueInUnit(EtherUnit.gwei),
-        gasUsed: gasUsed.toDouble(),
-        fee: feeEth,
-        status: status,
-        networkType: networkType,
-        direction: direction,
-        tokenContractAddress: tokenContractAddress,
-        tokenSymbol: tokenSymbol,
-        tokenDecimals: tokenDecimals,
-        nonce: _parseBigInt(tx['nonce']).toInt(),
-        input: tx['input'],
-        confirmations: confirmations,
-      );
-    } catch (e) {
-      print('Error fetching transaction details: $e');
-      return null;
-    }
   }
 
   // Get chain ID for the current network
@@ -572,6 +267,272 @@ class EthereumRpcService {
     } catch (e) {
       throw Exception('Failed to send ETH transaction: $e');
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactions(
+    String address,
+    NetworkType networkType, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final domain = _getEtherscanDomain(networkType);
+    final uri = Uri.https(domain, '/api', {
+      'module': 'account',
+      'action': 'txlist',
+      'address': address,
+      'page': page.toString(),
+      'offset': perPage.toString(),
+      'sort': 'desc',
+      'apikey': _etherscanApiKey,
+    });
+
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch transactions: ${response.statusCode}');
+      }
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (data['status'] != '1') {
+        // No transactions or error
+        if (data['message'] == 'No transactions found') {
+          return [];
+        }
+        throw Exception('Etherscan API error: ${data['message']}');
+      }
+
+      return List<Map<String, dynamic>>.from(data['result']);
+    } catch (e) {
+      print('Error fetching transactions: $e');
+      throw Exception('Failed to fetch transactions: $e');
+    }
+  }
+
+  // Get token transactions for an address (from Etherscan API)
+  Future<List<Map<String, dynamic>>> getTokenTransactions(
+    String address,
+    NetworkType networkType, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final domain = _getEtherscanDomain(networkType);
+    final uri = Uri.https(domain, '/api', {
+      'module': 'account',
+      'action': 'tokentx',
+      'address': address,
+      'page': page.toString(),
+      'offset': perPage.toString(),
+      'sort': 'desc',
+      'apikey': _etherscanApiKey,
+    });
+
+    try {
+      final response = await http.get(uri);
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Failed to fetch token transactions: ${response.statusCode}');
+      }
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (data['status'] != '1') {
+        // No transactions or error
+        if (data['message'] == 'No transactions found') {
+          return [];
+        }
+        throw Exception('Etherscan API error: ${data['message']}');
+      }
+
+      return List<Map<String, dynamic>>.from(data['result']);
+    } catch (e) {
+      print('Error fetching token transactions: $e');
+      throw Exception('Failed to fetch token transactions: $e');
+    }
+  }
+
+  // Fix for getTransactionDetails method in the service
+  Future<TransactionDetailModel> getTransactionDetails(
+    String rpcUrl,
+    String txHash,
+    NetworkType networkType,
+    String userAddress,
+  ) async {
+    try {
+      // First get basic transaction information
+      final txResponse = await _makeRpcCall(
+        rpcUrl,
+        'eth_getTransactionByHash',
+        [txHash],
+      );
+
+      final txData = txResponse['result'] as Map<String, dynamic>;
+      if (txData.isEmpty) {
+        throw Exception('Transaction not found');
+      }
+
+      // Get transaction receipt for status and gas used
+      final receiptResponse = await _makeRpcCall(
+        rpcUrl,
+        'eth_getTransactionReceipt',
+        [txHash],
+      );
+
+      final receiptData = receiptResponse['result'] as Map<String, dynamic>?;
+
+      // Handle pending transactions
+      if (receiptData == null) {
+        return TransactionDetailModel(
+          hash: txHash,
+          timestamp: DateTime.now(), // Pending tx, use current time
+          from: txData['from'] ?? '',
+          to: txData['to'] ?? '',
+          amount: txData['value'] != null && txData['value'] != '0x0'
+              ? _parseBigInt(txData['value']).toDouble() / 1e18
+              : 0.0,
+          gasUsed: txData['gas'] != null
+              ? _parseBigInt(txData['gas']).toDouble()
+              : 0.0,
+          gasPrice: txData['gasPrice'] != null
+              ? _parseBigInt(txData['gasPrice']).toDouble() / 1e9
+              : 0.0,
+          status: TransactionStatus.pending,
+          direction: _compareAddresses(txData['from'], userAddress)
+              ? TransactionDirection.outgoing
+              : TransactionDirection.incoming,
+          confirmations: 0,
+          network: networkType,
+          blockNumber: 'Pending',
+          nonce: txData['nonce'] != null
+              ? int.parse(txData['nonce'].substring(2), radix: 16)
+              : 0,
+          blockHash: 'Pending',
+          isError: false,
+          data: txData['input'],
+        );
+      }
+
+      // Get block for timestamp
+      final blockResponse = await _makeRpcCall(
+        rpcUrl,
+        'eth_getBlockByHash',
+        [receiptData['blockHash'], false],
+      );
+
+      final blockData = blockResponse['result'] as Map<String, dynamic>;
+
+      // Check if it's a token transfer
+      bool isTokenTransfer = txData['input'] != null &&
+          txData['input'].toString().startsWith('0xa9059cbb');
+
+      String toAddress = txData['to'] ?? '';
+      double amount = 0.0;
+      String? tokenSymbol;
+      String? tokenName;
+      int? tokenDecimals;
+      String? tokenContractAddress;
+
+      if (isTokenTransfer) {
+        // Get token details
+        try {
+          tokenContractAddress = toAddress;
+          final tokenDetails = await getTokenDetails(rpcUrl, toAddress);
+          tokenName = tokenDetails['name'];
+          tokenSymbol = tokenDetails['symbol'];
+          tokenDecimals = tokenDetails['decimals'];
+
+          // Extract token transfer details
+          final (actualTo, tokenValue, decimals) =
+              await _extractTokenTransferData(rpcUrl, txData, toAddress);
+          toAddress = actualTo;
+          amount = tokenValue;
+          tokenDecimals = decimals;
+        } catch (e) {
+          print('Error getting token details: $e');
+        }
+      } else {
+        // Regular ETH transfer
+        amount = txData['value'] != null
+            ? _parseBigInt(txData['value']).toDouble() / 1e18
+            : 0.0;
+      }
+
+      // Determine transaction status
+      final status = receiptData['status'] == '0x1'
+          ? TransactionStatus.confirmed
+          : TransactionStatus.failed;
+
+      // Calculate confirmations
+      final txBlockNumber = _parseBigInt(receiptData['blockNumber']);
+      final confirmations =
+          await _calculateConfirmations(rpcUrl, txBlockNumber);
+
+      // Gather error message if available
+      // Gather error message if available
+      String? errorMessage;
+      if (status == TransactionStatus.failed) {
+        try {
+          // Get the error message if available
+          final traceResponse = await _makeRpcCall(
+            rpcUrl,
+            'debug_traceTransaction',
+            [
+              txHash,
+              {"tracer": "callTracer"}
+            ],
+          );
+
+          final traceData = traceResponse['result'] as Map<String, dynamic>?;
+          if (traceData != null && traceData.containsKey('error')) {
+            errorMessage = traceData['error'];
+          } else {
+            errorMessage = 'Transaction failed';
+          }
+        } catch (e) {
+          errorMessage = 'Transaction failed';
+        }
+      }
+      return TransactionDetailModel(
+        hash: txHash,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(
+            int.parse(blockData['timestamp'].substring(2), radix: 16) * 1000),
+        from: txData['from'] ?? '',
+        to: toAddress,
+        amount: amount,
+        gasUsed: receiptData['gasUsed'] != null
+            ? _parseBigInt(receiptData['gasUsed']).toDouble()
+            : 0.0,
+        gasPrice: txData['gasPrice'] != null
+            ? _parseBigInt(txData['gasPrice']).toDouble() / 1e9
+            : 0.0,
+        status: status,
+        direction: _compareAddresses(txData['from'], userAddress)
+            ? TransactionDirection.outgoing
+            : TransactionDirection.incoming,
+        confirmations: confirmations,
+        tokenSymbol: tokenSymbol,
+        tokenName: tokenName,
+        tokenDecimals: tokenDecimals,
+        tokenContractAddress: tokenContractAddress,
+        network: networkType,
+        blockNumber: receiptData['blockNumber'] != null
+            ? _parseBigInt(receiptData['blockNumber']).toString()
+            : '0',
+        nonce: txData['nonce'] != null
+            ? int.parse(txData['nonce'].substring(2), radix: 16)
+            : 0,
+        blockHash: receiptData['blockHash'] ?? '',
+        isError: status == TransactionStatus.failed,
+        errorMessage: errorMessage,
+        data: txData['input'],
+      );
+    } catch (e) {
+      throw Exception('Failed to get transaction details: $e');
+    }
+  }
+
+  // Helper method to compare addresses (case-insensitive)
+  bool _compareAddresses(String? address1, String? address2) {
+    if (address1 == null || address2 == null) return false;
+    return address1.toLowerCase() == address2.toLowerCase();
   }
 
   // Send token transaction with improved error handling

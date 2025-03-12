@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Import all providers
 import 'authentication/provider/auth_provider.dart';
 import 'providers/network_provider.dart';
-import 'providers/transaction_provider.dart';
+import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 
@@ -16,7 +16,7 @@ import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/transactions/transaction_details/provider/transactiondetail_provider.dart';
+import 'screens/transactions/provider/transactiondetail_provider.dart';
 import 'authentication/service/wallet_service.dart';
 import 'theme/app_theme.dart';
 
@@ -45,10 +45,10 @@ class MyApp extends StatelessWidget {
   final ThemeProvider themeProvider;
 
   const MyApp({
-    Key? key,
+    super.key,
     required this.initialThemeIsDark,
     required this.themeProvider,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

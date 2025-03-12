@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../model/transaction.dart';
-import '../../../../services/ethereum_rpc_service.dart';
-import '../../../../providers/network_provider.dart';
+import '../../../services/ethereum_rpc_service.dart';
+import '../../../providers/network_provider.dart';
+import '../model/transaction_model.dart';
 
 class TransactionDetailProvider with ChangeNotifier {
   final EthereumRpcService _rpcService = EthereumRpcService();

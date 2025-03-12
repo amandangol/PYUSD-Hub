@@ -1,16 +1,14 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'package:pyusd_forensics/providers/network_provider.dart';
-import 'package:pyusd_forensics/providers/transaction_provider.dart';
+import 'package:pyusd_forensics/screens/transactions/provider/transaction_provider.dart';
 import '../../common/pyusd_appbar.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
-import '../transactions/receive_transaction/receive_screen.dart';
-import '../transactions/send_transaction/send_screen.dart';
+import '../transactions/view/receive_transaction/receive_screen.dart';
+import '../transactions/view/send_transaction/send_screen.dart';
 import '../settingscreen/settings_screen.dart';
 import 'widgets/action_button.dart';
 import 'widgets/balance_card.dart';
@@ -27,62 +25,72 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool _isRefreshing = false;
-  bool _initialRefreshDone = false;
 
-  // Add debounce timer
-  Timer? _debounceTimer;
+  // Track the last refresh time
+  DateTime? _lastRefreshTime;
+  // Minimum duration between auto-refreshes (5 minutes)
+  final _refreshCooldown = const Duration(minutes: 5);
 
   @override
   void initState() {
     super.initState();
-    // Schedule data refresh after widget is built, but only once
+
+    // Check if we need to refresh on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_initialRefreshDone) {
-        _refreshWalletData();
-      }
+      _checkAndRefreshIfNeeded();
     });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _debounceTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _refreshWalletData({bool forceRefresh = false}) async {
-    // Prevent multiple refreshes in quick succession using debounce
+  // Check if refresh is needed based on time elapsed
+  void _checkAndRefreshIfNeeded() {
+    final now = DateTime.now();
+
+    // If no previous refresh or if cooldown period has passed
+    if (_lastRefreshTime == null ||
+        now.difference(_lastRefreshTime!) > _refreshCooldown) {
+      // Refresh in background without blocking UI
+      _refreshWalletData(showLoadingIndicator: false);
+    }
+  }
+
+  Future<void> _refreshWalletData(
+      {bool forceRefresh = false, bool showLoadingIndicator = true}) async {
+    // Prevent concurrent refreshes
     if (_isRefreshing && !forceRefresh) return;
 
-    // Cancel any existing timer
-    _debounceTimer?.cancel();
-
-    // Set up a new timer
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
-      if (!mounted) return;
-
+    // Only show loading indicator if explicitly requested
+    if (showLoadingIndicator) {
       setState(() {
         _isRefreshing = true;
       });
+    }
 
-      try {
-        final walletProvider =
-            Provider.of<WalletProvider>(context, listen: false);
+    try {
+      final walletProvider =
+          Provider.of<WalletProvider>(context, listen: false);
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
 
-        await walletProvider.refreshBalances();
+      await walletProvider.refreshBalances(forceRefresh: forceRefresh);
+      transactionProvider.fetchTransactions(forceRefresh: true);
 
-        // Mark initial refresh as done to prevent duplicate refreshes
-        _initialRefreshDone = true;
-      } catch (e) {
-        print('Error refreshing wallet data: $e');
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isRefreshing = false;
-          });
-        }
+      // Update the last refresh timestamp
+      _lastRefreshTime = DateTime.now();
+    } catch (e) {
+      print('Error refreshing wallet data: $e');
+    } finally {
+      if (mounted && showLoadingIndicator) {
+        setState(() {
+          _isRefreshing = false;
+        });
       }
-    });
+    }
   }
 
   @override
@@ -106,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         backgroundColor: backgroundColor,
         appBar: PyusdAppBar(
           isDarkMode: isDarkMode,
-          hasWallet: true, // Set to true when wallet is available
+          hasWallet: true,
           onSettingsPressed: () {
             Navigator.push(
               context,
@@ -126,6 +134,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       bool isDarkMode,
       Color primaryColor,
       String walletAddress) {
+    String networkTypeToString(NetworkType networkType) {
+      return networkType.name;
+    }
+
     return RefreshIndicator(
       onRefresh: () => _refreshWalletData(forceRefresh: true),
       child: SingleChildScrollView(
@@ -142,7 +154,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 walletAddress: walletAddress,
                 isRefreshing: walletProvider.isBalanceRefreshing,
                 primaryColor: primaryColor,
-                networkName: networkProvider.currentNetwork.toString(),
+                networkName:
+                    networkTypeToString(networkProvider.currentNetwork),
               ),
 
               // Action Buttons
@@ -156,8 +169,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     MaterialPageRoute(
                         builder: (context) => const SendTransactionScreen()),
                   ).then((_) {
-                    // Refresh after sending transaction
-                    _refreshWalletData();
+                    if (mounted) {
+                      // Check if providers are still valid before refreshing
+                      _refreshWalletData();
+                    }
                   });
                 },
                 onReceivePressed: () {
