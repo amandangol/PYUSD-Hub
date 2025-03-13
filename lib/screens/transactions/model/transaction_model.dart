@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:intl/intl.dart';
 
 import '../../../providers/network_provider.dart';

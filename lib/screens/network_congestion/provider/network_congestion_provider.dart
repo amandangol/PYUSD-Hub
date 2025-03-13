@@ -60,6 +60,66 @@ class NetworkCongestionProvider with ChangeNotifier {
   // Cache for transaction receipts to reduce RPC calls
   final Map<String, Map<String, dynamic>> _transactionReceiptCache = {};
 
+  Future<dynamic> _makeRpcCall(String method, List<dynamic> params) async {
+    try {
+      final response = await http.post(
+        Uri.parse(_httpRpcUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'jsonrpc': '2.0',
+          'id': _requestId++,
+          'method': method,
+          'params': params
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data.containsKey('error')) {
+          print('RPC error: ${data['error']}');
+          return null;
+        }
+        return data['result'];
+      } else {
+        // print('HTTP error: ${response.statusCode}, Body: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('RPC call error: $e');
+      return null;
+    }
+  }
+
+  Future<void> refresh() async {
+    _isLoading = true;
+    notifyListeners();
+
+    // Clear existing data
+    _recentBlocks.clear();
+    _recentPyusdTransactions.clear();
+    _transactionReceiptCache.clear();
+
+    try {
+      // Fetch all critical data in parallel
+      await Future.wait([
+        _fetchNetworkStats(),
+        _fetchInitialBlocks(),
+        _fetchPyusdTransactionActivity(),
+        _fetchPendingQueueDetails(),
+      ]);
+
+      // Update last refreshed time
+      _congestionData = _congestionData.copyWith(
+        lastRefreshed: DateTime.now(),
+      );
+    } catch (e) {
+      print('Error during refresh: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
@@ -151,8 +211,10 @@ class NetworkCongestionProvider with ChangeNotifier {
           for (int i = 0; i < numBlocksToFetch; i++) {
             final blockNumber = latestBlockNumber - i;
             // Skip blocks we already have
-            if (newestBlockInCache != null && blockNumber <= newestBlockInCache)
+            if (newestBlockInCache != null &&
+                blockNumber <= newestBlockInCache) {
               continue;
+            }
 
             final blockHex = '0x${blockNumber.toRadixString(16)}';
             blockFutures.add(_fetchBlock(blockHex));
@@ -207,7 +269,6 @@ class NetworkCongestionProvider with ChangeNotifier {
     }
   }
 
-  // New method to fetch pending queue details
   Future<void> _fetchPendingQueueDetails() async {
     try {
       // Get txpool content for more detailed analysis
@@ -553,7 +614,6 @@ class NetworkCongestionProvider with ChangeNotifier {
           }
         }
       }
-
       // Calculate average block size
       if (_recentBlocks.isNotEmpty) {
         final avgBlockSize = totalSize / _recentBlocks.length;
@@ -917,66 +977,6 @@ class NetworkCongestionProvider with ChangeNotifier {
     } catch (e) {
       print('Error counting PYUSD transactions in block: $e');
     }
-  }
-
-  Future<dynamic> _makeRpcCall(String method, List<dynamic> params) async {
-    try {
-      final response = await http.post(
-        Uri.parse(_httpRpcUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'jsonrpc': '2.0',
-          'id': _requestId++,
-          'method': method,
-          'params': params
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data.containsKey('error')) {
-          print('RPC error: ${data['error']}');
-          return null;
-        }
-        return data['result'];
-      } else {
-        // print('HTTP error: ${response.statusCode}, Body: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('RPC call error: $e');
-      return null;
-    }
-  }
-
-  Future<void> refresh() async {
-    _isLoading = true;
-    notifyListeners();
-
-    // Clear existing data
-    _recentBlocks.clear();
-    _recentPyusdTransactions.clear();
-    _transactionReceiptCache.clear();
-
-    try {
-      // Fetch all critical data in parallel
-      await Future.wait([
-        _fetchNetworkStats(),
-        _fetchInitialBlocks(),
-        _fetchPyusdTransactionActivity(),
-        _fetchPendingQueueDetails(),
-      ]);
-
-      // Update last refreshed time
-      _congestionData = _congestionData.copyWith(
-        lastRefreshed: DateTime.now(),
-      );
-    } catch (e) {
-      print('Error during refresh: $e');
-    }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   @override

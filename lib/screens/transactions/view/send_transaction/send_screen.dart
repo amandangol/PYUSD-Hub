@@ -242,6 +242,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           context: context,
           message: 'Error sending transaction: $e',
           isError: true);
+      print(e);
     } finally {
       setState(() {
         _isLoading = false;

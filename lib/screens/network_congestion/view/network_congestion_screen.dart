@@ -1110,10 +1110,12 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
                           icon: const Icon(Icons.open_in_new, size: 18),
                           onPressed: () async {
                             // Open block explorer to view block details
-                            final url =
-                                'https://etherscan.io/block/$blockNumber';
-                            if (await canLaunch(url)) {
-                              await launch(url);
+                            final url = Uri.parse(
+                                'https://etherscan.io/block/$blockNumber');
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url);
+                            } else {
+                              throw 'Could not lauch $url';
                             }
                           },
                         ),
@@ -1164,7 +1166,7 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
                     description: 'PYUSD txs',
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: StatsCard(
                     title: 'Volume 24h',
@@ -1255,7 +1257,6 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
 
                       return TransactionListItem(
                         transaction: transaction,
-                        // expandedView: expandedView,
                       );
                     },
                   ),

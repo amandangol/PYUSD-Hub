@@ -114,9 +114,11 @@ class TransactionListItem extends StatelessWidget {
         trailing: IconButton(
           icon: const Icon(Icons.open_in_new, size: 20),
           onPressed: () async {
-            final url = 'https://etherscan.io/tx/$txHash';
-            if (await canLaunch(url)) {
-              await launch(url);
+            final url = Uri.parse('https://etherscan.io/tx/$txHash');
+            if (await canLaunchUrl(url)) {
+              await launchUrl(url);
+            } else {
+              throw 'Could not launch $url';
             }
           },
           tooltip: 'View on Etherscan',

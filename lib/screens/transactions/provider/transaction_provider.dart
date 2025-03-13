@@ -52,8 +52,10 @@ class TransactionProvider extends ChangeNotifier {
     // Listen for network changes
     _networkProvider.addListener(_onNetworkChanged);
 
-    // Initial transactions fetch
-    fetchTransactions();
+    // Initial transactions fetch - only if wallet is initialized
+    if (_authProvider.getCurrentAddress() != null) {
+      fetchTransactions();
+    }
   }
 
   // Initialize maps for all available networks
@@ -126,7 +128,6 @@ class TransactionProvider extends ChangeNotifier {
       return;
     }
 
-    // Skip if already loading
     if (_isFetchingTransactions) return;
 
     // Check if cache is valid
@@ -179,10 +180,13 @@ class TransactionProvider extends ChangeNotifier {
 
       // Process ETH transactions
       for (final tx in ethTxs) {
+        // Skip transactions with missing critical data
+        if (tx['hash'] == null || tx['timeStamp'] == null) continue;
+
         // Skip contract deployments where 'to' is null
         if (tx['to'] == null || tx['to'] == '') continue;
 
-        final direction = _compareAddresses(tx['from'], address)
+        final direction = _compareAddresses(tx['from'] ?? '', address)
             ? TransactionDirection.outgoing
             : TransactionDirection.incoming;
 
@@ -193,17 +197,23 @@ class TransactionProvider extends ChangeNotifier {
         final timestamp = DateTime.fromMillisecondsSinceEpoch(
             int.parse(tx['timeStamp']) * 1000);
 
+        // Additional null checks for numeric values
+        final value = tx['value'] ?? '0';
+        final gasUsed = tx['gasUsed'] ?? '0';
+        final gasPrice = tx['gasPrice'] ?? '0';
+        final confirmations = tx['confirmations'] ?? '0';
+
         newTransactions.add(TransactionModel(
           hash: tx['hash'],
           timestamp: timestamp,
-          from: tx['from'],
+          from: tx['from'] ?? '',
           to: tx['to'] ?? '',
-          amount: double.parse(tx['value']) / 1e18,
-          gasUsed: double.parse(tx['gasUsed']),
-          gasPrice: double.parse(tx['gasPrice']) / 1e9,
+          amount: double.parse(value) / 1e18,
+          gasUsed: double.parse(gasUsed),
+          gasPrice: double.parse(gasPrice) / 1e9,
           status: status,
           direction: direction,
-          confirmations: int.parse(tx['confirmations']),
+          confirmations: int.parse(confirmations),
           network: currentNetwork,
         ));
       }
@@ -268,8 +278,10 @@ class TransactionProvider extends ChangeNotifier {
     } catch (e) {
       _setError('Failed to fetch transactions: $e');
     } finally {
-      _isFetchingTransactions = false;
-      notifyListeners();
+      if (!_disposed) {
+        _isFetchingTransactions = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -307,12 +319,13 @@ class TransactionProvider extends ChangeNotifier {
       // Force refresh after transaction
       await Future.delayed(const Duration(seconds: 2));
       await _walletProvider.refreshBalances(forceRefresh: true);
-      // await fetchTransactions(forceRefresh: true);
+      await fetchTransactions(forceRefresh: true);
 
       return txHash;
     } catch (e) {
       final error = 'Failed to send ETH: $e';
       _setError(error);
+      print(e);
       throw Exception(error);
     } finally {
       _setLoading(false);
@@ -345,39 +358,23 @@ class TransactionProvider extends ChangeNotifier {
         gasLimit: gasLimit,
       );
 
-      // Force refresh after transaction
-      await Future.delayed(const Duration(seconds: 2));
-      await _walletProvider.refreshBalances(forceRefresh: true);
-      // await fetchTransactions(forceRefresh: true);
+      // Force refresh after transaction only if not disposed
+      if (!_disposed) {
+        await Future.delayed(const Duration(seconds: 2));
+        await _walletProvider.refreshBalances(forceRefresh: true);
+        await fetchTransactions(forceRefresh: true);
+      }
 
       return txHash;
     } catch (e) {
       final error = 'Failed to send PYUSD: $e';
       _setError(error);
+      print('Failed to send PYUSD: $e');
       throw Exception(error);
     } finally {
       _setLoading(false);
     }
   }
-
-  // // Get transaction details
-  // Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
-  //   try {
-  //     final rpcUrl = _networkProvider.currentRpcEndpoint;
-  //     final currentNetwork = _networkProvider.currentNetwork;
-  //     final address = _authProvider.getCurrentAddress() ?? '';
-
-  //     return await _rpcService.getTransactionDetails(
-  //       rpcUrl,
-  //       txHash,
-  //       currentNetwork,
-  //       address,
-  //     );
-  //   } catch (e) {
-  //     _setError('Failed to get transaction details: $e');
-  //     return null;
-  //   }
-  // }
 
   // Estimate gas for ETH transfer
   Future<int> estimateEthTransferGas(String toAddress, double amount) async {

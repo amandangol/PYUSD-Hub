@@ -25,30 +25,44 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool _isRefreshing = false;
+  bool hasError = false;
 
   // Track the last refresh time
   DateTime? _lastRefreshTime;
   // Minimum duration between auto-refreshes (5 minutes)
   final _refreshCooldown = const Duration(minutes: 5);
 
+  // Timer for periodic refresh
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
 
-    // Check if we need to refresh on init
+    // Check if we need to refresh on init - with a small delay to ensure providers are ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndRefreshIfNeeded();
+
+      // Set up a periodic refresh timer (every 5 minutes)
+      _refreshTimer = Timer.periodic(_refreshCooldown, (_) {
+        if (mounted) {
+          _checkAndRefreshIfNeeded();
+        }
+      });
     });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
   // Check if refresh is needed based on time elapsed
   void _checkAndRefreshIfNeeded() {
+    if (!mounted) return;
+
     final now = DateTime.now();
 
     // If no previous refresh or if cooldown period has passed
@@ -64,27 +78,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Prevent concurrent refreshes
     if (_isRefreshing && !forceRefresh) return;
 
+    if (!mounted) return;
+
     // Only show loading indicator if explicitly requested
-    if (showLoadingIndicator) {
+    if (showLoadingIndicator && mounted) {
       setState(() {
         _isRefreshing = true;
       });
     }
 
     try {
+      // Get providers safely
+      if (!mounted) return;
+
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
 
+      // Use async/await instead of Future.wait for better control
       await walletProvider.refreshBalances(forceRefresh: forceRefresh);
-      transactionProvider.fetchTransactions(forceRefresh: true);
+      await transactionProvider.fetchTransactions(forceRefresh: forceRefresh);
 
       // Update the last refresh timestamp
       _lastRefreshTime = DateTime.now();
     } catch (e) {
       print('Error refreshing wallet data: $e');
+      if (mounted) {
+        setState(() {
+          hasError = true; // Update the error state
+        });
+      }
     } finally {
+      // Only update state if widget is still mounted and showing indicator
       if (mounted && showLoadingIndicator) {
         setState(() {
           _isRefreshing = false;
@@ -119,7 +145,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SettingsScreen()),
-            );
+            ).then((_) {
+              if (mounted) {
+                _refreshWalletData(forceRefresh: true);
+              }
+            });
           },
           onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
         ),
@@ -138,6 +168,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return networkType.name;
     }
 
+    // Show an error message if there was an error loading data
+    // final hasError = walletProvider.hasError || transactionProvider.hasError;
+
     return RefreshIndicator(
       onRefresh: () => _refreshWalletData(forceRefresh: true),
       child: SingleChildScrollView(
@@ -148,9 +181,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (hasError)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'There was an error loading data. Pull down to refresh.',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               BalanceCard(
                 ethBalance: walletProvider.ethBalance,
-                tokenBalance: walletProvider.tokenBalance, // Add tokenBalance
+                tokenBalance: walletProvider.tokenBalance,
                 walletAddress: walletAddress,
                 isRefreshing: walletProvider.isBalanceRefreshing,
                 primaryColor: primaryColor,
@@ -170,8 +230,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         builder: (context) => const SendTransactionScreen()),
                   ).then((_) {
                     if (mounted) {
-                      // Check if providers are still valid before refreshing
-                      _refreshWalletData();
+                      // Force refresh data after sending transaction
+                      _refreshWalletData(forceRefresh: true);
                     }
                   });
                 },
@@ -200,10 +260,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               TransactionsSection(
                 transactions: transactionProvider.transactions,
                 currentAddress: walletAddress,
-                isLoading: transactionProvider.isLoading &&
-                    !walletProvider.isBalanceRefreshing,
+                isLoading: transactionProvider.isFetchingTransactions,
                 isDarkMode: isDarkMode,
-                primaryColor: primaryColor, // Added primaryColor parameter
+                primaryColor: primaryColor,
               ),
             ],
           ),

@@ -133,17 +133,17 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     // Define all screens
-    final List<Widget> _screens = [
+    final List<Widget> screens = [
       const HomeScreen(),
-      const NetworkDashboardScreen(), // Dashboard screen for network congestion
-      const HomeScreen(), // Placeholder for analytics (could be replaced)
+      const NetworkDashboardScreen(),
+      const HomeScreen(),
       const SettingsScreen(),
     ];
 
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

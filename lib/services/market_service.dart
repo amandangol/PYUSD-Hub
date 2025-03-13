@@ -10,8 +10,7 @@ class MarketService {
       // Map of known token IDs for Coingecko
       final tokenIds = {
         'ETH': 'ethereum',
-        'PYUSD':
-            'paypal-usd', // Replace with actual Coingecko ID when available
+        'PYUSD': 'paypal-usd',
       };
 
       // Convert tokens to their Coingecko IDs

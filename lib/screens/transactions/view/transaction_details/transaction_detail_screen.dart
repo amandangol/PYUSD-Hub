@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../model/transaction_model.dart';
 import '../../../../providers/network_provider.dart';
+import '../../model/transaction_model.dart';
 import '../../provider/transactiondetail_provider.dart';
 import '../../../../utils/datetime_utils.dart';
 

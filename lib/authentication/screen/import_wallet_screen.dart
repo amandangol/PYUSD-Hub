@@ -3,11 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'package:pyusd_forensics/main.dart';
-import '../../providers/wallet_provider.dart';
 import '../../widgets/loading_overlay.dart';
 
 class ImportWalletScreen extends StatefulWidget {
-  const ImportWalletScreen({Key? key}) : super(key: key);
+  const ImportWalletScreen({super.key});
 
   @override
   State<ImportWalletScreen> createState() => _ImportWalletScreenState();

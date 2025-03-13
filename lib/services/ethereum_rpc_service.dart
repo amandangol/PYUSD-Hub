@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../providers/network_provider.dart';
-import '../screens/transactions/transaction_details/model/transaction.dart';
+import '../screens/transactions/model/transaction_model.dart';
 
 class EthereumRpcService {
   static const String erc20TransferAbi =
@@ -394,6 +394,7 @@ class EthereumRpcService {
           gasPrice: txData['gasPrice'] != null
               ? _parseBigInt(txData['gasPrice']).toDouble() / 1e9
               : 0.0,
+
           status: TransactionStatus.pending,
           direction: _compareAddresses(txData['from'], userAddress)
               ? TransactionDirection.outgoing
@@ -465,7 +466,6 @@ class EthereumRpcService {
       final confirmations =
           await _calculateConfirmations(rpcUrl, txBlockNumber);
 
-      // Gather error message if available
       // Gather error message if available
       String? errorMessage;
       if (status == TransactionStatus.failed) {
