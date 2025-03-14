@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pyusd_forensics/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../utils/formatter_utils.dart';
 import '../../provider/network_congestion_provider.dart';
@@ -822,7 +823,7 @@ class BlocksTab extends StatelessWidget {
                             : Column(
                                 children: [
                                   // Show first 5 transactions
-                                  ...transactions.take(5).map((tx) {
+                                  ...transactions.take(3).map((tx) {
                                     final txHash = tx['hash'] as String? ?? '';
                                     final from = tx['from'] as String? ?? '';
                                     final to = tx['to'] as String? ?? '';
@@ -857,7 +858,8 @@ class BlocksTab extends StatelessWidget {
                                             // Close this sheet and show transaction details
                                             Navigator.pop(context);
                                             // Future implementation for showing transaction details
-                                            // _showTransactionDetails(context, tx);
+                                            _showAllTransactionsDialog(context,
+                                                transactions, blockNumber);
 
                                             // For now, just launch etherscan
                                             final url = Uri.parse(
@@ -989,23 +991,11 @@ class BlocksTab extends StatelessWidget {
                                                                       ClipboardData(
                                                                           text:
                                                                               from));
-                                                                  ScaffoldMessenger.of(
-                                                                          context)
-                                                                      .showSnackBar(
-                                                                    SnackBar(
-                                                                      content:
-                                                                          const Text(
-                                                                              'Address copied to clipboard'),
-                                                                      behavior:
-                                                                          SnackBarBehavior
-                                                                              .floating,
-                                                                      backgroundColor:
-                                                                          accentColor,
-                                                                      duration: const Duration(
-                                                                          seconds:
-                                                                              1),
-                                                                    ),
-                                                                  );
+                                                                  SnackbarUtil.showSnackbar(
+                                                                      context:
+                                                                          context,
+                                                                      message:
+                                                                          "Address copied to clipboard");
                                                                 },
                                                                 visualDensity:
                                                                     VisualDensity
@@ -1015,8 +1005,6 @@ class BlocksTab extends StatelessWidget {
                                                                         .zero,
                                                                 constraints:
                                                                     const BoxConstraints(),
-                                                                tooltip:
-                                                                    'Copy address',
                                                               ),
                                                             ],
                                                           ),
@@ -1075,23 +1063,11 @@ class BlocksTab extends StatelessWidget {
                                                                       ClipboardData(
                                                                           text:
                                                                               to));
-                                                                  ScaffoldMessenger.of(
-                                                                          context)
-                                                                      .showSnackBar(
-                                                                    SnackBar(
-                                                                      content:
-                                                                          const Text(
-                                                                              'Address copied to clipboard'),
-                                                                      behavior:
-                                                                          SnackBarBehavior
-                                                                              .floating,
-                                                                      backgroundColor:
-                                                                          accentColor,
-                                                                      duration: const Duration(
-                                                                          seconds:
-                                                                              1),
-                                                                    ),
-                                                                  );
+                                                                  SnackbarUtil.showSnackbar(
+                                                                      context:
+                                                                          context,
+                                                                      message:
+                                                                          "Address copied to clipboard");
                                                                 },
                                                                 visualDensity:
                                                                     VisualDensity
@@ -1115,7 +1091,7 @@ class BlocksTab extends StatelessWidget {
                                         ),
                                       ),
                                     );
-                                  }).toList(),
+                                  }),
 
                                   // "View all" button if more than 5 transactions
                                   if (transactions.length > 5)
@@ -1410,9 +1386,381 @@ class BlocksTab extends StatelessWidget {
     List<dynamic> transactions,
     int blockNumber,
   ) {
-    // Implementation would go here
-    // This would typically show a new screen with all transactions
-    // For now, just open Etherscan block page
-    launchUrl(Uri.parse('https://etherscan.io/block/$blockNumber'));
+    // Theme colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+    final dividerColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final accentColor = Colors.blue;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => Scaffold(
+          backgroundColor: bgColor,
+          appBar: AppBar(
+            title: Text('Block #$blockNumber Transactions'),
+            backgroundColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+            elevation: 0,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.open_in_new),
+                onPressed: () async {
+                  final url =
+                      Uri.parse('https://etherscan.io/block/$blockNumber');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  }
+                },
+                tooltip: 'View on Etherscan',
+              ),
+            ],
+          ),
+          body: Column(
+            children: [
+              // Transactions count header
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: isDark ? Colors.grey[900] : Colors.grey[100],
+                child: Row(
+                  children: [
+                    const Icon(Icons.receipt_long_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Transactions (${transactions.length})',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Transactions list
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: transactions.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    final txHash = tx['hash'] as String? ?? '';
+                    final from = tx['from'] as String? ?? '';
+                    final to = tx['to'] as String? ?? '';
+
+                    // Parse gas price and value if available
+                    final gasPrice = tx['gasPrice'] != null
+                        ? '${(int.parse(tx['gasPrice'].toString().substring(2), radix: 16) / 1e9).toStringAsFixed(2)} Gwei'
+                        : 'N/A';
+
+                    final value = tx['value'] != null
+                        ? '${(int.parse(tx['value'].toString().substring(2), radix: 16) / 1e18).toStringAsFixed(6)} ETH'
+                        : '0 ETH';
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 5,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                          width: 1,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () async {
+                            final url =
+                                Uri.parse('https://etherscan.io/tx/$txHash');
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url);
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Transaction hash
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: accentColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.receipt_rounded,
+                                          color: accentColor, size: 18),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Transaction Hash',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: subtitleColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  FormatterUtils.formatHash(
+                                                      txHash),
+                                                  style: TextStyle(
+                                                    fontFamily: 'monospace',
+                                                    fontSize: 14,
+                                                    color: textColor,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.copy,
+                                                    size: 16),
+                                                onPressed: () {
+                                                  Clipboard.setData(
+                                                      ClipboardData(
+                                                          text: txHash));
+                                                  SnackbarUtil.showSnackbar(
+                                                    context: context,
+                                                    message:
+                                                        "Transaction hash copied to clipboard",
+                                                  );
+                                                },
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(),
+                                                tooltip:
+                                                    'Copy transaction hash',
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+                                Divider(height: 1, color: dividerColor),
+                                const SizedBox(height: 12),
+
+                                // From address
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 40,
+                                      child: Text(
+                                        'From',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: subtitleColor,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        FormatterUtils.formatAddress(from),
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 14,
+                                          color: textColor,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.copy, size: 16),
+                                      onPressed: () {
+                                        Clipboard.setData(
+                                            ClipboardData(text: from));
+                                        SnackbarUtil.showSnackbar(
+                                          context: context,
+                                          message:
+                                              "Address copied to clipboard",
+                                        );
+                                      },
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      tooltip: 'Copy address',
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                // To address
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 40,
+                                      child: Text(
+                                        'To',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: subtitleColor,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        to.isEmpty
+                                            ? '(Contract Creation)'
+                                            : FormatterUtils.formatAddress(to),
+                                        style: TextStyle(
+                                          fontFamily:
+                                              to.isEmpty ? null : 'monospace',
+                                          fontSize: 14,
+                                          fontStyle: to.isEmpty
+                                              ? FontStyle.italic
+                                              : FontStyle.normal,
+                                          color: textColor,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (to.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(Icons.copy, size: 16),
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                              ClipboardData(text: to));
+                                          SnackbarUtil.showSnackbar(
+                                            context: context,
+                                            message:
+                                                "Address copied to clipboard",
+                                          );
+                                        },
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        tooltip: 'Copy address',
+                                      ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+                                Divider(height: 1, color: dividerColor),
+                                const SizedBox(height: 12),
+
+                                // Transaction details
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Value',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: subtitleColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            value,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: textColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Gas Price',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: subtitleColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            gasPrice,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: textColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                // View on Etherscan button
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.open_in_new,
+                                          size: 16),
+                                      label: const Text('View on Etherscan'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: accentColor,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                      onPressed: () async {
+                                        final url = Uri.parse(
+                                            'https://etherscan.io/tx/$txHash');
+                                        if (await canLaunchUrl(url)) {
+                                          await launchUrl(url);
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

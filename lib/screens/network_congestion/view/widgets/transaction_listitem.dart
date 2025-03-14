@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pyusd_forensics/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class TransactionListItem extends StatelessWidget {
@@ -17,22 +18,7 @@ class TransactionListItem extends StatelessWidget {
     // Extract transaction data
     final String txHash = transaction['hash'] ?? '';
     final String from = transaction['from'] ?? '';
-
-    // Safely parse value
-    double value = 0.0;
-    if (transaction['value'] != null) {
-      if (transaction['value'].toString().startsWith('0x')) {
-        try {
-          value = int.parse(transaction['value'].toString().substring(2),
-                  radix: 16) /
-              1e18;
-        } catch (e) {
-          value = 0.0;
-        }
-      } else if (transaction['value'] is num) {
-        value = (transaction['value'] as num).toDouble();
-      }
-    }
+    final String to = transaction['to'] ?? '';
 
     // Determine if pending or confirmed
     final isPending = transaction['blockNumber'] == null;
@@ -67,12 +53,8 @@ class TransactionListItem extends StatelessWidget {
                     onTap: () {
                       if (txHash.isNotEmpty) {
                         Clipboard.setData(ClipboardData(text: txHash));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Hash copied'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
+                        SnackbarUtil.showSnackbar(
+                            context: context, message: "Hash copied");
                       }
                     },
                     child: const Icon(Icons.copy, size: 16),
@@ -109,17 +91,16 @@ class TransactionListItem extends StatelessWidget {
                 style: const TextStyle(fontSize: 12),
               ),
               const SizedBox(height: 4),
+              Text(
+                to.isNotEmpty
+                    ? 'To: ${to.substring(0, min(8, to.length))}...${to.substring(max(0, to.length - 6))}'
+                    : 'To: Unknown',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Changed from ETH to PYUSD to match the app context
-                  Text(
-                    'Value: ${value.toStringAsFixed(3)} PYUSD',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
