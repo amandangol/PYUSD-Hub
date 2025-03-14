@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pyusd_forensics/config/rpc_endpoints.dart';
 
 enum NetworkType {
   sepoliaTestnet,
@@ -11,10 +12,8 @@ class NetworkProvider extends ChangeNotifier {
 
   // RPC endpoint configurations
   final Map<NetworkType, String> _rpcEndpoints = {
-    NetworkType.sepoliaTestnet:
-        'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
-    NetworkType.ethereumMainnet:
-        'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q',
+    NetworkType.sepoliaTestnet: RpcEndpoints.sepoliaTestnetHttpRpcUrl,
+    NetworkType.ethereumMainnet: RpcEndpoints.mainnetHttpRpcUrl,
   };
 
   // Network explorers for viewing transactions

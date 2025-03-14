@@ -3,14 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../../../config/rpc_endpoints.dart';
 import '../model/networkcongestion_model.dart';
 
 class NetworkCongestionProvider with ChangeNotifier {
   // RPC endpoints
-  final String _httpRpcUrl =
-      'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
-  final String _wsRpcUrl =
-      'wss://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/asia-east1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
+  final String _httpRpcUrl = RpcEndpoints.mainnetHttpRpcUrl;
+  final String _wsRpcUrl = RpcEndpoints.mainnetWssRpcUrl;
 
   WebSocketChannel? _wsChannel;
   Timer? _updateTimer;

@@ -139,11 +139,8 @@ class TransactionDetailProvider with ChangeNotifier {
                 currentAddress,
               )
                   .then((details) {
-                if (details != null) {
-                  _transactionDetailsCache[hash] = details;
-                  return details;
-                }
-                return null;
+                _transactionDetailsCache[hash] = details;
+                return details;
               }).catchError((e) {
                 print('Error fetching transaction $hash: $e');
                 return null;

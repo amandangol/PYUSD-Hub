@@ -39,7 +39,7 @@ class SnackbarUtil {
         backgroundColor: isError
             ? theme.colorScheme.error
             : isDarkMode
-                ? theme.colorScheme.surface
+                ? theme.colorScheme.primary
                 : theme.colorScheme.primary.withOpacity(0.9),
         behavior: SnackBarBehavior.floating,
         duration: duration,
