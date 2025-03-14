@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
-import 'package:pyusd_forensics/providers/network_provider.dart';
-import 'package:pyusd_forensics/screens/transactions/provider/transaction_provider.dart';
+import '../../authentication/provider/auth_provider.dart';
 import '../../common/pyusd_appbar.dart';
+import '../../providers/network_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
+import '../transactions/provider/transaction_provider.dart';
 import '../transactions/view/receive_transaction/receive_screen.dart';
 import '../transactions/view/send_transaction/send_screen.dart';
 import '../settingscreen/settings_screen.dart';

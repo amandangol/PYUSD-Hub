@@ -1,987 +1,917 @@
-// import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
-// import 'package:fl_chart/fl_chart.dart';
-// import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import '../provider/pyusd_analytics_provider.dart';
 
-// import '../model/pyusd_stats_model.dart';
-// import '../provider/pyusd_analytics_provider.dart';
+class PyusdInsightsScreen extends StatefulWidget {
+  const PyusdInsightsScreen({Key? key}) : super(key: key);
 
-// class PyusdDashboardScreen extends StatefulWidget {
-//   const PyusdDashboardScreen({Key? key}) : super(key: key);
+  @override
+  State<PyusdInsightsScreen> createState() => _PyusdInsightsScreenState();
+}
 
-//   @override
-//   State<PyusdDashboardScreen> createState() => _PyusdDashboardScreenState();
-// }
+class _PyusdInsightsScreenState extends State<PyusdInsightsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+  final compactFormat = NumberFormat.compact();
+  final percentFormat = NumberFormat.percentPattern();
 
-// class _PyusdDashboardScreenState extends State<PyusdDashboardScreen> {
-//   int _selectedPeriod = 30; // Default to 30 days
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     // Load data when the screen is first shown
-//     Future.microtask(() =>
-//         Provider.of<PyusdDashboardProvider>(context, listen: false)
-//             .loadDashboardData());
-//   }
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final provider = Provider.of<PyusdDashboardProvider>(context);
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => PyusdInsightsProvider(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('PYUSD Insights'),
+          centerTitle: false,
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Overview'),
+              Tab(text: 'Holders'),
+              Tab(text: 'Transactions'),
+              Tab(text: 'Network'),
+            ],
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor:
+                Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorColor: Theme.of(context).colorScheme.primary,
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                Provider.of<PyusdInsightsProvider>(context, listen: false)
+                    .refreshData();
+              },
+            ),
+          ],
+        ),
+        body: Consumer<PyusdInsightsProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('PYUSD Dashboard'),
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.refresh),
-//             onPressed: () {
-//               provider.loadDashboardData();
-//             },
-//           ),
-//         ],
-//       ),
-//       body: provider.isLoading
-//           ? const Center(child: CircularProgressIndicator())
-//           : provider.error != null
-//               ? Center(
-//                   child: Column(
-//                     mainAxisAlignment: MainAxisAlignment.center,
-//                     children: [
-//                       Text(
-//                         'Error loading data',
-//                         style: theme.textTheme.titleLarge,
-//                       ),
-//                       const SizedBox(height: 8),
-//                       Text(
-//                         provider.error!,
-//                         style: theme.textTheme.bodyMedium,
-//                         textAlign: TextAlign.center,
-//                       ),
-//                       const SizedBox(height: 16),
-//                       ElevatedButton(
-//                         onPressed: () => provider.loadDashboardData(),
-//                         child: const Text('Retry'),
-//                       ),
-//                     ],
-//                   ),
-//                 )
-//               : _buildDashboardContent(context, provider),
-//     );
-//   }
+            if (provider.errorMessage.isNotEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error loading data',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(provider.errorMessage),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => provider.refreshData(),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
 
-//   Widget _buildDashboardContent(
-//       BuildContext context, PyusdDashboardProvider provider) {
-//     final theme = Theme.of(context);
-//     final stats = provider.stats;
-//     final formatter = NumberFormat("#,##0.00", "en_US");
-//     final compactFormatter = NumberFormat.compact();
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(provider, context),
+                _buildHoldersTab(provider, context),
+                _buildTransactionsTab(provider, context),
+                _buildNetworkTab(provider, context),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-//     return RefreshIndicator(
-//       onRefresh: () => provider.loadDashboardData(),
-//       child: ListView(
-//         padding: const EdgeInsets.all(16),
-//         children: [
-//           // Header stats
-//           _buildHeaderStats(context, stats, formatter),
+  Widget _buildOverviewTab(
+      PyusdInsightsProvider provider, BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildSection(
+          title: 'PYUSD at a Glance',
+          children: [
+            _buildMetricCard(
+              icon: Icons.account_balance,
+              title: 'Total Supply',
+              value: currencyFormat.format(provider.totalSupply),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    icon: Icons.people,
+                    title: 'Unique Holders',
+                    value: compactFormat.format(provider.uniqueHolders),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildMetricCard(
+                    icon: Icons.swap_horiz,
+                    title: 'Total Transfers',
+                    value: compactFormat.format(provider.totalTransfers),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildChartCard(
+              title: 'Supply History',
+              height: 250,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: LineChart(
+                  _buildSupplyLineChart(provider),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          title: 'Volume',
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    icon: Icons.calendar_today,
+                    title: 'Daily Volume',
+                    value: currencyFormat.format(provider.dailyVolume),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildMetricCard(
+                    icon: Icons.calendar_view_week,
+                    title: 'Weekly Volume',
+                    value: currencyFormat.format(provider.weeklyVolume),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildMetricCard(
+              icon: Icons.calendar_month,
+              title: 'Monthly Volume',
+              value: currencyFormat.format(provider.monthlyVolume),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          title: 'Chain Distribution',
+          children: [
+            _buildChartCard(
+              title: 'PYUSD Across Chains',
+              height: 300,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: PieChart(
+                  _buildChainDistributionPieChart(provider),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-//           const SizedBox(height: 24),
+  Widget _buildHoldersTab(
+      PyusdInsightsProvider provider, BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildSection(
+          title: 'Top Holders',
+          children: [
+            _buildTopHoldersTable(provider),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          title: 'Holder Distribution',
+          children: [
+            _buildChartCard(
+              title: 'Wallet Size Distribution',
+              height: 300,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: BarChart(
+                  _buildWalletDistributionBarChart(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-//           // Time period selector
-//           _buildTimePeriodSelector(context),
+  Widget _buildTransactionsTab(
+      PyusdInsightsProvider provider, BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildSection(
+          title: 'Transaction Activity',
+          children: [
+            _buildChartCard(
+              title: 'Daily Transactions',
+              height: 250,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: BarChart(
+                  _buildTransactionActivityBarChart(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          title: 'Recent Transactions',
+          children: [
+            _buildRecentTransactionsTable(provider),
+          ],
+        ),
+      ],
+    );
+  }
 
-//           const SizedBox(height: 24),
+  Widget _buildNetworkTab(
+      PyusdInsightsProvider provider, BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildSection(
+          title: 'Network Impact',
+          children: [
+            _buildMetricCard(
+              icon: Icons.local_fire_department,
+              title: 'ETH Burned from PYUSD',
+              value: '${provider.ethBurned} ETH',
+            ),
+            const SizedBox(height: 16),
+            _buildMetricCard(
+              icon: Icons.pie_chart,
+              title: 'Stablecoin Market Share',
+              value: '${provider.marketShare}%',
+            ),
+            const SizedBox(height: 16),
+            _buildChartCard(
+              title: 'Gas Used by PYUSD Transactions',
+              height: 250,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: LineChart(
+                  _buildGasUsageLineChart(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          title: 'PYUSD vs Other Stablecoins',
+          children: [
+            _buildChartCard(
+              title: 'Market Share Comparison',
+              height: 300,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: PieChart(
+                  _buildStablecoinMarketSharePieChart(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-//           // Supply chart
-//           _buildCard(
-//             context,
-//             title: 'PYUSD Supply',
-//             child: Container(
-//               height: 250,
-//               padding: const EdgeInsets.all(16),
-//               child: _buildSupplyChart(context, provider),
-//             ),
-//           ),
+  Widget _buildSection(
+      {required String title, required List<Widget> children}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...children,
+      ],
+    );
+  }
 
-//           const SizedBox(height: 16),
+  Widget _buildMetricCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-//           // Transaction volume chart
-//           _buildCard(
-//             context,
-//             title: 'Transaction Volume',
-//             child: Container(
-//               height: 250,
-//               padding: const EdgeInsets.all(16),
-//               child: _buildTransactionVolumeChart(context, provider),
-//             ),
-//           ),
+  Widget _buildChartCard({
+    required String title,
+    required double height,
+    required Widget child,
+  }) {
+    return Card(
+      elevation: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: height,
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
 
-//           const SizedBox(height: 16),
+  Widget _buildTopHoldersTable(PyusdInsightsProvider provider) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: provider.topHolders.map((holder) {
+            int index = provider.topHolders.indexOf(holder);
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor:
+                    Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                child: Text('${index + 1}'),
+              ),
+              title: Text(
+                holder['label'] ?? 'Unknown',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                '${holder['address'].toString().substring(0, 6)}...${holder['address'].toString().substring(holder['address'].toString().length - 4)}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    currencyFormat.format(holder['balance']),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '${holder['percentage']}%',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(), // Convert the iterable to a List
+        ),
+      ),
+    );
+  }
 
-//           // Network metrics
-//           _buildCard(
-//             context,
-//             title: 'Network Metrics',
-//             child: _buildNetworkMetrics(context, stats),
-//           ),
+  Widget _buildRecentTransactionsTable(PyusdInsightsProvider provider) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            for (var tx in provider.recentTransactions.take(10))
+              ListTile(
+                title: Row(
+                  children: [
+                    Text(
+                      'From: ${tx['from'].toString().substring(0, 6)}...${tx['from'].toString().substring(38)}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const Icon(Icons.arrow_right_alt),
+                    Text(
+                      'To: ${tx['to'].toString().substring(0, 6)}...${tx['to'].toString().substring(38)}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  'Tx: ${tx['hash'].toString().substring(0, 10)}...',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      currencyFormat.format(tx['value']),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      _formatTimestamp(tx['timestamp']),
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
-//           const SizedBox(height: 16),
+  String _formatTimestamp(int timestamp) {
+    final now = DateTime.now();
+    final txTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final difference = now.difference(txTime);
 
-//           // Chain distribution
-//           _buildCard(
-//             context,
-//             title: 'Chain Distribution',
-//             child: _buildChainDistribution(context, stats.adoption),
-//           ),
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds}s ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
+  }
 
-//           const SizedBox(height: 16),
+  LineChartData _buildSupplyLineChart(PyusdInsightsProvider provider) {
+    List<FlSpot> spots = [];
 
-//           // Wallet type distribution
-//           _buildCard(
-//             context,
-//             title: 'Wallet Type Distribution',
-//             child: _buildWalletTypeDistribution(context, stats.adoption),
-//           ),
+    for (var i = 0; i < provider.supplyHistory.length; i++) {
+      spots.add(FlSpot(
+          i.toDouble(), provider.supplyHistory[i]['supply'] / 1000000000));
+    }
 
-//           const SizedBox(height: 24),
+    return LineChartData(
+      gridData: const FlGridData(
+        show: true,
+        drawVerticalLine: true,
+        horizontalInterval: 0.5,
+        verticalInterval: 5,
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 30,
+            interval: 5,
+            getTitlesWidget: (value, meta) {
+              if (value.toInt() >= provider.supplyHistory.length ||
+                  value % 5 != 0) {
+                return const SizedBox.shrink();
+              }
+              final date =
+                  DateTime.parse(provider.supplyHistory[value.toInt()]['date']);
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  '${date.month}/${date.day}',
+                  style: const TextStyle(fontSize: 10),
+                ),
+              );
+            },
+          ),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            interval: 0.5,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                '${value.toStringAsFixed(1)}B',
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+            reservedSize: 42,
+          ),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: const Color(0xff37434d), width: 1),
+      ),
+      minX: 0,
+      maxX: (provider.supplyHistory.length - 1).toDouble(),
+      minY: spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) - 0.2,
+      maxY: spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 0.2,
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          color: Theme.of(context).colorScheme.primary,
+          barWidth: 3,
+          isStrokeCapRound: true,
+          dotData: const FlDotData(
+            show: false,
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          ),
+        ),
+      ],
+    );
+  }
 
-//           // Transaction stats table
-//           _buildCard(
-//             context,
-//             title: 'Transaction Statistics',
-//             child: _buildTransactionStatsTable(context, provider),
-//           ),
+  PieChartData _buildChainDistributionPieChart(PyusdInsightsProvider provider) {
+    final chains = provider.chainDistribution.keys.toList();
+    final values = provider.chainDistribution.values.toList();
+    final colorList = [
+      const Color(0xff0088ff),
+      const Color(0xff8c52ff),
+      const Color(0xffff5c77),
+      const Color(0xffffa600),
+      const Color(0xff36d39a),
+    ];
 
-//           const SizedBox(height: 24),
-//         ],
-//       ),
-//     );
-//   }
+    return PieChartData(
+      sectionsSpace: 2,
+      centerSpaceRadius: 50,
+      sections: List.generate(chains.length, (i) {
+        return PieChartSectionData(
+          color: colorList[i % colorList.length],
+          value: values[i],
+          title: '${chains[i]}\n${values[i]}%',
+          radius: 80,
+          titleStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        );
+      }),
+    );
+  }
 
-//   Widget _buildHeaderStats(
-//       BuildContext context, PyusdStats stats, NumberFormat formatter) {
-//     final theme = Theme.of(context);
+  BarChartData _buildWalletDistributionBarChart() {
+    // Sample data for wallet distribution
+    final walletSizes = ['0-100', '100-1K', '1K-10K', '10K-100K', '100K+'];
+    final walletCounts = [15000.0, 18000.0, 7500.0, 1800.0, 280.0];
 
-//     return Container(
-//       padding: const EdgeInsets.all(16),
-//       decoration: BoxDecoration(
-//         color: theme.colorScheme.primaryContainer,
-//         borderRadius: BorderRadius.circular(16),
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             'PYUSD',
-//             style: theme.textTheme.headlineMedium?.copyWith(
-//               color: theme.colorScheme.onPrimaryContainer,
-//               fontWeight: FontWeight.bold,
-//             ),
-//           ),
-//           const SizedBox(height: 8),
-//           Text(
-//             'PayPal USD Stablecoin',
-//             style: theme.textTheme.titleMedium?.copyWith(
-//               color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
-//             ),
-//           ),
-//           const SizedBox(height: 24),
-//           Row(
-//             children: [
-//               _buildStatCard(
-//                 context,
-//                 'Total Supply',
-//                 '\$${formatter.format(stats.totalSupply)}',
-//                 Icons.attach_money,
-//               ),
-//               const SizedBox(width: 16),
-//               _buildStatCard(
-//                 context,
-//                 'Price',
-//                 '\$${formatter.format(stats.price)}',
-//                 Icons.trending_up,
-//               ),
-//             ],
-//           ),
-//           const SizedBox(height: 16),
-//           Row(
-//             children: [
-//               _buildStatCard(
-//                 context,
-//                 '24h Volume',
-//                 '\$${formatter.format(stats.volume24h)}',
-//                 Icons.swap_horiz,
-//               ),
-//               const SizedBox(width: 16),
-//               _buildStatCard(
-//                 context,
-//                 'Holders',
-//                 '${stats.adoption.totalHolders}',
-//                 Icons.people,
-//               ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+    return BarChartData(
+      alignment: BarChartAlignment.spaceAround,
+      maxY: walletCounts.reduce((a, b) => a > b ? a : b) * 1.2,
+      barTouchData: BarTouchData(
+        enabled: true,
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            return BarTooltipItem(
+              '${walletSizes[groupIndex]}: ${compactFormat.format(rod.toY)}',
+              const TextStyle(color: Colors.white),
+            );
+          },
+        ),
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            getTitlesWidget: (value, meta) {
+              if (value < 0 || value >= walletSizes.length) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  walletSizes[value.toInt()],
+                  style: const TextStyle(fontSize: 10),
+                ),
+              );
+            },
+          ),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 40,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                compactFormat.format(value),
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+          ),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: const Color(0xff37434d), width: 1),
+      ),
+      barGroups: List.generate(walletSizes.length, (index) {
+        return BarChartGroupData(
+          x: index,
+          barRods: [
+            BarChartRodData(
+              toY: walletCounts[index],
+              color: Theme.of(context).colorScheme.primary,
+              width: 20,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
 
-//   Widget _buildStatCard(
-//       BuildContext context, String title, String value, IconData icon) {
-//     final theme = Theme.of(context);
+  BarChartData _buildTransactionActivityBarChart() {
+    // Sample data for transaction activity
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final txCounts = [2340.0, 3120.0, 2890.0, 3250.0, 3580.0, 2470.0, 1980.0];
 
-//     return Expanded(
-//       child: Container(
-//         padding: const EdgeInsets.all(16),
-//         decoration: BoxDecoration(
-//           color: theme.colorScheme.surface,
-//           borderRadius: BorderRadius.circular(12),
-//           boxShadow: [
-//             BoxShadow(
-//               color: Colors.black.withOpacity(0.05),
-//               blurRadius: 10,
-//               offset: const Offset(0, 5),
-//             ),
-//           ],
-//         ),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Row(
-//               children: [
-//                 Icon(
-//                   icon,
-//                   size: 20,
-//                   color: theme.colorScheme.primary,
-//                 ),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   title,
-//                   style: theme.textTheme.bodySmall?.copyWith(
-//                     color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 8),
-//             Text(
-//               value,
-//               style: theme.textTheme.titleMedium?.copyWith(
-//                 fontWeight: FontWeight.bold,
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
+    return BarChartData(
+      alignment: BarChartAlignment.spaceAround,
+      maxY: txCounts.reduce((a, b) => a > b ? a : b) * 1.2,
+      barTouchData: BarTouchData(
+        enabled: true,
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            return BarTooltipItem(
+              '${days[groupIndex]}: ${compactFormat.format(rod.toY)}',
+              const TextStyle(color: Colors.white),
+            );
+          },
+        ),
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            getTitlesWidget: (value, meta) {
+              if (value < 0 || value >= days.length) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  days[value.toInt()],
+                  style: const TextStyle(fontSize: 10),
+                ),
+              );
+            },
+          ),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 40,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                compactFormat.format(value),
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+          ),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: const Color(0xff37434d), width: 1),
+      ),
+      barGroups: List.generate(days.length, (index) {
+        return BarChartGroupData(
+          x: index,
+          barRods: [
+            BarChartRodData(
+              toY: txCounts[index],
+              color: Theme.of(context).colorScheme.secondary,
+              width: 20,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
 
-//   Widget _buildTimePeriodSelector(BuildContext context) {
-//     final theme = Theme.of(context);
+  LineChartData _buildGasUsageLineChart() {
+    // Sample data for gas usage
+    final spots = [
+      const FlSpot(0, 1.2),
+      const FlSpot(1, 1.8),
+      const FlSpot(2, 2.3),
+      const FlSpot(3, 1.9),
+      const FlSpot(4, 2.1),
+      const FlSpot(5, 2.6),
+      const FlSpot(6, 2.8),
+    ];
 
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-//       decoration: BoxDecoration(
-//         color: theme.colorScheme.surface,
-//         borderRadius: BorderRadius.circular(12),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(0.05),
-//             blurRadius: 10,
-//             offset: const Offset(0, 5),
-//           ),
-//         ],
-//       ),
-//       child: Row(
-//         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//         children: [
-//           _buildPeriodButton(context, 7, '7D'),
-//           _buildPeriodButton(context, 30, '30D'),
-//           _buildPeriodButton(context, 90, '90D'),
-//           _buildPeriodButton(context, 365, '1Y'),
-//           _buildPeriodButton(context, 0, 'All'),
-//         ],
-//       ),
-//     );
-//   }
+    return LineChartData(
+      gridData: const FlGridData(
+        show: true,
+        drawVerticalLine: true,
+        horizontalInterval: 0.5,
+        verticalInterval: 1,
+      ),
+      titlesData: FlTitlesData(
+        show: true,
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 30,
+            interval: 1,
+            getTitlesWidget: (value, meta) {
+              final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+              if (value.toInt() >= days.length) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  days[value.toInt()],
+                  style: const TextStyle(fontSize: 10),
+                ),
+              );
+            },
+          ),
+        ),
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            interval: 0.5,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                '${value.toStringAsFixed(1)}M',
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+            reservedSize: 42,
+          ),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: const Color(0xff37434d), width: 1),
+      ),
+      minX: 0,
+      maxX: 6,
+      minY: 1,
+      maxY: 3,
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          color: Colors.amber,
+          barWidth: 3,
+          isStrokeCapRound: true,
+          dotData: const FlDotData(
+            show: false,
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            color: Colors.amber.withOpacity(0.2),
+          ),
+        ),
+      ],
+    );
+  }
 
-//   Widget _buildPeriodButton(BuildContext context, int days, String label) {
-//     final theme = Theme.of(context);
-//     final isSelected = _selectedPeriod == days;
+  PieChartData _buildStablecoinMarketSharePieChart() {
+    // Sample data for stablecoin market share
+    final stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'PYUSD', 'Others'];
+    final marketShares = [37.5, 28.6, 12.4, 10.3, 8.2, 3.0];
+    final colorList = [
+      const Color(0xff26a17b), // USDT green
+      const Color(0xff2775ca), // USDC blue
+      const Color(0xfff0b90b), // BUSD yellow
+      const Color(0xfff4b731), // DAI gold
+      const Color(0xff0066ff), // PYUSD blue
+      const Color(0xff888888), // Others gray
+    ];
 
-//     return TextButton(
-//       onPressed: () {
-//         setState(() {
-//           _selectedPeriod = days;
-//         });
-//       },
-//       style: TextButton.styleFrom(
-//         backgroundColor: isSelected ? theme.colorScheme.primary : null,
-//         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//         shape: RoundedRectangleBorder(
-//           borderRadius: BorderRadius.circular(8),
-//         ),
-//       ),
-//       child: Text(
-//         label,
-//         style: theme.textTheme.labelMedium?.copyWith(
-//           color: isSelected
-//               ? theme.colorScheme.onPrimary
-//               : theme.colorScheme.primary,
-//           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildCard(BuildContext context,
-//       {required String title, required Widget child}) {
-//     final theme = Theme.of(context);
-
-//     return Container(
-//       decoration: BoxDecoration(
-//         color: theme.colorScheme.surface,
-//         borderRadius: BorderRadius.circular(16),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(0.05),
-//             blurRadius: 10,
-//             offset: const Offset(0, 5),
-//           ),
-//         ],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Padding(
-//             padding: const EdgeInsets.all(16),
-//             child: Text(
-//               title,
-//               style: theme.textTheme.titleMedium?.copyWith(
-//                 fontWeight: FontWeight.bold,
-//                 color: theme.colorScheme.onSurface,
-//               ),
-//             ),
-//           ),
-//           const Divider(height: 1),
-//           child,
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildSupplyChart(
-//       BuildContext context, PyusdDashboardProvider provider) {
-//     final theme = Theme.of(context);
-//     final supplyData = _selectedPeriod == 0
-//         ? provider.stats.supplyHistory
-//         : provider.getSupplyHistoryForPeriod(_selectedPeriod);
-
-//     if (supplyData.isEmpty) {
-//       return const Center(child: Text('No data available'));
-//     }
-
-//     // Calculate min and max values for better chart scaling
-//     final minY =
-//         supplyData.map((point) => point.value).reduce((a, b) => a < b ? a : b) *
-//             0.95;
-//     final maxY =
-//         supplyData.map((point) => point.value).reduce((a, b) => a > b ? a : b) *
-//             1.05;
-
-//     return LineChart(
-//       LineChartData(
-//         gridData: FlGridData(
-//           show: true,
-//           drawVerticalLine: true,
-//           getDrawingHorizontalLine: (value) {
-//             return FlLine(
-//               color: theme.colorScheme.onSurface.withOpacity(0.1),
-//               strokeWidth: 1,
-//             );
-//           },
-//           getDrawingVerticalLine: (value) {
-//             return FlLine(
-//               color: theme.colorScheme.onSurface.withOpacity(0.1),
-//               strokeWidth: 1,
-//             );
-//           },
-//         ),
-//         titlesData: FlTitlesData(
-//           show: true,
-//           rightTitles: AxisTitles(
-//             sideTitles: SideTitles(showTitles: false),
-//           ),
-//           topTitles: AxisTitles(
-//             sideTitles: SideTitles(showTitles: false),
-//           ),
-//           bottomTitles: AxisTitles(
-//             sideTitles: SideTitles(
-//               showTitles: true,
-//               reservedSize: 30,
-//               interval: supplyData.length > 30 ? supplyData.length / 5 : 1,
-//               getTitlesWidget: (value, meta) {
-//                 if (value.toInt() >= 0 && value.toInt() < supplyData.length) {
-//                   final date = supplyData[value.toInt()].timestamp;
-//                   return Padding(
-//                     padding: const EdgeInsets.only(top: 8.0),
-//                     child: Text(
-//                       DateFormat('MM/dd').format(date),
-//                       style: theme.textTheme.bodySmall?.copyWith(
-//                         color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                       ),
-//                     ),
-//                   );
-//                 }
-//                 return const SizedBox();
-//               },
-//             ),
-//           ),
-//           leftTitles: AxisTitles(
-//             sideTitles: SideTitles(
-//               showTitles: true,
-//               interval: (maxY - minY) / 5,
-//               getTitlesWidget: (value, meta) {
-//                 final formatter = NumberFormat.compact();
-//                 return Text(
-//                   formatter.format(value),
-//                   style: theme.textTheme.bodySmall?.copyWith(
-//                     color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                   ),
-//                 );
-//               },
-//               reservedSize: 42,
-//             ),
-//           ),
-//         ),
-//         borderData: FlBorderData(
-//           show: true,
-//           border: Border.all(
-//             color: theme.colorScheme.onSurface.withOpacity(0.1),
-//             width: 1,
-//           ),
-//         ),
-//         minX: 0,
-//         maxX: supplyData.length - 1,
-//         minY: minY,
-//         maxY: maxY,
-//         lineBarsData: [
-//           LineChartBarData(
-//             spots: List.generate(supplyData.length, (index) {
-//               return FlSpot(index.toDouble(), supplyData[index].value);
-//             }),
-//             isCurved: true,
-//             gradient: LinearGradient(
-//               colors: [
-//                 theme.colorScheme.primary,
-//                 theme.colorScheme.secondary,
-//               ],
-//             ),
-//             barWidth: 3,
-//             isStrokeCapRound: true,
-//             dotData: FlDotData(
-//               show: false,
-//             ),
-//             belowBarData: BarAreaData(
-//               show: true,
-//               gradient: LinearGradient(
-//                 colors: [
-//                   theme.colorScheme.primary.withOpacity(0.3),
-//                   theme.colorScheme.secondary.withOpacity(0.0),
-//                 ],
-//                 begin: Alignment.topCenter,
-//                 end: Alignment.bottomCenter,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildTransactionVolumeChart(
-//       BuildContext context, PyusdDashboardProvider provider) {
-//     final theme = Theme.of(context);
-//     final transactionStats = _selectedPeriod == 0
-//         ? provider.stats.transactionStats
-//         : provider.getTransactionStatsForPeriod(_selectedPeriod);
-
-//     if (transactionStats.isEmpty) {
-//       return const Center(child: Text('No data available'));
-//     }
-
-//     // Sort by date
-//     final sortedStats = List<TransactionStat>.from(transactionStats)
-//       ..sort((a, b) => a.date.compareTo(b.date));
-
-//     // Calculate min and max values for better chart scaling
-//     final minY =
-//         sortedStats.map((stat) => stat.volume).reduce((a, b) => a < b ? a : b) *
-//             0.95;
-//     final maxY =
-//         sortedStats.map((stat) => stat.volume).reduce((a, b) => a > b ? a : b) *
-//             1.05;
-
-//     return LineChart(
-//       LineChartData(
-//         gridData: FlGridData(
-//           show: true,
-//           drawVerticalLine: true,
-//           getDrawingHorizontalLine: (value) {
-//             return FlLine(
-//               color: theme.colorScheme.onSurface.withOpacity(0.1),
-//               strokeWidth: 1,
-//             );
-//           },
-//           getDrawingVerticalLine: (value) {
-//             return FlLine(
-//               color: theme.colorScheme.onSurface.withOpacity(0.1),
-//               strokeWidth: 1,
-//             );
-//           },
-//         ),
-//         titlesData: FlTitlesData(
-//           show: true,
-//           rightTitles: AxisTitles(
-//             sideTitles: SideTitles(showTitles: false),
-//           ),
-//           topTitles: AxisTitles(
-//             sideTitles: SideTitles(showTitles: false),
-//           ),
-//           bottomTitles: AxisTitles(
-//             sideTitles: SideTitles(
-//               showTitles: true,
-//               reservedSize: 30,
-//               interval: sortedStats.length > 30 ? sortedStats.length / 5 : 1,
-//               getTitlesWidget: (value, meta) {
-//                 if (value.toInt() >= 0 && value.toInt() < sortedStats.length) {
-//                   final date = sortedStats[value.toInt()].date;
-//                   return Padding(
-//                     padding: const EdgeInsets.only(top: 8.0),
-//                     child: Text(
-//                       DateFormat('MM/dd').format(date),
-//                       style: theme.textTheme.bodySmall?.copyWith(
-//                         color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                       ),
-//                     ),
-//                   );
-//                 }
-//                 return const SizedBox();
-//               },
-//             ),
-//           ),
-//           leftTitles: AxisTitles(
-//             sideTitles: SideTitles(
-//               showTitles: true,
-//               interval: (maxY - minY) / 5,
-//               getTitlesWidget: (value, meta) {
-//                 final formatter = NumberFormat.compact();
-//                 return Text(
-//                   formatter.format(value),
-//                   style: theme.textTheme.bodySmall?.copyWith(
-//                     color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                   ),
-//                 );
-//               },
-//               reservedSize: 42,
-//             ),
-//           ),
-//         ),
-//         borderData: FlBorderData(
-//           show: true,
-//           border: Border.all(
-//             color: theme.colorScheme.onSurface.withOpacity(0.1),
-//             width: 1,
-//           ),
-//         ),
-//         minX: 0,
-//         maxX: sortedStats.length - 1,
-//         minY: minY,
-//         maxY: maxY,
-//         lineBarsData: [
-//           LineChartBarData(
-//             spots: List.generate(sortedStats.length, (index) {
-//               return FlSpot(index.toDouble(), sortedStats[index].volume);
-//             }),
-//             isCurved: true,
-//             gradient: LinearGradient(
-//               colors: [
-//                 theme.colorScheme.secondary,
-//                 theme.colorScheme.tertiary,
-//               ],
-//             ),
-//             barWidth: 3,
-//             isStrokeCapRound: true,
-//             dotData: FlDotData(
-//               show: false,
-//             ),
-//             belowBarData: BarAreaData(
-//               show: true,
-//               gradient: LinearGradient(
-//                 colors: [
-//                   theme.colorScheme.secondary.withOpacity(0.3),
-//                   theme.colorScheme.tertiary.withOpacity(0.0),
-//                 ],
-//                 begin: Alignment.topCenter,
-//                 end: Alignment.bottomCenter,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildNetworkMetrics(BuildContext context, PyusdStats stats) {
-//     final theme = Theme.of(context);
-//     final metrics = stats.networkMetrics;
-
-//     if (metrics.isEmpty) {
-//       return const Padding(
-//         padding: EdgeInsets.all(16),
-//         child: Center(child: Text('No metrics available')),
-//       );
-//     }
-
-//     return Padding(
-//       padding: const EdgeInsets.all(16),
-//       child: Column(
-//         children: metrics.map((metric) {
-//           return Padding(
-//             padding: const EdgeInsets.only(bottom: 16),
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   flex: 3,
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.start,
-//                     children: [
-//                       Text(
-//                         metric.name,
-//                         style: theme.textTheme.titleSmall,
-//                       ),
-//                       const SizedBox(height: 4),
-//                       Text(
-//                         metric.description,
-//                         style: theme.textTheme.bodySmall?.copyWith(
-//                           color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//                 Expanded(
-//                   flex: 2,
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.end,
-//                     children: [
-//                       Text(
-//                         NumberFormat.compact().format(metric.value),
-//                         style: theme.textTheme.titleMedium?.copyWith(
-//                           fontWeight: FontWeight.bold,
-//                           color: theme.colorScheme.primary,
-//                         ),
-//                       ),
-//                       const SizedBox(height: 4),
-//                       Text(
-//                         metric.unit,
-//                         style: theme.textTheme.bodySmall?.copyWith(
-//                           color: theme.colorScheme.onSurface.withOpacity(0.6),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           );
-//         }).toList(),
-//       ),
-//     );
-//   }
-
-//   Widget _buildChainDistribution(BuildContext context, PyusdAdoption adoption) {
-//     final theme = Theme.of(context);
-//     final chainDistribution = adoption.chainDistribution;
-
-//     if (chainDistribution.isEmpty) {
-//       return const Padding(
-//         padding: EdgeInsets.all(16),
-//         child: Center(child: Text('No chain distribution data available')),
-//       );
-//     }
-
-//     return Padding(
-//       padding: const EdgeInsets.all(16),
-//       child: Column(
-//         children: [
-//           SizedBox(
-//             height: 200,
-//             child: PieChart(
-//               PieChartData(
-//                 sections: chainDistribution.map((chain) {
-//                   final index = chainDistribution.indexOf(chain);
-//                   final colors = [
-//                     Colors.blue,
-//                     Colors.purple,
-//                     Colors.green,
-//                     Colors.orange,
-//                     Colors.red,
-//                   ];
-
-//                   return PieChartSectionData(
-//                     color: colors[index % colors.length],
-//                     value: chain.percentage,
-//                     title: '${chain.percentage.round()}%',
-//                     radius: 100,
-//                     titleStyle: const TextStyle(
-//                       fontSize: 14,
-//                       fontWeight: FontWeight.bold,
-//                       color: Colors.white,
-//                     ),
-//                   );
-//                 }).toList(),
-//                 sectionsSpace: 2,
-//                 centerSpaceRadius: 40,
-//                 startDegreeOffset: -90,
-//               ),
-//             ),
-//           ),
-//           const SizedBox(height: 24),
-//           Column(
-//             children: chainDistribution.map((chain) {
-//               final index = chainDistribution.indexOf(chain);
-//               final colors = [
-//                 Colors.blue,
-//                 Colors.purple,
-//                 Colors.green,
-//                 Colors.orange,
-//                 Colors.red,
-//               ];
-
-//               return Padding(
-//                 padding: const EdgeInsets.only(bottom: 12),
-//                 child: Row(
-//                   children: [
-//                     Container(
-//                       width: 16,
-//                       height: 16,
-//                       decoration: BoxDecoration(
-//                         color: colors[index % colors.length],
-//                         shape: BoxShape.circle,
-//                       ),
-//                     ),
-//                     const SizedBox(width: 12),
-//                     Expanded(
-//                       child: Text(
-//                         chain.chainName,
-//                         style: theme.textTheme.bodyMedium,
-//                       ),
-//                     ),
-//                     Text(
-//                       '${chain.percentage.round()}%',
-//                       style: theme.textTheme.bodyMedium,
-//                     ),
-//                     const SizedBox(width: 16),
-//                     Text(
-//                       NumberFormat.compact().format(chain.amount),
-//                       style: theme.textTheme.bodyMedium?.copyWith(
-//                         fontWeight: FontWeight.bold,
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               );
-//             }).toList(),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildWalletTypeDistribution(
-//       BuildContext context, PyusdAdoption adoption) {
-//     final theme = Theme.of(context);
-//     final walletTypes = adoption.walletTypeDistribution;
-
-//     if (walletTypes.isEmpty) {
-//       return const Padding(
-//         padding: EdgeInsets.all(16),
-//         child: Center(child: Text('No wallet distribution data available')),
-//       );
-//     }
-
-//     return Padding(
-//       padding: const EdgeInsets.all(16),
-//       child: Column(
-//         children: [
-//           SizedBox(
-//             height: 200,
-//             child: PieChart(
-//               PieChartData(
-//                 sections: walletTypes.map((wallet) {
-//                   final index = walletTypes.indexOf(wallet);
-//                   final colors = [
-//                     Colors.amber,
-//                     Colors.teal,
-//                     Colors.pink,
-//                     Colors.cyan,
-//                     Colors.indigo,
-//                   ];
-
-//                   return PieChartSectionData(
-//                     color: colors[index % colors.length],
-//                     value: wallet.percentage,
-//                     title: '${wallet.percentage.round()}%',
-//                     radius: 100,
-//                     titleStyle: const TextStyle(
-//                       fontSize: 14,
-//                       fontWeight: FontWeight.bold,
-//                       color: Colors.white,
-//                     ),
-//                   );
-//                 }).toList(),
-//                 sectionsSpace: 2,
-//                 centerSpaceRadius: 40,
-//                 startDegreeOffset: -90,
-//               ),
-//             ),
-//           ),
-//           const SizedBox(height: 24),
-//           Column(
-//             children: walletTypes.map((wallet) {
-//               final index = walletTypes.indexOf(wallet);
-//               final colors = [
-//                 Colors.amber,
-//                 Colors.teal,
-//                 Colors.pink,
-//                 Colors.cyan,
-//                 Colors.indigo,
-//               ];
-
-//               return Padding(
-//                 padding: const EdgeInsets.only(bottom: 12),
-//                 child: Row(
-//                   children: [
-//                     Container(
-//                       width: 16,
-//                       height: 16,
-//                       decoration: BoxDecoration(
-//                         color: colors[index % colors.length],
-//                         shape: BoxShape.circle,
-//                       ),
-//                     ),
-//                     const SizedBox(width: 12),
-//                     Expanded(
-//                       child: Text(
-//                         wallet.walletType,
-//                         style: theme.textTheme.bodyMedium,
-//                       ),
-//                     ),
-//                     Text(
-//                       '${wallet.percentage.round()}%',
-//                       style: theme.textTheme.bodyMedium,
-//                     ),
-//                     const SizedBox(width: 16),
-//                     Text(
-//                       NumberFormat.compact().format(wallet.count),
-//                       style: theme.textTheme.bodyMedium?.copyWith(
-//                         fontWeight: FontWeight.bold,
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               );
-//             }).toList(),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildTransactionStatsTable(
-//       BuildContext context, PyusdDashboardProvider provider) {
-//     final theme = Theme.of(context);
-//     final transactionStats = _selectedPeriod == 0
-//         ? provider.stats.transactionStats
-//         : provider.getTransactionStatsForPeriod(_selectedPeriod);
-
-//     if (transactionStats.isEmpty) {
-//       return const Padding(
-//         padding: EdgeInsets.all(16),
-//         child: Center(child: Text('No transaction data available')),
-//       );
-//     }
-
-//     // Sort by date (most recent first)
-//     final sortedStats = List<TransactionStat>.from(transactionStats)
-//       ..sort((a, b) => b.date.compareTo(a.date));
-
-//     // Limit to last 10 days
-//     final limitedStats = sortedStats.take(10).toList();
-
-//     return SingleChildScrollView(
-//       scrollDirection: Axis.horizontal,
-//       child: DataTable(
-//         columnSpacing: 16,
-//         columns: [
-//           DataColumn(
-//             label: Text(
-//               'Date',
-//               style: theme.textTheme.titleSmall,
-//             ),
-//           ),
-//           DataColumn(
-//             label: Text(
-//               'Transactions',
-//               style: theme.textTheme.titleSmall,
-//             ),
-//           ),
-//           DataColumn(
-//             label: Text(
-//               'Volume',
-//               style: theme.textTheme.titleSmall,
-//             ),
-//           ),
-//           DataColumn(
-//             label: Text(
-//               'Avg Gas (gwei)',
-//               style: theme.textTheme.titleSmall,
-//             ),
-//           ),
-//         ],
-//         rows: limitedStats.map((stat) {
-//           return DataRow(
-//             cells: [
-//               DataCell(
-//                 Text(
-//                   DateFormat('MM/dd/yyyy').format(stat.date),
-//                   style: theme.textTheme.bodyMedium,
-//                 ),
-//               ),
-//               DataCell(
-//                 Text(
-//                   NumberFormat.compact().format(stat.count),
-//                   style: theme.textTheme.bodyMedium,
-//                 ),
-//               ),
-//               DataCell(
-//                 Text(
-//                   '\$${NumberFormat.compact().format(stat.volume)}',
-//                   style: theme.textTheme.bodyMedium,
-//                 ),
-//               ),
-//               DataCell(
-//                 Text(
-//                   NumberFormat('0.0').format(stat.avgGasPrice),
-//                   style: theme.textTheme.bodyMedium,
-//                 ),
-//               ),
-//             ],
-//           );
-//         }).toList(),
-//       ),
-//     );
-//   }
-// }
+    return PieChartData(
+      sectionsSpace: 2,
+      centerSpaceRadius: 50,
+      sections: List.generate(stablecoins.length, (i) {
+        return PieChartSectionData(
+          color: colorList[i],
+          value: marketShares[i],
+          title: '${stablecoins[i]}\n${marketShares[i]}%',
+          radius: 80,
+          titleStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        );
+      }),
+    );
+  }
+}

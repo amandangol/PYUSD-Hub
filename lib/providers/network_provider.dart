@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pyusd_forensics/config/rpc_endpoints.dart';
+
+import '../config/rpc_endpoints.dart';
 
 enum NetworkType {
   sepoliaTestnet,

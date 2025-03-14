@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
-import 'package:pyusd_forensics/main.dart';
+import '../../main.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../widgets/loading_overlay.dart';
+import '../provider/auth_provider.dart';
 
 class CreateWalletScreen extends StatefulWidget {
   const CreateWalletScreen({Key? key}) : super(key: key);

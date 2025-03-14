@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pyusd_forensics/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../../../utils/snackbar_utils.dart';
 
 class TransactionListItem extends StatelessWidget {
   final Map<String, dynamic> transaction;

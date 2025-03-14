@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/providers/network_provider.dart';
-import 'package:pyusd_forensics/screens/transactions/provider/transaction_provider.dart';
 import 'package:web3dart/web3dart.dart';
+import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
 import '../../../../utils/snackbar_utils.dart';
+import '../../provider/transaction_provider.dart';
 import 'widgets/amount_input_card.dart';
 import 'widgets/balance_display_card.dart';
 import 'widgets/recipent_card.dart';

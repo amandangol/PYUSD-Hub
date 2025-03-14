@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
+import '../../authentication/provider/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/wallet_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';

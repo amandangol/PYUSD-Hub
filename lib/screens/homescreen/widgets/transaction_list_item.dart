@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/utils/datetime_utils.dart';
+import '../../../utils/datetime_utils.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../../../providers/network_provider.dart';
 import '../../../utils/formatter_utils.dart';

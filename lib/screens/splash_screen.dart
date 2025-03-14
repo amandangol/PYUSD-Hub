@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
 import 'dart:async';
+import '../authentication/provider/auth_provider.dart';
 import '../main.dart';
 import '../providers/theme_provider.dart';
 

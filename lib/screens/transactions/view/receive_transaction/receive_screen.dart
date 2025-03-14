@@ -5,13 +5,13 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_forensics/authentication/provider/auth_provider.dart';
-import 'package:pyusd_forensics/providers/network_provider.dart';
-import 'package:pyusd_forensics/utils/formatter_utils.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../authentication/provider/auth_provider.dart';
+import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
+import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
 
 class ReceiveScreen extends StatelessWidget {
