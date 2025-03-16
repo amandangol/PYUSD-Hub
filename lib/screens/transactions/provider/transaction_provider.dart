@@ -37,6 +37,7 @@ class TransactionProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasMoreTransactions => _hasMoreTransactions;
+  bool get isFetchingTransactions => _isFetchingTransactions;
 
   // Constructor with dependency injection
   TransactionProvider({
@@ -46,10 +47,7 @@ class TransactionProvider extends ChangeNotifier {
   })  : _authProvider = authProvider,
         _networkProvider = networkProvider,
         _walletProvider = walletProvider {
-    // Initialize transaction maps
     _initializeTransactionMaps();
-
-    // Listen for network changes
     _networkProvider.addListener(_onNetworkChanged);
 
     // Initial transactions fetch - only if wallet is initialized
@@ -67,13 +65,10 @@ class TransactionProvider extends ChangeNotifier {
 
   // Handle network change
   void _onNetworkChanged() {
-    fetchTransactions(forceRefresh: true);
+    if (!_disposed) {
+      fetchTransactions(forceRefresh: true);
+    }
   }
-
-  // Add this method to the TransactionProvider class
-
-  // Check if transactions are being fetched
-  bool get isFetchingTransactions => _isFetchingTransactions;
 
   // Get transactions with optional filtering
   List<TransactionModel> getFilteredTransactions({
@@ -102,8 +97,10 @@ class TransactionProvider extends ChangeNotifier {
     }).toList();
   }
 
-  // Add this method to fetch transaction details
+  // Fetch transaction details
   Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
+    if (_disposed) return null;
+
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
       final currentNetwork = _networkProvider.currentNetwork;
@@ -121,14 +118,12 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-// Add this method to fetch transactions
+  // Fetch transactions with cancellation support
   Future<void> fetchTransactions({bool forceRefresh = false}) async {
-    final address = _authProvider.getCurrentAddress();
-    if (address == null || address.isEmpty) {
-      return;
-    }
+    if (_disposed) return;
 
-    if (_isFetchingTransactions) return;
+    final address = _authProvider.getCurrentAddress();
+    if (address == null || address.isEmpty || _isFetchingTransactions) return;
 
     // Check if cache is valid
     if (!forceRefresh && _lastRefresh != null) {
@@ -140,7 +135,7 @@ class TransactionProvider extends ChangeNotifier {
     }
 
     _isFetchingTransactions = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final currentNetwork = _networkProvider.currentNetwork;
@@ -155,7 +150,7 @@ class TransactionProvider extends ChangeNotifier {
       // Skip if we already loaded all transactions
       if (!_hasMoreTransactions && !forceRefresh) {
         _isFetchingTransactions = false;
-        notifyListeners();
+        _safeNotifyListeners();
         return;
       }
 
@@ -175,88 +170,11 @@ class TransactionProvider extends ChangeNotifier {
         perPage: _perPage,
       );
 
-      // Process and combine transactions
-      List<TransactionModel> newTransactions = [];
+      if (_disposed) return; // Check if disposed after async operations
 
-      // Process ETH transactions
-      for (final tx in ethTxs) {
-        // Skip transactions with missing critical data
-        if (tx['hash'] == null || tx['timeStamp'] == null) continue;
-
-        // Skip contract deployments where 'to' is null
-        if (tx['to'] == null || tx['to'] == '') continue;
-
-        final direction = _compareAddresses(tx['from'] ?? '', address)
-            ? TransactionDirection.outgoing
-            : TransactionDirection.incoming;
-
-        final status = int.parse(tx['isError'] ?? '0') == 0
-            ? TransactionStatus.confirmed
-            : TransactionStatus.failed;
-
-        final timestamp = DateTime.fromMillisecondsSinceEpoch(
-            int.parse(tx['timeStamp']) * 1000);
-
-        // Additional null checks for numeric values
-        final value = tx['value'] ?? '0';
-        final gasUsed = tx['gasUsed'] ?? '0';
-        final gasPrice = tx['gasPrice'] ?? '0';
-        final confirmations = tx['confirmations'] ?? '0';
-
-        newTransactions.add(TransactionModel(
-          hash: tx['hash'],
-          timestamp: timestamp,
-          from: tx['from'] ?? '',
-          to: tx['to'] ?? '',
-          amount: double.parse(value) / 1e18,
-          gasUsed: double.parse(gasUsed),
-          gasPrice: double.parse(gasPrice) / 1e9,
-          status: status,
-          direction: direction,
-          confirmations: int.parse(confirmations),
-          network: currentNetwork,
-        ));
-      }
-
-      // Process token transactions
-      for (final tx in tokenTxs) {
-        final direction = _compareAddresses(tx['from'], address)
-            ? TransactionDirection.outgoing
-            : TransactionDirection.incoming;
-
-        final status = TransactionStatus
-            .confirmed; // Token txs are always confirmed in Etherscan API
-
-        final timestamp = DateTime.fromMillisecondsSinceEpoch(
-            int.parse(tx['timeStamp']) * 1000);
-
-        // Token amount with proper decimals
-        final decimals = int.parse(tx['tokenDecimal']);
-        final rawAmount = BigInt.parse(tx['value']);
-        final tokenAmount =
-            rawAmount.toDouble() / BigInt.from(10).pow(decimals).toDouble();
-
-        newTransactions.add(TransactionModel(
-          hash: tx['hash'],
-          timestamp: timestamp,
-          from: tx['from'],
-          to: tx['to'],
-          amount: tokenAmount,
-          gasUsed: double.parse(tx['gasUsed']),
-          gasPrice: double.parse(tx['gasPrice']) / 1e9,
-          status: status,
-          direction: direction,
-          confirmations: int.parse(tx['confirmations']),
-          tokenSymbol: tx['tokenSymbol'],
-          tokenName: tx['tokenName'],
-          tokenDecimals: decimals,
-          tokenContractAddress: tx['contractAddress'],
-          network: currentNetwork,
-        ));
-      }
-
-      // Sort by timestamp, newest first
-      newTransactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      // Process transactions
+      final newTransactions =
+          _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
 
       // Determine if we have more transactions
       _hasMoreTransactions = newTransactions.length >= _perPage;
@@ -280,18 +198,102 @@ class TransactionProvider extends ChangeNotifier {
     } finally {
       if (!_disposed) {
         _isFetchingTransactions = false;
-        notifyListeners();
+        _safeNotifyListeners();
       }
     }
   }
 
-// Load more transactions
+  // Process and combine transactions
+  List<TransactionModel> _processTransactions(List<dynamic> ethTxs,
+      List<dynamic> tokenTxs, String address, NetworkType currentNetwork) {
+    List<TransactionModel> newTransactions = [];
+
+    // Process ETH transactions
+    for (final tx in ethTxs) {
+      // Skip transactions with missing critical data
+      if (tx['hash'] == null ||
+          tx['timeStamp'] == null ||
+          tx['to'] == null ||
+          tx['to'] == '') continue;
+
+      final direction = _compareAddresses(tx['from'] ?? '', address)
+          ? TransactionDirection.outgoing
+          : TransactionDirection.incoming;
+
+      final status = int.parse(tx['isError'] ?? '0') == 0
+          ? TransactionStatus.confirmed
+          : TransactionStatus.failed;
+
+      final timestamp = DateTime.fromMillisecondsSinceEpoch(
+          int.parse(tx['timeStamp']) * 1000);
+
+      // Handle numeric values safely
+      final value = tx['value'] ?? '0';
+      final gasUsed = tx['gasUsed'] ?? '0';
+      final gasPrice = tx['gasPrice'] ?? '0';
+      final confirmations = tx['confirmations'] ?? '0';
+
+      newTransactions.add(TransactionModel(
+        hash: tx['hash'],
+        timestamp: timestamp,
+        from: tx['from'] ?? '',
+        to: tx['to'] ?? '',
+        amount: double.parse(value) / 1e18,
+        gasUsed: double.parse(gasUsed),
+        gasPrice: double.parse(gasPrice) / 1e9,
+        status: status,
+        direction: direction,
+        confirmations: int.parse(confirmations),
+        network: currentNetwork,
+      ));
+    }
+
+    // Process token transactions
+    for (final tx in tokenTxs) {
+      final direction = _compareAddresses(tx['from'], address)
+          ? TransactionDirection.outgoing
+          : TransactionDirection.incoming;
+
+      final timestamp = DateTime.fromMillisecondsSinceEpoch(
+          int.parse(tx['timeStamp']) * 1000);
+
+      // Token amount with proper decimals
+      final decimals = int.parse(tx['tokenDecimal']);
+      final rawAmount = BigInt.parse(tx['value']);
+      final tokenAmount =
+          rawAmount.toDouble() / BigInt.from(10).pow(decimals).toDouble();
+
+      newTransactions.add(TransactionModel(
+        hash: tx['hash'],
+        timestamp: timestamp,
+        from: tx['from'],
+        to: tx['to'],
+        amount: tokenAmount,
+        gasUsed: double.parse(tx['gasUsed']),
+        gasPrice: double.parse(tx['gasPrice']) / 1e9,
+        status: TransactionStatus.confirmed,
+        direction: direction,
+        confirmations: int.parse(tx['confirmations']),
+        tokenSymbol: tx['tokenSymbol'],
+        tokenName: tx['tokenName'],
+        tokenDecimals: decimals,
+        tokenContractAddress: tx['contractAddress'],
+        network: currentNetwork,
+      ));
+    }
+
+    // Sort by timestamp, newest first
+    newTransactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return newTransactions;
+  }
+
+  // Load more transactions
   Future<void> loadMoreTransactions() async {
-    if (!_hasMoreTransactions || _isFetchingTransactions) return;
+    if (!_hasMoreTransactions || _isFetchingTransactions || _disposed) return;
     await fetchTransactions();
   }
 
-// Helper method to compare addresses (case-insensitive)
+  // Helper method to compare addresses (case-insensitive)
   bool _compareAddresses(String? address1, String? address2) {
     if (address1 == null || address2 == null) return false;
     return address1.toLowerCase() == address2.toLowerCase();
@@ -300,9 +302,9 @@ class TransactionProvider extends ChangeNotifier {
   // Send ETH to another address
   Future<String> sendETH(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
-    if (_authProvider.wallet == null) {
+    if (_disposed) throw Exception('TransactionProvider is disposed');
+    if (_authProvider.wallet == null)
       throw Exception('Wallet is not initialized');
-    }
 
     _setLoading(true);
     try {
@@ -316,16 +318,12 @@ class TransactionProvider extends ChangeNotifier {
         gasLimit: gasLimit,
       );
 
-      // Force refresh after transaction
-      await Future.delayed(const Duration(seconds: 2));
-      await _walletProvider.refreshBalances(forceRefresh: true);
-      await fetchTransactions(forceRefresh: true);
-
+      // Post-transaction operations with disposal check
+      await _refreshAfterTransaction();
       return txHash;
     } catch (e) {
       final error = 'Failed to send ETH: $e';
       _setError(error);
-      print(e);
       throw Exception(error);
     } finally {
       _setLoading(false);
@@ -335,9 +333,9 @@ class TransactionProvider extends ChangeNotifier {
   // Send PYUSD token to another address
   Future<String> sendPYUSD(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
-    if (_authProvider.wallet == null) {
+    if (_disposed) throw Exception('TransactionProvider is disposed');
+    if (_authProvider.wallet == null)
       throw Exception('Wallet is not initialized');
-    }
 
     _setLoading(true);
     try {
@@ -358,29 +356,38 @@ class TransactionProvider extends ChangeNotifier {
         gasLimit: gasLimit,
       );
 
-      // Force refresh after transaction only if not disposed
-      if (!_disposed) {
-        await Future.delayed(const Duration(seconds: 2));
-        await _walletProvider.refreshBalances(forceRefresh: true);
-        await fetchTransactions(forceRefresh: true);
-      }
-
+      // Post-transaction operations with disposal check
+      await _refreshAfterTransaction();
       return txHash;
     } catch (e) {
       final error = 'Failed to send PYUSD: $e';
       _setError(error);
-      print('Failed to send PYUSD: $e');
       throw Exception(error);
     } finally {
       _setLoading(false);
     }
   }
 
+  // Common refresh logic after transactions
+  Future<void> _refreshAfterTransaction() async {
+    if (_disposed) return;
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!_disposed) {
+      await _walletProvider.refreshBalances(forceRefresh: true);
+
+      if (!_disposed) {
+        await fetchTransactions(forceRefresh: true);
+      }
+    }
+  }
+
   // Estimate gas for ETH transfer
   Future<int> estimateEthTransferGas(String toAddress, double amount) async {
-    if (_authProvider.wallet == null) {
+    if (_disposed) return 21000; // Default gas if disposed
+    if (_authProvider.wallet == null)
       throw Exception('Wallet is not initialized');
-    }
 
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
@@ -392,16 +399,15 @@ class TransactionProvider extends ChangeNotifier {
       );
     } catch (e) {
       _setError('Failed to estimate gas: $e');
-      // Return default gas limit for ETH transfers
-      return 21000;
+      return 21000; // Default gas limit for ETH transfers
     }
   }
 
   // Estimate gas for PYUSD token transfer
   Future<int> estimateTokenTransferGas(String toAddress, double amount) async {
-    if (_authProvider.wallet == null) {
+    if (_disposed) return 100000; // Default gas if disposed
+    if (_authProvider.wallet == null)
       throw Exception('Wallet is not initialized');
-    }
 
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
@@ -420,14 +426,15 @@ class TransactionProvider extends ChangeNotifier {
       );
     } catch (e) {
       _setError('Failed to estimate token gas: $e');
-      // Return default gas limit for token transfers
-      return 100000;
+      return 100000; // Default gas limit for token transfers
     }
   }
 
   // Get estimated transaction fee as a formatted string
   Future<String> getEstimatedFee(
       String toAddress, double amount, bool isToken) async {
+    if (_disposed) return 'Fee calculation unavailable';
+
     try {
       final feeDetails =
           await calculateTransactionFee(toAddress, amount, isToken);
@@ -440,10 +447,10 @@ class TransactionProvider extends ChangeNotifier {
   // Calculate transaction fee details
   Future<Map<String, double>> calculateTransactionFee(
       String toAddress, double amount, bool isToken) async {
+    if (_disposed) throw Exception('TransactionProvider is disposed');
+
     final address = _authProvider.getCurrentAddress();
-    if (address == null) {
-      throw Exception('Wallet address not available');
-    }
+    if (address == null) throw Exception('Wallet address not available');
 
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
@@ -472,6 +479,9 @@ class TransactionProvider extends ChangeNotifier {
   // Helper method to estimate gas based on transaction type
   Future<int> _estimateGas(String rpcUrl, String fromAddress, String toAddress,
       double amount, bool isToken) async {
+    if (_disposed)
+      return isToken ? 100000 : 21000; // Default values if disposed
+
     if (isToken) {
       final tokenAddress = _getTokenAddressForCurrentNetwork();
       return await _rpcService.estimateTokenGas(rpcUrl, fromAddress,
@@ -485,6 +495,8 @@ class TransactionProvider extends ChangeNotifier {
 
   // Get current gas price
   Future<double> getCurrentGasPrice() async {
+    if (_disposed) return 20.0; // Default gas price if disposed
+
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
       return await _rpcService.getGasPrice(rpcUrl);
@@ -508,20 +520,27 @@ class TransactionProvider extends ChangeNotifier {
   void _setLoading(bool loading) {
     if (_disposed) return;
     _isLoading = loading;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _setError(String? errorMsg) {
     if (_disposed) return;
     _error = errorMsg;
     print('TransactionProvider error: $errorMsg');
-    notifyListeners();
+    _safeNotifyListeners();
+  }
+
+  // Safe way to notify listeners preventing "called after dispose" errors
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
   }
 
   void clearError() {
     if (_disposed) return;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   @override

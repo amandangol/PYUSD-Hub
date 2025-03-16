@@ -14,6 +14,7 @@ class TransactionDetailScreen extends StatefulWidget {
   final bool isDarkMode;
   final NetworkType networkType;
   final String rpcUrl;
+  final bool needsRefresh;
 
   const TransactionDetailScreen({
     Key? key,
@@ -22,6 +23,7 @@ class TransactionDetailScreen extends StatefulWidget {
     required this.isDarkMode,
     required this.networkType,
     required this.rpcUrl,
+    this.needsRefresh = false,
   }) : super(key: key);
 
   @override
@@ -33,10 +35,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   TransactionDetailModel? _detailedTransaction;
   bool _isRefreshing = false;
   bool _isInitializing = true;
+  late final TransactionDetailProvider _transactionDetailProvider;
 
   @override
   void initState() {
     super.initState();
+    // Get provider reference once
+    _transactionDetailProvider =
+        Provider.of<TransactionDetailProvider>(context, listen: false);
     // Schedule the fetch for the next frame to avoid blocking UI render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeData();
@@ -54,8 +60,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   Future<void> _initializeData() async {
-    final transactionDetailProvider =
-        Provider.of<TransactionDetailProvider>(context, listen: false);
+    if (!mounted) return;
 
     setState(() {
       _isInitializing = true;
@@ -63,60 +68,56 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
     try {
       // First check if the data is already in the cache
-      if (transactionDetailProvider
+      if (_transactionDetailProvider
           .isTransactionCached(widget.transaction.hash)) {
-        final details = await transactionDetailProvider.getTransactionDetails(
-          txHash: widget.transaction.hash,
-          rpcUrl: widget.rpcUrl,
-          networkType: widget.networkType,
-          currentAddress: widget.currentAddress,
-        );
-
-        if (mounted) {
-          setState(() {
-            _detailedTransaction = details;
-            _isInitializing = false;
-          });
-        }
+        await _fetchTransactionDetails();
       } else {
         // If not cached, fetch it
-        _fetchTransactionDetails();
+        await _fetchTransactionDetails();
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isInitializing = false;
-        });
-        _showErrorSnackBar('Error initializing data');
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _isInitializing = false;
+      });
+      _showErrorSnackBar('Error initializing data');
     }
   }
 
-  Future<void> _fetchTransactionDetails() async {
-    final transactionDetailProvider =
-        Provider.of<TransactionDetailProvider>(context, listen: false);
-
+  Future<void> _fetchTransactionDetails({bool forceRefresh = false}) async {
     try {
-      final details = await transactionDetailProvider.getTransactionDetails(
+      final details = await _transactionDetailProvider.getTransactionDetails(
         txHash: widget.transaction.hash,
         rpcUrl: widget.rpcUrl,
         networkType: widget.networkType,
         currentAddress: widget.currentAddress,
+        forceRefresh: forceRefresh,
       );
 
-      if (mounted) {
-        setState(() {
-          _detailedTransaction = details;
-          _isInitializing = false;
-        });
+      if (!mounted) return;
+
+      setState(() {
+        _detailedTransaction = details;
+        _isInitializing = false;
+        _isRefreshing = false;
+      });
+
+      if (forceRefresh) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction details updated')),
+        );
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isInitializing = false;
-        });
-        _showErrorSnackBar('Error loading transaction details');
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _isInitializing = false;
+        _isRefreshing = false;
+      });
+      _showErrorSnackBar(forceRefresh
+          ? 'Failed to refresh transaction details'
+          : 'Error loading transaction details');
     }
   }
 
@@ -127,36 +128,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       _isRefreshing = true;
     });
 
-    final transactionDetailProvider =
-        Provider.of<TransactionDetailProvider>(context, listen: false);
-
-    try {
-      final details = await transactionDetailProvider.getTransactionDetails(
-        txHash: widget.transaction.hash,
-        rpcUrl: widget.rpcUrl,
-        networkType: widget.networkType,
-        currentAddress: widget.currentAddress,
-        forceRefresh: true,
-      );
-
-      if (mounted) {
-        setState(() {
-          _detailedTransaction = details;
-          _isRefreshing = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction details updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-        });
-        _showErrorSnackBar('Failed to refresh transaction details');
-      }
-    }
+    await _fetchTransactionDetails(forceRefresh: true);
   }
 
   Future<void> _openBlockExplorer() async {
@@ -177,6 +149,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -312,6 +286,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       Color textColor,
       Color subtitleColor,
       Color primaryColor) {
+    if (_detailedTransaction == null) return const SizedBox.shrink();
+
     return Stack(
       children: [
         SingleChildScrollView(
@@ -357,6 +333,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   Widget _buildStatusCard(Color statusColor, bool isIncoming, Color cardColor,
       Color textColor, Color subtitleColor) {
+    final tx = _detailedTransaction!;
+
     return Card(
       color: cardColor,
       elevation: 3,
@@ -421,7 +399,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
             // Amount
             Text(
-              _formatAmount(_detailedTransaction!),
+              _formatAmount(tx),
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -432,7 +410,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
             // Fee and date
             Text(
-              'Fee: ${_detailedTransaction!.fee.toStringAsFixed(10)} ETH',
+              'Fee: ${tx.fee.toStringAsFixed(10)} ETH',
               style: TextStyle(
                 fontSize: 14,
                 color: subtitleColor,
@@ -440,7 +418,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              DateTimeUtils.formatDateTime(_detailedTransaction!.timestamp),
+              DateTimeUtils.formatDateTime(tx.timestamp),
               style: TextStyle(
                 fontSize: 14,
                 color: subtitleColor,
@@ -454,6 +432,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   Widget _buildDetailsCard(Color cardColor, Color textColor,
       Color subtitleColor, Color primaryColor) {
+    final tx = _detailedTransaction!;
+
     return Card(
       color: cardColor,
       elevation: 3,
@@ -483,116 +463,109 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             const SizedBox(height: 16),
             _buildDetailRow(
               title: 'Transaction Hash',
-              value: FormatterUtils.formatHash(_detailedTransaction!.hash),
+              value: FormatterUtils.formatHash(tx.hash),
               canCopy: true,
-              data: _detailedTransaction!.hash,
+              data: tx.hash,
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Status',
               value: _getStatusTextWithConfirmations(),
-              valueColor: _getStatusColor(_detailedTransaction!.status),
+              valueColor: _getStatusColor(tx.status),
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Block',
-              value: _detailedTransaction!.blockNumber != 'Pending'
-                  ? _detailedTransaction!.blockNumber
-                  : 'Pending',
+              value: tx.blockNumber != 'Pending' ? tx.blockNumber : 'Pending',
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Block Hash',
-              value: _detailedTransaction!.blockHash != 'Pending'
-                  ? FormatterUtils.formatHash(_detailedTransaction!.blockHash)
+              value: tx.blockHash != 'Pending'
+                  ? FormatterUtils.formatHash(tx.blockHash)
                   : 'Pending',
-              canCopy: _detailedTransaction!.blockHash != 'Pending',
-              data: _detailedTransaction!.blockHash != 'Pending'
-                  ? _detailedTransaction!.blockHash
-                  : null,
+              canCopy: tx.blockHash != 'Pending',
+              data: tx.blockHash != 'Pending' ? tx.blockHash : null,
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'From',
-              value: FormatterUtils.formatHash(_detailedTransaction!.from),
+              value: FormatterUtils.formatHash(tx.from),
               canCopy: true,
-              data: _detailedTransaction!.from,
-              valueColor: _detailedTransaction!.from.toLowerCase() ==
-                      widget.currentAddress.toLowerCase()
-                  ? primaryColor
-                  : null,
+              data: tx.from,
+              valueColor:
+                  tx.from.toLowerCase() == widget.currentAddress.toLowerCase()
+                      ? primaryColor
+                      : null,
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'To',
-              value: FormatterUtils.formatHash(_detailedTransaction!.to),
+              value: FormatterUtils.formatHash(tx.to),
               canCopy: true,
-              data: _detailedTransaction!.to,
-              valueColor: _detailedTransaction!.to.toLowerCase() ==
-                      widget.currentAddress.toLowerCase()
-                  ? primaryColor
-                  : null,
+              data: tx.to,
+              valueColor:
+                  tx.to.toLowerCase() == widget.currentAddress.toLowerCase()
+                      ? primaryColor
+                      : null,
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
-            if (_detailedTransaction!.tokenContractAddress != null) ...[
+            if (tx.tokenContractAddress != null) ...[
               _buildDetailRow(
                 title: 'Token',
-                value: _detailedTransaction!.tokenSymbol ?? 'Unknown Token',
+                value: tx.tokenSymbol ?? 'Unknown Token',
                 textColor: textColor,
                 subtitleColor: subtitleColor,
               ),
-              if (_detailedTransaction!.tokenName != null)
+              if (tx.tokenName != null)
                 _buildDetailRow(
                   title: 'Token Name',
-                  value: _detailedTransaction!.tokenName!,
+                  value: tx.tokenName!,
                   textColor: textColor,
                   subtitleColor: subtitleColor,
                 ),
-              if (_detailedTransaction!.tokenDecimals != null)
+              if (tx.tokenDecimals != null)
                 _buildDetailRow(
                   title: 'Token Decimals',
-                  value: _detailedTransaction!.tokenDecimals.toString(),
+                  value: tx.tokenDecimals.toString(),
                   textColor: textColor,
                   subtitleColor: subtitleColor,
                 ),
               _buildDetailRow(
                 title: 'Token Contract',
-                value: FormatterUtils.formatHash(
-                    _detailedTransaction!.tokenContractAddress!),
+                value: FormatterUtils.formatHash(tx.tokenContractAddress!),
                 canCopy: true,
-                data: _detailedTransaction!.tokenContractAddress!,
+                data: tx.tokenContractAddress!,
                 textColor: textColor,
                 subtitleColor: subtitleColor,
               ),
             ],
             _buildDetailRow(
               title: 'Nonce',
-              value: _detailedTransaction!.nonce.toString(),
+              value: tx.nonce.toString(),
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
-            if (_detailedTransaction!.isError &&
-                _detailedTransaction!.errorMessage != null)
+            if (tx.isError && tx.errorMessage != null)
               _buildDetailRow(
                 title: 'Error',
-                value: _detailedTransaction!.errorMessage!,
+                value: tx.errorMessage!,
                 valueColor: Colors.red,
                 textColor: textColor,
                 subtitleColor: subtitleColor,
               ),
-            if (_detailedTransaction!.data != null &&
-                _detailedTransaction!.data!.length > 2)
+            if (tx.data != null && tx.data!.length > 2)
               _buildDetailRow(
                 title: 'Transaction Data',
-                value: FormatterUtils.formatHash(_detailedTransaction!.data!),
+                value: FormatterUtils.formatHash(tx.data!),
                 canCopy: true,
-                data: _detailedTransaction!.data,
+                data: tx.data,
                 textColor: textColor,
                 subtitleColor: subtitleColor,
               ),
@@ -604,6 +577,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   Widget _buildGasDetailsCard(
       Color cardColor, Color textColor, Color subtitleColor) {
+    final tx = _detailedTransaction!;
+
     return Card(
       color: cardColor,
       elevation: 3,
@@ -637,22 +612,19 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             const SizedBox(height: 16),
             _buildDetailRow(
               title: 'Gas Limit',
-              value:
-                  '${_detailedTransaction!.gasUsed.toStringAsFixed(0)} units',
+              value: '${tx.gasUsed.toStringAsFixed(0)} units',
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Gas Used',
-              value:
-                  '${_detailedTransaction!.gasUsed.toStringAsFixed(0)} units',
+              value: '${tx.gasUsed.toStringAsFixed(0)} units',
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
             _buildDetailRow(
               title: 'Gas Price',
-              value:
-                  '${_detailedTransaction!.gasPrice.toStringAsFixed(9)} Gwei',
+              value: '${tx.gasPrice.toStringAsFixed(9)} Gwei',
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
@@ -664,7 +636,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             _buildDetailRow(
               title: 'Transaction Fee',
-              value: '${_detailedTransaction!.fee.toStringAsFixed(8)} ETH',
+              value: '${tx.fee.toStringAsFixed(8)} ETH',
               valueColor: widget.isDarkMode ? Colors.orange : Colors.deepOrange,
               textColor: textColor,
               subtitleColor: subtitleColor,
@@ -758,7 +730,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   String _getStatusTextWithConfirmations() {
     if (_detailedTransaction == null) return 'Unknown';
 
-    switch (widget.transaction.status) {
+    switch (_detailedTransaction!.status) {
       case TransactionStatus.pending:
         return 'Pending';
       case TransactionStatus.confirmed:
@@ -791,15 +763,17 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   String _calculateGasEfficiency() {
+    final tx = _detailedTransaction!;
+
     // Check if gasPrice is not zero to avoid division by zero
-    if (_detailedTransaction!.gasPrice <= 0) {
+    if (tx.gasPrice <= 0) {
       return 'N/A';
     }
 
     // Calculate what percentage of the gas limit was actually used
-    final double gasLimit = _detailedTransaction!
-        .gasUsed; // Assuming gasUsed here is actually gas limit
-    final double gasUsed = _detailedTransaction!.gasUsed;
+    final double gasLimit =
+        tx.gasUsed; // Assuming gasUsed here is actually gas limit
+    final double gasUsed = tx.gasUsed;
 
     // If we have both values, calculate efficiency
     if (gasLimit > 0 && gasUsed > 0) {

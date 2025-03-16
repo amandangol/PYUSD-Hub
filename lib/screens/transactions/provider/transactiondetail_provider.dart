@@ -38,11 +38,6 @@ class TransactionDetailProvider with ChangeNotifier {
       return _ongoingFetches[txHash];
     }
 
-    // Set loading state and notify listeners
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
     // Create the future and store it in ongoing fetches
     final fetchFuture = _fetchTransactionDetails(
       txHash: txHash,
@@ -54,11 +49,8 @@ class TransactionDetailProvider with ChangeNotifier {
     _ongoingFetches[txHash] = fetchFuture;
 
     try {
-      // Wait for the fetch to complete
-      final result = await fetchFuture;
-      return result;
+      return await fetchFuture;
     } finally {
-      // Remove from ongoing fetches when done
       _ongoingFetches.remove(txHash);
     }
   }
@@ -70,6 +62,8 @@ class TransactionDetailProvider with ChangeNotifier {
     required NetworkType networkType,
     required String currentAddress,
   }) async {
+    _setLoadingState(true);
+
     try {
       // Fetch transaction details from RPC service
       final details = await _rpcService.getTransactionDetails(
@@ -89,71 +83,94 @@ class TransactionDetailProvider with ChangeNotifier {
       _setError('Error fetching transaction details: $e');
       return null;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoadingState(false);
     }
   }
 
-  // Check if transaction details are already cached
-  bool isTransactionCached(String txHash) {
-    return _transactionDetailsCache.containsKey(txHash);
-  }
-
-  // Get multiple transaction details in bulk
+  // Get multiple transaction details in bulk with optimized parallel fetching
   Future<List<TransactionDetailModel>> getMultipleTransactionDetails({
     required List<String> txHashes,
     required String rpcUrl,
     required NetworkType networkType,
     required String currentAddress,
   }) async {
-    final List<TransactionDetailModel> results = [];
-    final List<String> hashesToFetch = [];
+    // First, deduplicate the hashes
+    final uniqueHashes = txHashes.toSet().toList();
+    final results = <TransactionDetailModel>[];
+    final hashesToFetch = <String>[];
 
     // Check which transactions are already in cache
-    for (final hash in txHashes) {
+    for (final hash in uniqueHashes) {
       if (_transactionDetailsCache.containsKey(hash)) {
         results.add(_transactionDetailsCache[hash]!);
-      } else {
+      } else if (!_ongoingFetches.containsKey(hash)) {
         hashesToFetch.add(hash);
+      } else {
+        // Add to hashes to wait for from ongoing fetches
+        _ongoingFetches[hash]!.then((result) {
+          if (result != null) results.add(result);
+        });
       }
     }
 
-    // If all transactions are in cache, return immediately
-    if (hashesToFetch.isEmpty) {
+    // If nothing to fetch, return immediately
+    if (hashesToFetch.isEmpty && _ongoingFetches.isEmpty) {
       return results;
     }
 
-    // Set loading state
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+    _setLoadingState(true);
 
     try {
-      // Create a list of futures for parallel fetching
-      final futures = hashesToFetch
-          .map((hash) => _rpcService
-                  .getTransactionDetails(
-                rpcUrl,
-                hash,
-                networkType,
-                currentAddress,
-              )
-                  .then((details) {
+      if (hashesToFetch.isNotEmpty) {
+        // Create batch futures in smaller chunks to avoid overloading the network
+        const batchSize = 10;
+        for (int i = 0; i < hashesToFetch.length; i += batchSize) {
+          final end = (i + batchSize < hashesToFetch.length)
+              ? i + batchSize
+              : hashesToFetch.length;
+          final batch = hashesToFetch.sublist(i, end);
+
+          // Process batch
+          final futures = batch.map((hash) {
+            final future = _rpcService
+                .getTransactionDetails(
+                    rpcUrl, hash, networkType, currentAddress)
+                .then((details) {
+              if (details != null) {
                 _transactionDetailsCache[hash] = details;
                 return details;
-              }).catchError((e) {
-                print('Error fetching transaction $hash: $e');
-                return null;
-              }))
-          .toList();
+              }
+              return null;
+            }).catchError((e) {
+              print('Error fetching transaction $hash: $e');
+              return null;
+            });
 
-      // Wait for all fetches to complete in parallel
-      final fetchResults = await Future.wait(futures);
+            _ongoingFetches[hash] = future;
+            return future;
+          }).toList();
 
-      // Add successful results to the results list
-      for (final result in fetchResults) {
-        if (result != null) {
-          results.add(result);
+          // Wait for this batch to complete
+          final batchResults = await Future.wait(futures);
+
+          // Clean up ongoing fetches and add results
+          for (int j = 0; j < batch.length; j++) {
+            _ongoingFetches.remove(batch[j]);
+            if (batchResults[j] != null) {
+              results.add(batchResults[j]!);
+            }
+          }
+        }
+      }
+
+      // Wait for any remaining ongoing fetches that we added to our tracking
+      final remainingFutures = _ongoingFetches.values.toList();
+      if (remainingFutures.isNotEmpty) {
+        final remainingResults = await Future.wait(remainingFutures);
+        for (final result in remainingResults) {
+          if (result != null) {
+            results.add(result);
+          }
         }
       }
 
@@ -162,10 +179,50 @@ class TransactionDetailProvider with ChangeNotifier {
       _setError('Error fetching multiple transaction details: $e');
       return results; // Return what we have so far
     } finally {
-      _isLoading = false;
+      _setLoadingState(false);
+    }
+  }
+
+  // Helper to set loading state and notify listeners once
+  void _setLoadingState(bool loading) {
+    if (_isLoading != loading) {
+      _isLoading = loading;
+      if (!loading) _error = null;
       notifyListeners();
     }
   }
+
+  // Set error state and notify listeners
+  void _setError(String errorMsg) {
+    _error = errorMsg;
+    print('TransactionDetailProvider error: $errorMsg');
+    notifyListeners();
+  }
+
+  // Check if transaction details are already cached
+  bool isTransactionCached(String txHash) {
+    return _transactionDetailsCache.containsKey(txHash);
+  }
+
+  // Get cached transaction details by hash
+  TransactionDetailModel? getCachedTransactionDetails(String txHash) {
+    return _transactionDetailsCache[txHash];
+  }
+
+  // Refresh transaction status (useful for pending transactions)
+  Future<TransactionDetailModel?> refreshTransactionStatus(
+    String txHash,
+    String rpcUrl,
+    NetworkType networkType,
+    String currentAddress,
+  ) =>
+      getTransactionDetails(
+        txHash: txHash,
+        rpcUrl: rpcUrl,
+        networkType: networkType,
+        currentAddress: currentAddress,
+        forceRefresh: true,
+      );
 
   // Clear cache for a specific transaction or all transactions
   void clearCache({String? txHash}) {
@@ -177,36 +234,11 @@ class TransactionDetailProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Update transaction status (useful for pending transactions)
-  Future<TransactionDetailModel?> refreshTransactionStatus(
-    String txHash,
-    String rpcUrl,
-    NetworkType networkType,
-    String currentAddress,
-  ) async {
-    return await getTransactionDetails(
-      txHash: txHash,
-      rpcUrl: rpcUrl,
-      networkType: networkType,
-      currentAddress: currentAddress,
-      forceRefresh: true,
-    );
-  }
-
-  // Set error state and notify listeners
-  void _setError(String errorMsg) {
-    _error = errorMsg;
-    print('TransactionDetailProvider error: $errorMsg');
-    notifyListeners();
-  }
-
-  TransactionDetailModel? getCachedTransactionDetails(String txHash) {
-    return _transactionDetailsCache[txHash];
-  }
-
   // Clear error state
   void clearError() {
-    _error = null;
-    notifyListeners();
+    if (_error != null) {
+      _error = null;
+      notifyListeners();
+    }
   }
 }

@@ -141,16 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         appBar: PyusdAppBar(
           isDarkMode: isDarkMode,
           hasWallet: true,
-          onSettingsPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const SettingsScreen()),
-            ).then((_) {
-              if (mounted) {
-                _refreshWalletData(forceRefresh: true);
-              }
-            });
-          },
+          title: "Pyusd Wallet",
           onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
         ),
         body: _buildWalletContent(walletProvider, transactionProvider,

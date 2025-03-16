@@ -1,917 +1,452 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
-import '../provider/pyusd_analytics_provider.dart';
+// import 'dart:async';
+// import 'package:flutter/material.dart';
+// import 'package:provider/provider.dart';
+// import 'package:fl_chart/fl_chart.dart';
+// import 'package:intl/intl.dart';
+// import 'package:url_launcher/url_launcher.dart';
 
-class PyusdInsightsScreen extends StatefulWidget {
-  const PyusdInsightsScreen({Key? key}) : super(key: key);
+// import '../provider/pyusd_analytics_provider.dart';
 
-  @override
-  State<PyusdInsightsScreen> createState() => _PyusdInsightsScreenState();
-}
+// class DashboardScreen extends StatefulWidget {
+//   const DashboardScreen({super.key});
 
-class _PyusdInsightsScreenState extends State<PyusdInsightsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
-  final compactFormat = NumberFormat.compact();
-  final percentFormat = NumberFormat.percentPattern();
+//   @override
+//   State<DashboardScreen> createState() => _DashboardScreenState();
+// }
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-  }
+// class _DashboardScreenState extends State<DashboardScreen> {
+//   @override
+//   void initState() {
+//     super.initState();
+//     // Initialize data loading when the app starts
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       final dataProvider =
+//           Provider.of<PyusdDataProvider>(context, listen: false);
+//       dataProvider.initializeData();
+//     });
+//   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('PYUSD Dashboard'),
+//         actions: [
+//           IconButton(
+//             icon: const Icon(Icons.refresh),
+//             onPressed: () {
+//               Provider.of<PyusdDataProvider>(context, listen: false)
+//                   .refreshData();
+//             },
+//           ),
+//         ],
+//       ),
+//       body: Consumer<PyusdDataProvider>(
+//         builder: (context, dataProvider, child) {
+//           if (dataProvider.isLoading) {
+//             return const Center(child: CircularProgressIndicator());
+//           }
 
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => PyusdInsightsProvider(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('PYUSD Insights'),
-          centerTitle: false,
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Overview'),
-              Tab(text: 'Holders'),
-              Tab(text: 'Transactions'),
-              Tab(text: 'Network'),
-            ],
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor:
-                Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicatorColor: Theme.of(context).colorScheme.primary,
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                Provider.of<PyusdInsightsProvider>(context, listen: false)
-                    .refreshData();
-              },
-            ),
-          ],
-        ),
-        body: Consumer<PyusdInsightsProvider>(
-          builder: (context, provider, child) {
-            if (provider.isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+//           return RefreshIndicator(
+//             onRefresh: () async {
+//               await Provider.of<PyusdDataProvider>(context, listen: false)
+//                   .refreshData();
+//             },
+//             child: SingleChildScrollView(
+//               physics: const AlwaysScrollableScrollPhysics(),
+//               padding: const EdgeInsets.all(16),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   _buildSummaryCards(dataProvider),
+//                   const SizedBox(height: 24),
+//                   _buildSupplyGraph(dataProvider),
+//                   const SizedBox(height: 24),
+//                   _buildHoldersDistribution(dataProvider),
+//                   const SizedBox(height: 24),
+//                   _buildRecentTransactions(dataProvider),
+//                   const SizedBox(height: 24),
+//                   _buildNetworkImpact(dataProvider),
+//                 ],
+//               ),
+//             ),
+//           );
+//         },
+//       ),
+//     );
+//   }
 
-            if (provider.errorMessage.isNotEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          size: 48, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error loading data',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(provider.errorMessage),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => provider.refreshData(),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
+//   Widget _buildSummaryCards(PyusdDataProvider dataProvider) {
+//     final formatter = NumberFormat("#,###");
 
-            return TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(provider, context),
-                _buildHoldersTab(provider, context),
-                _buildTransactionsTab(provider, context),
-                _buildNetworkTab(provider, context),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
+//     return GridView.count(
+//       crossAxisCount: 2,
+//       shrinkWrap: true,
+//       physics: const NeverScrollableScrollPhysics(),
+//       mainAxisSpacing: 16,
+//       crossAxisSpacing: 16,
+//       childAspectRatio: 1.5,
+//       children: [
+//         _buildMetricCard(
+//           'Total Supply',
+//           '${formatter.format(dataProvider.totalSupply)} PYUSD',
+//           Icons.account_balance,
+//         ),
+//         _buildMetricCard(
+//           'Market Cap',
+//           '\$${formatter.format(dataProvider.marketCap)}',
+//           Icons.attach_money,
+//         ),
+//         _buildMetricCard(
+//           'Holders',
+//           formatter.format(dataProvider.totalHolders),
+//           Icons.people,
+//         ),
+//         _buildMetricCard(
+//           '24h Volume',
+//           '\$${formatter.format(dataProvider.volume24h)}',
+//           Icons.swap_horiz,
+//         ),
+//       ],
+//     );
+//   }
 
-  Widget _buildOverviewTab(
-      PyusdInsightsProvider provider, BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSection(
-          title: 'PYUSD at a Glance',
-          children: [
-            _buildMetricCard(
-              icon: Icons.account_balance,
-              title: 'Total Supply',
-              value: currencyFormat.format(provider.totalSupply),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.people,
-                    title: 'Unique Holders',
-                    value: compactFormat.format(provider.uniqueHolders),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.swap_horiz,
-                    title: 'Total Transfers',
-                    value: compactFormat.format(provider.totalTransfers),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildChartCard(
-              title: 'Supply History',
-              height: 250,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: LineChart(
-                  _buildSupplyLineChart(provider),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _buildSection(
-          title: 'Volume',
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.calendar_today,
-                    title: 'Daily Volume',
-                    value: currencyFormat.format(provider.dailyVolume),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.calendar_view_week,
-                    title: 'Weekly Volume',
-                    value: currencyFormat.format(provider.weeklyVolume),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildMetricCard(
-              icon: Icons.calendar_month,
-              title: 'Monthly Volume',
-              value: currencyFormat.format(provider.monthlyVolume),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _buildSection(
-          title: 'Chain Distribution',
-          children: [
-            _buildChartCard(
-              title: 'PYUSD Across Chains',
-              height: 300,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: PieChart(
-                  _buildChainDistributionPieChart(provider),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+//   Widget _buildMetricCard(String title, String value, IconData icon) {
+//     return Card(
+//       elevation: 4,
+//       child: Padding(
+//         padding: const EdgeInsets.all(16),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Row(
+//               children: [
+//                 Icon(icon, size: 24),
+//                 const SizedBox(width: 8),
+//                 Text(
+//                   title,
+//                   style: const TextStyle(
+//                     fontSize: 16,
+//                     fontWeight: FontWeight.w500,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             const SizedBox(height: 12),
+//             Text(
+//               value,
+//               style: const TextStyle(
+//                 fontSize: 22,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-  Widget _buildHoldersTab(
-      PyusdInsightsProvider provider, BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSection(
-          title: 'Top Holders',
-          children: [
-            _buildTopHoldersTable(provider),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _buildSection(
-          title: 'Holder Distribution',
-          children: [
-            _buildChartCard(
-              title: 'Wallet Size Distribution',
-              height: 300,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: BarChart(
-                  _buildWalletDistributionBarChart(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+//   Widget _buildSupplyGraph(PyusdDataProvider dataProvider) {
+//     // Extract supply data from the supplyHistory list of maps
+//     // We'll use netChange to calculate a running total
+//     double runningTotal = dataProvider.totalSupply;
+//     final supplyData = <double>[];
 
-  Widget _buildTransactionsTab(
-      PyusdInsightsProvider provider, BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSection(
-          title: 'Transaction Activity',
-          children: [
-            _buildChartCard(
-              title: 'Daily Transactions',
-              height: 250,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: BarChart(
-                  _buildTransactionActivityBarChart(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _buildSection(
-          title: 'Recent Transactions',
-          children: [
-            _buildRecentTransactionsTable(provider),
-          ],
-        ),
-      ],
-    );
-  }
+//     // Calculate supply backwards using netChange
+//     for (int i = dataProvider.supplyHistory.length - 1; i >= 0; i--) {
+//       final entry = dataProvider.supplyHistory[i];
+//       runningTotal -= entry['netChange'] as double;
+//       supplyData.insert(0, runningTotal);
+//     }
 
-  Widget _buildNetworkTab(
-      PyusdInsightsProvider provider, BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSection(
-          title: 'Network Impact',
-          children: [
-            _buildMetricCard(
-              icon: Icons.local_fire_department,
-              title: 'ETH Burned from PYUSD',
-              value: '${provider.ethBurned} ETH',
-            ),
-            const SizedBox(height: 16),
-            _buildMetricCard(
-              icon: Icons.pie_chart,
-              title: 'Stablecoin Market Share',
-              value: '${provider.marketShare}%',
-            ),
-            const SizedBox(height: 16),
-            _buildChartCard(
-              title: 'Gas Used by PYUSD Transactions',
-              height: 250,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: LineChart(
-                  _buildGasUsageLineChart(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _buildSection(
-          title: 'PYUSD vs Other Stablecoins',
-          children: [
-            _buildChartCard(
-              title: 'Market Share Comparison',
-              height: 300,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: PieChart(
-                  _buildStablecoinMarketSharePieChart(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+//     // Add current total supply
+//     supplyData.add(dataProvider.totalSupply);
 
-  Widget _buildSection(
-      {required String title, required List<Widget> children}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...children,
-      ],
-    );
-  }
+//     // Ensure we have data
+//     if (supplyData.isEmpty) {
+//       supplyData.add(dataProvider.totalSupply);
+//     }
 
-  Widget _buildMetricCard({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+//     return Card(
+//       elevation: 4,
+//       child: Padding(
+//         padding: const EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             const Text(
+//               'PYUSD Supply Growth',
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
+//             const SizedBox(height: 24),
+//             SizedBox(
+//               height: 200,
+//               child: LineChart(
+//                 LineChartData(
+//                   gridData: FlGridData(show: true),
+//                   titlesData: FlTitlesData(
+//                     leftTitles: AxisTitles(
+//                       sideTitles: SideTitles(
+//                         showTitles: true,
+//                         reservedSize: 40,
+//                       ),
+//                     ),
+//                     bottomTitles: AxisTitles(
+//                       sideTitles: SideTitles(
+//                         showTitles: true,
+//                         reservedSize: 30,
+//                       ),
+//                     ),
+//                     rightTitles: AxisTitles(
+//                       sideTitles: SideTitles(showTitles: false),
+//                     ),
+//                     topTitles: AxisTitles(
+//                       sideTitles: SideTitles(showTitles: false),
+//                     ),
+//                   ),
+//                   borderData: FlBorderData(show: true),
+//                   minX: 0,
+//                   maxX: supplyData.length.toDouble() - 1,
+//                   minY: supplyData.isEmpty
+//                       ? 0
+//                       : supplyData.reduce((a, b) => a < b ? a : b) * 0.9,
+//                   maxY: supplyData.isEmpty
+//                       ? 1
+//                       : supplyData.reduce((a, b) => a > b ? a : b) * 1.1,
+//                   lineBarsData: [
+//                     LineChartBarData(
+//                       spots: List.generate(
+//                         supplyData.length,
+//                         (index) => FlSpot(
+//                           index.toDouble(),
+//                           supplyData[index],
+//                         ),
+//                       ),
+//                       isCurved: true,
+//                       color: Colors.green,
+//                       barWidth: 2,
+//                       isStrokeCapRound: true,
+//                       dotData: FlDotData(show: false),
+//                       belowBarData: BarAreaData(
+//                         show: true,
+//                         color: Colors.green.withOpacity(0.3),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 12),
+//             Text(
+//                 'Growth rate: ${dataProvider.supplyGrowthRate.toStringAsFixed(2)}% (30d)'),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-  Widget _buildChartCard({
-    required String title,
-    required double height,
-    required Widget child,
-  }) {
-    return Card(
-      elevation: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: height,
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
+//   Widget _buildHoldersDistribution(PyusdDataProvider dataProvider) {
+//     // Prepare data for the pie chart
+//     final sections = <PieChartSectionData>[];
 
-  Widget _buildTopHoldersTable(PyusdInsightsProvider provider) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: provider.topHolders.map((holder) {
-            int index = provider.topHolders.indexOf(holder);
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundColor:
-                    Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                child: Text('${index + 1}'),
-              ),
-              title: Text(
-                holder['label'] ?? 'Unknown',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                '${holder['address'].toString().substring(0, 6)}...${holder['address'].toString().substring(holder['address'].toString().length - 4)}',
-                style: const TextStyle(fontSize: 12),
-              ),
-              trailing: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    currencyFormat.format(holder['balance']),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '${holder['percentage']}%',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.secondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(), // Convert the iterable to a List
-        ),
-      ),
-    );
-  }
+//     // Define colors for different categories
+//     final categoryColors = {
+//       'exchange': Colors.blue,
+//       'treasury': Colors.green,
+//       'whale': Colors.orange,
+//       'individual': Colors.purple,
+//     };
 
-  Widget _buildRecentTransactionsTable(PyusdInsightsProvider provider) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            for (var tx in provider.recentTransactions.take(10))
-              ListTile(
-                title: Row(
-                  children: [
-                    Text(
-                      'From: ${tx['from'].toString().substring(0, 6)}...${tx['from'].toString().substring(38)}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    const Icon(Icons.arrow_right_alt),
-                    Text(
-                      'To: ${tx['to'].toString().substring(0, 6)}...${tx['to'].toString().substring(38)}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
-                subtitle: Text(
-                  'Tx: ${tx['hash'].toString().substring(0, 10)}...',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                trailing: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      currencyFormat.format(tx['value']),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      _formatTimestamp(tx['timestamp']),
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+//     // Add sections for each category in the holder distribution
+//     dataProvider.holderDistribution.forEach((category, percentage) {
+//       sections.add(
+//         PieChartSectionData(
+//           value: percentage,
+//           title: _capitalizeFirstLetter(category),
+//           color: categoryColors[category] ?? Colors.grey,
+//           radius: 80,
+//           titleStyle: const TextStyle(
+//             fontSize: 12,
+//             fontWeight: FontWeight.bold,
+//             color: Colors.white,
+//           ),
+//         ),
+//       );
+//     });
 
-  String _formatTimestamp(int timestamp) {
-    final now = DateTime.now();
-    final txTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final difference = now.difference(txTime);
+//     // If no data, show placeholder
+//     if (sections.isEmpty) {
+//       sections.add(
+//         PieChartSectionData(
+//           value: 100,
+//           title: 'No Data',
+//           color: Colors.grey,
+//           radius: 80,
+//         ),
+//       );
+//     }
 
-    if (difference.inSeconds < 60) {
-      return '${difference.inSeconds}s ago';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
-  }
+//     return Card(
+//       elevation: 4,
+//       child: Padding(
+//         padding: const EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             const Text(
+//               'Holder Distribution',
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
+//             const SizedBox(height: 16),
+//             SizedBox(
+//               height: 200,
+//               child: PieChart(
+//                 PieChartData(
+//                   sections: sections,
+//                   sectionsSpace: 2,
+//                   centerSpaceRadius: 40,
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-  LineChartData _buildSupplyLineChart(PyusdInsightsProvider provider) {
-    List<FlSpot> spots = [];
+//   String _capitalizeFirstLetter(String text) {
+//     if (text.isEmpty) return text;
+//     return text[0].toUpperCase() + text.substring(1);
+//   }
 
-    for (var i = 0; i < provider.supplyHistory.length; i++) {
-      spots.add(FlSpot(
-          i.toDouble(), provider.supplyHistory[i]['supply'] / 1000000000));
-    }
+//   Widget _buildRecentTransactions(PyusdDataProvider dataProvider) {
+//     return Card(
+//       elevation: 4,
+//       child: Padding(
+//         padding: const EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             const Text(
+//               'Recent Transactions',
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
+//             const SizedBox(height: 16),
+//             ListView.builder(
+//               shrinkWrap: true,
+//               physics: const NeverScrollableScrollPhysics(),
+//               itemCount: dataProvider.recentTransactions.length,
+//               itemBuilder: (context, index) {
+//                 final tx = dataProvider.recentTransactions[index];
 
-    return LineChartData(
-      gridData: const FlGridData(
-        show: true,
-        drawVerticalLine: true,
-        horizontalInterval: 0.5,
-        verticalInterval: 5,
-      ),
-      titlesData: FlTitlesData(
-        show: true,
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 30,
-            interval: 5,
-            getTitlesWidget: (value, meta) {
-              if (value.toInt() >= provider.supplyHistory.length ||
-                  value % 5 != 0) {
-                return const SizedBox.shrink();
-              }
-              final date =
-                  DateTime.parse(provider.supplyHistory[value.toInt()]['date']);
-              return Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  '${date.month}/${date.day}',
-                  style: const TextStyle(fontSize: 10),
-                ),
-              );
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            interval: 0.5,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                '${value.toStringAsFixed(1)}B',
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-            reservedSize: 42,
-          ),
-        ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border.all(color: const Color(0xff37434d), width: 1),
-      ),
-      minX: 0,
-      maxX: (provider.supplyHistory.length - 1).toDouble(),
-      minY: spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) - 0.2,
-      maxY: spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 0.2,
-      lineBarsData: [
-        LineChartBarData(
-          spots: spots,
-          isCurved: true,
-          color: Theme.of(context).colorScheme.primary,
-          barWidth: 3,
-          isStrokeCapRound: true,
-          dotData: const FlDotData(
-            show: false,
-          ),
-          belowBarData: BarAreaData(
-            show: true,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-          ),
-        ),
-      ],
-    );
-  }
+//                 // Calculate time passed since transaction
+//                 // If tx has blockNumber, we can calculate relative time
+//                 String timeDisplay = tx['time'] ?? 'Recent';
+//                 if (timeDisplay == null && tx.containsKey('blockNumber')) {
+//                   // Logic to calculate time based on block number if needed
+//                   timeDisplay = 'Recent';
+//                 }
 
-  PieChartData _buildChainDistributionPieChart(PyusdInsightsProvider provider) {
-    final chains = provider.chainDistribution.keys.toList();
-    final values = provider.chainDistribution.values.toList();
-    final colorList = [
-      const Color(0xff0088ff),
-      const Color(0xff8c52ff),
-      const Color(0xffff5c77),
-      const Color(0xffffa600),
-      const Color(0xff36d39a),
-    ];
+//                 return ListTile(
+//                   title: Text(
+//                     '${tx['amount']} PYUSD',
+//                     style: const TextStyle(fontWeight: FontWeight.bold),
+//                   ),
+//                   subtitle: Text(
+//                     '${_shortenAddress(tx['from'])} → ${_shortenAddress(tx['to'])}',
+//                   ),
+//                   trailing: Text(timeDisplay),
+//                   onTap: () {
+//                     // Optional: Add functionality to open the transaction in a block explorer
+//                     if (tx.containsKey('txHash')) {
+//                       // Launch URL to view transaction details
+//                       launchUrl(
+//                           Uri.parse('https://etherscan.io/tx/${tx['txHash']}'));
+//                     }
+//                   },
+//                 );
+//               },
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-    return PieChartData(
-      sectionsSpace: 2,
-      centerSpaceRadius: 50,
-      sections: List.generate(chains.length, (i) {
-        return PieChartSectionData(
-          color: colorList[i % colorList.length],
-          value: values[i],
-          title: '${chains[i]}\n${values[i]}%',
-          radius: 80,
-          titleStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        );
-      }),
-    );
-  }
+//   Widget _buildNetworkImpact(PyusdDataProvider dataProvider) {
+//     return Card(
+//       elevation: 4,
+//       child: Padding(
+//         padding: const EdgeInsets.all(16),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             const Text(
+//               'Network Impact',
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
+//             const SizedBox(height: 16),
+//             _buildNetworkMetricRow(
+//               'Gas Used (24h)',
+//               '${dataProvider.networkMetrics['gasUsed24h']} ETH',
+//             ),
+//             _buildNetworkMetricRow(
+//               'Transactions (24h)',
+//               dataProvider.networkMetrics['txCount24h'].toString(),
+//             ),
+//             _buildNetworkMetricRow(
+//               'Avg TX fee',
+//               '${dataProvider.networkMetrics['avgTxFee']} ETH',
+//             ),
+//             _buildNetworkMetricRow(
+//               'ETH Network %',
+//               '${dataProvider.networkMetrics['networkPercentage']}%',
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
 
-  BarChartData _buildWalletDistributionBarChart() {
-    // Sample data for wallet distribution
-    final walletSizes = ['0-100', '100-1K', '1K-10K', '10K-100K', '100K+'];
-    final walletCounts = [15000.0, 18000.0, 7500.0, 1800.0, 280.0];
+//   Widget _buildNetworkMetricRow(String label, String value) {
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(vertical: 8),
+//       child: Row(
+//         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//         children: [
+//           Text(
+//             label,
+//             style: const TextStyle(
+//               fontSize: 16,
+//             ),
+//           ),
+//           Text(
+//             value,
+//             style: const TextStyle(
+//               fontSize: 16,
+//               fontWeight: FontWeight.bold,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
 
-    return BarChartData(
-      alignment: BarChartAlignment.spaceAround,
-      maxY: walletCounts.reduce((a, b) => a > b ? a : b) * 1.2,
-      barTouchData: BarTouchData(
-        enabled: true,
-        touchTooltipData: BarTouchTooltipData(
-          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-            return BarTooltipItem(
-              '${walletSizes[groupIndex]}: ${compactFormat.format(rod.toY)}',
-              const TextStyle(color: Colors.white),
-            );
-          },
-        ),
-      ),
-      titlesData: FlTitlesData(
-        show: true,
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            getTitlesWidget: (value, meta) {
-              if (value < 0 || value >= walletSizes.length) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  walletSizes[value.toInt()],
-                  style: const TextStyle(fontSize: 10),
-                ),
-              );
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                compactFormat.format(value),
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-          ),
-        ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border.all(color: const Color(0xff37434d), width: 1),
-      ),
-      barGroups: List.generate(walletSizes.length, (index) {
-        return BarChartGroupData(
-          x: index,
-          barRods: [
-            BarChartRodData(
-              toY: walletCounts[index],
-              color: Theme.of(context).colorScheme.primary,
-              width: 20,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-
-  BarChartData _buildTransactionActivityBarChart() {
-    // Sample data for transaction activity
-    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final txCounts = [2340.0, 3120.0, 2890.0, 3250.0, 3580.0, 2470.0, 1980.0];
-
-    return BarChartData(
-      alignment: BarChartAlignment.spaceAround,
-      maxY: txCounts.reduce((a, b) => a > b ? a : b) * 1.2,
-      barTouchData: BarTouchData(
-        enabled: true,
-        touchTooltipData: BarTouchTooltipData(
-          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-            return BarTooltipItem(
-              '${days[groupIndex]}: ${compactFormat.format(rod.toY)}',
-              const TextStyle(color: Colors.white),
-            );
-          },
-        ),
-      ),
-      titlesData: FlTitlesData(
-        show: true,
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            getTitlesWidget: (value, meta) {
-              if (value < 0 || value >= days.length) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  days[value.toInt()],
-                  style: const TextStyle(fontSize: 10),
-                ),
-              );
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                compactFormat.format(value),
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-          ),
-        ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border.all(color: const Color(0xff37434d), width: 1),
-      ),
-      barGroups: List.generate(days.length, (index) {
-        return BarChartGroupData(
-          x: index,
-          barRods: [
-            BarChartRodData(
-              toY: txCounts[index],
-              color: Theme.of(context).colorScheme.secondary,
-              width: 20,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-
-  LineChartData _buildGasUsageLineChart() {
-    // Sample data for gas usage
-    final spots = [
-      const FlSpot(0, 1.2),
-      const FlSpot(1, 1.8),
-      const FlSpot(2, 2.3),
-      const FlSpot(3, 1.9),
-      const FlSpot(4, 2.1),
-      const FlSpot(5, 2.6),
-      const FlSpot(6, 2.8),
-    ];
-
-    return LineChartData(
-      gridData: const FlGridData(
-        show: true,
-        drawVerticalLine: true,
-        horizontalInterval: 0.5,
-        verticalInterval: 1,
-      ),
-      titlesData: FlTitlesData(
-        show: true,
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 30,
-            interval: 1,
-            getTitlesWidget: (value, meta) {
-              final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-              if (value.toInt() >= days.length) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  days[value.toInt()],
-                  style: const TextStyle(fontSize: 10),
-                ),
-              );
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            interval: 0.5,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                '${value.toStringAsFixed(1)}M',
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-            reservedSize: 42,
-          ),
-        ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border.all(color: const Color(0xff37434d), width: 1),
-      ),
-      minX: 0,
-      maxX: 6,
-      minY: 1,
-      maxY: 3,
-      lineBarsData: [
-        LineChartBarData(
-          spots: spots,
-          isCurved: true,
-          color: Colors.amber,
-          barWidth: 3,
-          isStrokeCapRound: true,
-          dotData: const FlDotData(
-            show: false,
-          ),
-          belowBarData: BarAreaData(
-            show: true,
-            color: Colors.amber.withOpacity(0.2),
-          ),
-        ),
-      ],
-    );
-  }
-
-  PieChartData _buildStablecoinMarketSharePieChart() {
-    // Sample data for stablecoin market share
-    final stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'PYUSD', 'Others'];
-    final marketShares = [37.5, 28.6, 12.4, 10.3, 8.2, 3.0];
-    final colorList = [
-      const Color(0xff26a17b), // USDT green
-      const Color(0xff2775ca), // USDC blue
-      const Color(0xfff0b90b), // BUSD yellow
-      const Color(0xfff4b731), // DAI gold
-      const Color(0xff0066ff), // PYUSD blue
-      const Color(0xff888888), // Others gray
-    ];
-
-    return PieChartData(
-      sectionsSpace: 2,
-      centerSpaceRadius: 50,
-      sections: List.generate(stablecoins.length, (i) {
-        return PieChartSectionData(
-          color: colorList[i],
-          value: marketShares[i],
-          title: '${stablecoins[i]}\n${marketShares[i]}%',
-          radius: 80,
-          titleStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        );
-      }),
-    );
-  }
-}
+//   String _shortenAddress(String address) {
+//     if (address.length < 10) return address;
+//     return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+//   }
+// }

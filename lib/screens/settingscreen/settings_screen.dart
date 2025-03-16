@@ -652,6 +652,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () async {
               // Ideally would call walletProvider.clearWallet()
+              Provider.of<AuthProvider>(context).logout();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,

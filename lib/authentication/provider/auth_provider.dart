@@ -83,20 +83,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Connect external wallet (WalletConnect)
-  Future<void> connectWallet(String address) async {
-    _walletConnectAddress = address;
-    _isWalletConnected = true;
-    notifyListeners();
-  }
-
-  // Disconnect external wallet
-  void disconnectWallet() {
-    _walletConnectAddress = null;
-    _isWalletConnected = false;
-    notifyListeners();
-  }
-
   // Log out / clear wallet
   Future<void> logout() async {
     if (_isLoading) return;
@@ -112,12 +98,6 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
-  }
-
-  // Validate Ethereum address
-  bool isValidAddress(String address) {
-    final regex = RegExp(r'^0x[a-fA-F0-9]{40}$');
-    return regex.hasMatch(address);
   }
 
   // Helper methods

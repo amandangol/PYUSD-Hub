@@ -6,8 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Import all providers
 import 'authentication/provider/auth_provider.dart';
 import 'providers/network_provider.dart';
-import 'pyusd_analytics/provider/pyusd_analytics_provider.dart';
-import 'pyusd_analytics/view/pyusd_analytics_screen.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
@@ -95,9 +93,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
         ),
-        ChangeNotifierProvider(
-          create: (context) => PyusdInsightsProvider(),
-        ),
+        // ChangeNotifierProvider(
+        //   create: (context) => PyusdDataProvider(),
+        // ),
         Provider<WalletService>(
           create: (_) => WalletService(),
         ),
@@ -141,7 +139,7 @@ class _MainAppState extends State<MainApp> {
     final List<Widget> screens = [
       const HomeScreen(),
       const NetworkDashboardScreen(),
-      const PyusdInsightsScreen(),
+      const HomeScreen(),
       const SettingsScreen(),
     ];
 

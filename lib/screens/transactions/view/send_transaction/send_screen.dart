@@ -12,7 +12,7 @@ import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';
 
 class SendTransactionScreen extends StatefulWidget {
-  const SendTransactionScreen({Key? key}) : super(key: key);
+  const SendTransactionScreen({super.key});
 
   @override
   _SendTransactionScreenState createState() => _SendTransactionScreenState();
@@ -30,6 +30,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   bool _isLoading = false;
   bool _isEstimatingGas = false;
   String _selectedAsset = 'PYUSD'; // Default to PYUSD
+  bool _mounted = true; // Track if the widget is mounted
 
   @override
   void initState() {
@@ -39,17 +40,29 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
   @override
   void dispose() {
+    _mounted = false;
     _addressController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
+  // Safe setState that checks if mounted first
+  void _safeSetState(Function function) {
+    if (_mounted) {
+      setState(() {
+        function();
+      });
+    }
+  }
+
   Future<void> _fetchGasPrice() async {
+    if (!_mounted) return;
+
     final transactionProvider =
         Provider.of<TransactionProvider>(context, listen: false);
 
     try {
-      setState(() {
+      _safeSetState(() {
         _isLoading = true;
       });
 
@@ -62,17 +75,19 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       }
     } catch (e) {
       // Use default gas price if fetch fails
-      _gasPrice = 20.0; // 20 Gwei default
+      _safeSetState(() {
+        _gasPrice = 20.0; // 20 Gwei default
+      });
     } finally {
-      setState(() {
+      _safeSetState(() {
         _isLoading = false;
       });
     }
   }
 
   Future<void> _estimateGasFee() async {
-    if (!_isValidAddress || _amountController.text.isEmpty) {
-      setState(() {
+    if (!_mounted || !_isValidAddress || _amountController.text.isEmpty) {
+      _safeSetState(() {
         _estimatedGasFee = 0.0;
         _estimatedGas = 0;
       });
@@ -88,7 +103,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
 
     try {
-      setState(() {
+      _safeSetState(() {
         _isEstimatingGas = true;
       });
 
@@ -109,15 +124,19 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
-      // Calculate fee: gas units × gas price (in Gwei) × 10^-9 (to convert to ETH)
-      _estimatedGasFee = estimatedGas * _gasPrice * 1e-9;
-      _estimatedGas = estimatedGas;
+      if (!_mounted) return;
 
-      setState(() {});
+      // Calculate fee: gas units × gas price (in Gwei) × 10^-9 (to convert to ETH)
+      final fee = estimatedGas * _gasPrice * 1e-9;
+
+      _safeSetState(() {
+        _estimatedGasFee = fee;
+        _estimatedGas = estimatedGas;
+      });
     } catch (e) {
       print('Gas estimation error: $e');
       // Set default values if estimation fails
-      setState(() {
+      _safeSetState(() {
         if (_selectedAsset == 'PYUSD') {
           _estimatedGas = 100000; // Default for token transfers
         } else {
@@ -126,7 +145,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         _estimatedGasFee = _estimatedGas * _gasPrice * 1e-9;
       });
     } finally {
-      setState(() {
+      _safeSetState(() {
         _isEstimatingGas = false;
       });
     }
@@ -134,13 +153,13 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
   void _validateAddress(String address) {
     try {
-      // Validate Ethereum address format
-      setState(() {
+      // Validate Ethereum address format - this is simplified, should use proper validation
+      _safeSetState(() {
         _isValidAddress = true;
       });
       _estimateGasFee(); // Re-estimate when address changes
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _isValidAddress = false;
         _estimatedGasFee = 0.0;
         _estimatedGas = 0;
@@ -149,7 +168,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   }
 
   Future<void> _sendTransaction() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_mounted || !_formKey.currentState!.validate()) return;
 
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
     final transactionProvider =
@@ -201,9 +220,9 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     // Confirm transaction details
     final confirmed = await _showConfirmationDialog(context, address, amount);
 
-    if (confirmed != true) return;
+    if (confirmed != true || !_mounted) return;
 
-    setState(() {
+    _safeSetState(() {
       _isLoading = true;
     });
 
@@ -226,8 +245,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
-      // Show success message
-      if (mounted) {
+      // Show success message and navigate only if still mounted
+      if (_mounted) {
         SnackbarUtil.showSnackbar(
           context: context,
           message: 'Transaction sent! Hash: ${txHash.substring(0, 10)}...',
@@ -238,13 +257,15 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Error sending transaction: $e',
-          isError: true);
-      print(e);
+      if (_mounted) {
+        SnackbarUtil.showSnackbar(
+            context: context,
+            message: 'Error sending transaction: $e',
+            isError: true);
+        print(e);
+      }
     } finally {
-      setState(() {
+      _safeSetState(() {
         _isLoading = false;
       });
     }
@@ -255,6 +276,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     String address,
     double amount,
   ) async {
+    if (!_mounted) return false;
+
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -275,7 +298,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
               Text(
                   'Total Amount (with gas): ${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH'),
             const SizedBox(height: 8),
-            // Text('Network: ${networkProvider.currentNetworkName}'),
             const SizedBox(height: 12),
             const Text('Please confirm this transaction details.',
                 style:
@@ -303,7 +325,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   Future<void> _scanQRCode() async {
     // This would normally use a QR code scanner plugin
     // For this example, we'll just simulate it by setting a value
-    setState(() {
+    _safeSetState(() {
       _addressController.text = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
       _validateAddress(_addressController.text);
     });

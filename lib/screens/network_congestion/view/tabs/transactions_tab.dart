@@ -38,8 +38,39 @@ class _TransactionsTabState extends State<TransactionsTab> {
   }
 
   // Transaction Activity Overview
+  // Transaction Activity Overview
   Widget _buildTransactionOverview() {
     final data = widget.provider.congestionData;
+    final transactions = widget.provider.recentPyusdTransactions;
+
+    // Calculate total volume in the last 24 hours from transactions
+    double totalVolume24h = 0;
+    if (transactions.isNotEmpty) {
+      final DateTime now = DateTime.now();
+      final DateTime yesterday = now.subtract(const Duration(hours: 24));
+
+      for (var tx in transactions) {
+        // Check if transaction has timestamp
+        if (tx.containsKey('timestamp')) {
+          final int? timestamp = _parseHexValue(tx['timestamp']);
+          if (timestamp != null) {
+            final DateTime txTime =
+                DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+            if (txTime.isAfter(yesterday)) {
+              // Add value to total volume if transaction is within last 24 hours
+              final double? value = _parseHexValue(tx['value'])?.toDouble();
+              if (value != null) {
+                totalVolume24h += value / 1e18; // Convert from wei to ETH
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Format volume in millions with 2 decimal places
+    final String formattedVolume =
+        '\$${(totalVolume24h / 1000000).toStringAsFixed(2)}M';
 
     return Card(
       elevation: 3,
@@ -58,24 +89,24 @@ class _TransactionsTabState extends State<TransactionsTab> {
             ),
             const SizedBox(height: 16),
 
-            // Transaction statistics
-            const Row(
+            // Transaction statistics with real values
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 Expanded(
                   child: StatsCard(
                     title: 'Last 24h',
-                    value: '1,284',
+                    value: '${data.confirmedPyusdTxCount}',
                     icon: Icons.swap_horiz,
                     color: Colors.blue,
                     description: 'PYUSD txs',
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: StatsCard(
                     title: 'Volume 24h',
-                    value: '\$2.76M',
+                    value: formattedVolume,
                     icon: Icons.attach_money,
                     color: Colors.green,
                     description: 'PYUSD transferred',
@@ -97,10 +128,10 @@ class _TransactionsTabState extends State<TransactionsTab> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: StatsCard(
                     title: 'Active Users',
-                    value: '876',
+                    value: '${_calculateUniqueAddresses(transactions)}',
                     icon: Icons.people,
                     color: Colors.purple,
                     description: 'Unique wallets',
@@ -112,6 +143,30 @@ class _TransactionsTabState extends State<TransactionsTab> {
         ),
       ),
     );
+  }
+
+// Helper method to parse hex values
+  int? _parseHexValue(dynamic hexValue) {
+    if (hexValue == null || hexValue is! String || !hexValue.startsWith('0x')) {
+      return null;
+    }
+    return int.tryParse(hexValue.substring(2), radix: 16);
+  }
+
+// Helper method to calculate unique addresses involved in transactions
+  int _calculateUniqueAddresses(List<Map<String, dynamic>> transactions) {
+    final Set<String> uniqueAddresses = {};
+
+    for (var tx in transactions) {
+      if (tx.containsKey('from') && tx['from'] is String) {
+        uniqueAddresses.add(tx['from'].toLowerCase());
+      }
+      if (tx.containsKey('to') && tx['to'] is String) {
+        uniqueAddresses.add(tx['to'].toLowerCase());
+      }
+    }
+
+    return uniqueAddresses.length;
   }
 
   // PYUSD Activity Section

@@ -113,6 +113,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
+  cryptography:
+    dependency: transitive
+    description:
+      name: cryptography
+      sha256: d146b76d33d94548cf035233fbc2f4338c1242fa119013bead807d033fc4ae05
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.7.0"
+  csv:
+    dependency: "direct main"
+    description:
+      name: csv
+      sha256: c6aa2679b2a18cb57652920f674488d89712efaf4d3fdf2e537215b35fc19d6c
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.0"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -701,6 +717,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.0"
+  sqflite:
+    dependency: "direct main"
+    description:
+      name: sqflite
+      sha256: a43e5a27235518c03ca238e7b4732cf35eabe863a369ceba6cbefa537a66f16d
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.3+1"
+  sqflite_common:
+    dependency: transitive
+    description:
+      name: sqflite_common
+      sha256: "3da423ce7baf868be70e2c0976c28a1bb2f73644268b7ffa7d2e08eab71f16a4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.5.4"
   stack_trace:
     dependency: transitive
     description:
@@ -733,6 +765,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: "539ef412b170d65ecdafd780f924e5be3f60032a1128df156adad6c5b373d558"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0+1"
   term_glyph:
     dependency: transitive
     description:
@@ -853,6 +893,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.13"
+  walletconnect_dart:
+    dependency: "direct main"
+    description:
+      name: walletconnect_dart
+      sha256: "6d69d3f7ed43b4a111458da0ba078f4ea291ff11328068c9cbf5cab3bd86593f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.11"
   web:
     dependency: transitive
     description:
@@ -861,6 +909,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  web3auth_flutter:
+    dependency: "direct main"
+    description:
+      name: web3auth_flutter
+      sha256: "246df10fc7fa5ec87ad4adfc0ea9ecd32f61d87d3dabc470cff9959f2994d38d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.2"
   web3dart:
     dependency: "direct main"
     description:
@@ -869,22 +925,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.1"
-  web_socket:
-    dependency: transitive
-    description:
-      name: web_socket
-      sha256: "3c12d96c0c9a4eec095246debcea7b86c0324f22df69893d538fcc6f1b8cce83"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.6"
   web_socket_channel:
     dependency: "direct main"
     description:
       name: web_socket_channel
-      sha256: "0b8e2457400d8a859b7b2030786835a28a8e80836ef64402abef392ff4f1d0e5"
+      sha256: d88238e5eac9a42bb43ca4e721edba3c08c6354d4a53063afaa568516217621b
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.2"
+    version: "2.4.0"
   win32:
     dependency: transitive
     description:

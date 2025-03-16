@@ -31,9 +31,6 @@ class _TransactionItemState extends State<TransactionItem> {
   // Helper method to format amount - updated to match the detail screen formatting
   String _formatAmount(TransactionModel tx) {
     if (tx.tokenSymbol != null) {
-      // print(
-      //     'Formatting token amount: ${tx.value} with decimals: $decimalPlaces');
-
       return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {
       return '${tx.amount.toStringAsFixed(6)} ETH';
@@ -52,16 +49,6 @@ class _TransactionItemState extends State<TransactionItem> {
     // Format the amount string
     final formattedAmount = _formatAmount(displayTransaction);
 
-    // // Enhanced debug logging
-    // print('Transaction hash: ${displayTransaction.hash}');
-    // print('Direction: ${isIncoming ? 'Incoming' : 'Outgoing'}');
-    // print('Raw Value: ${displayTransaction.value}');
-    // print('Token Symbol: ${displayTransaction.tokenSymbol}');
-    // print('Token Decimals: ${displayTransaction.tokenDecimals}');
-    // print('Formatted Value: $formattedAmount');
-    // print('Status: ${displayTransaction.status}');
-    // print('Timestamp: ${displayTransaction.timestamp}');
-
     return Card(
       color: widget.cardColor,
       elevation: 0,
@@ -70,84 +57,7 @@ class _TransactionItemState extends State<TransactionItem> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () async {
-          // Set loading state
-          setState(() {
-            _isLoading = true;
-          });
-
-          try {
-            // Get the providers outside of the build phase
-            final transactionDetailProvider =
-                Provider.of<TransactionDetailProvider>(context, listen: false);
-            final networkProvider =
-                Provider.of<NetworkProvider>(context, listen: false);
-
-            // Fetch the latest transaction details
-            final detailsToShow =
-                await transactionDetailProvider.getTransactionDetails(
-              txHash: widget.transaction.hash,
-              rpcUrl: networkProvider.currentRpcEndpoint,
-              networkType: networkProvider.currentNetwork,
-              currentAddress: widget.currentAddress,
-              forceRefresh: true, // Always fetch fresh data
-            );
-
-            // Print detailed transaction information
-            if (detailsToShow != null) {
-              print('Fetched transaction details:');
-              print('  Hash: ${detailsToShow.hash}');
-              print('  From: ${detailsToShow.from}');
-              print('  To: ${detailsToShow.to}');
-              print(
-                  '  Value: ${detailsToShow.amount} ${detailsToShow.tokenSymbol ?? 'ETH'}');
-              print('  Gas Used: ${detailsToShow.gasUsed}');
-              print('  Gas Price: ${detailsToShow.gasPrice} Gwei');
-              print('  Fee: ${detailsToShow.fee} ETH');
-              print('  Status: ${detailsToShow.status}');
-              print('  Block Number: ${detailsToShow.blockNumber}');
-              print('  Confirmations: ${detailsToShow.confirmations}');
-            } else {
-              print('Failed to fetch detailed transaction information');
-            }
-
-            // Use transaction details if available, otherwise use the basic transaction
-            final transactionToShow = detailsToShow ?? displayTransaction;
-
-            // Navigate using the current data
-            if (context.mounted) {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TransactionDetailScreen(
-                    transaction: transactionToShow,
-                    currentAddress: widget.currentAddress,
-                    isDarkMode: widget.isDarkMode,
-                    networkType: networkProvider.currentNetwork,
-                    rpcUrl: networkProvider.currentRpcEndpoint,
-                  ),
-                ),
-              );
-            }
-          } catch (e) {
-            // Print error for debugging
-            print('Error when fetching transaction details: $e');
-
-            // Show error if navigation fails
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error: $e')),
-              );
-            }
-          } finally {
-            // Reset loading state if still mounted
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          }
-        },
+        onTap: () => _handleTransactionTap(displayTransaction),
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
@@ -275,6 +185,84 @@ class _TransactionItemState extends State<TransactionItem> {
         ),
       ),
     );
+  }
+
+  // Optimized transaction tap handler
+  void _handleTransactionTap(TransactionModel transaction) async {
+    if (!mounted) return;
+
+    final transactionDetailProvider =
+        Provider.of<TransactionDetailProvider>(context, listen: false);
+    final networkProvider =
+        Provider.of<NetworkProvider>(context, listen: false);
+
+    // Check if we already have this transaction in cache
+    final cachedDetails =
+        transactionDetailProvider.getCachedTransactionDetails(transaction.hash);
+    final bool isRecentlyFetched = cachedDetails != null;
+
+    // Show loading indicator briefly
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // First navigate to the detail screen with either cached or basic data
+      // This provides immediate feedback to the user without waiting for network
+      if (context.mounted) {
+        final detailsToShow = isRecentlyFetched ? cachedDetails : transaction;
+
+        // Only show loading indicator for a short time to indicate response
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        });
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TransactionDetailScreen(
+              transaction: detailsToShow,
+              currentAddress: widget.currentAddress,
+              isDarkMode: widget.isDarkMode,
+              networkType: networkProvider.currentNetwork,
+              rpcUrl: networkProvider.currentRpcEndpoint,
+              // Pass a flag if we want the detail screen to refresh the data
+              needsRefresh: !isRecentlyFetched,
+            ),
+          ),
+        );
+
+        // If the data isn't recently fetched, trigger a refresh in the background for next time
+        if (!isRecentlyFetched) {
+          // No need to await this since we've already navigated
+          transactionDetailProvider.getTransactionDetails(
+            txHash: transaction.hash,
+            rpcUrl: networkProvider.currentRpcEndpoint,
+            networkType: networkProvider.currentNetwork,
+            currentAddress: widget.currentAddress,
+            forceRefresh: false, // Don't force refresh if we already have data
+          );
+        }
+      }
+    } catch (e) {
+      // Reset loading state if still mounted
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      // Show error if navigation fails
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildTransactionIcon(bool isIncoming, TransactionStatus status) {

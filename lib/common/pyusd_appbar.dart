@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isDarkMode;
-  final VoidCallback onSettingsPressed;
   final VoidCallback? onRefreshPressed;
   final bool hasWallet;
+  final String? title;
 
   const PyusdAppBar({
     Key? key,
     required this.isDarkMode,
-    required this.onSettingsPressed,
     this.onRefreshPressed,
+    this.title,
     this.hasWallet = false,
   }) : super(key: key);
 
@@ -30,7 +30,7 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'PYUSD Wallet',
+            title!,
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
@@ -47,13 +47,6 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             onPressed: onRefreshPressed,
           ),
-        IconButton(
-          icon: Icon(
-            Icons.settings_outlined,
-            color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-          ),
-          onPressed: onSettingsPressed,
-        ),
       ],
     );
   }

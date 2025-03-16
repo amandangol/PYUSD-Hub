@@ -698,7 +698,6 @@ class NetworkCongestionProvider with ChangeNotifier {
     } catch (e) {
       print('WebSocket connection error: $e');
       // Try to reconnect after a delay
-      Future.delayed(const Duration(seconds: 5), _reconnectWebSocket);
     }
   }
 

@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "t-bounty-433704-e4",
+  "private_key_id": "b8db0a3c514ffa1aee3cfed66ea870b7715cf05f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCsetxL08QAP9jT\nZGj6M67ChxKpVQr2E1RqEL4H/MEvCROE2Y5ricOCl5Caaf5zd99LHgBQMW8FxuaY\n++70AKZCt8PBFMeZo+cUAmEbHXSfYX+jBJfNDVBMjY4ZizZXrylGmOHmVzvEQXrN\nhz74FgWD/KUNwMpK8Ud7bM15yy408ztQPYE/3okmC2Az7xnxZNRPQOu9MOKR50Tl\nPfNZflbXlaOiQb7tJV6PUAOBJ0lfTPMvamw2AduS9K/hC+7IZGjKwBgVYDrti/wu\nFjiG9ZdV/La8Qqoby2i3K0HFee9eci4harnIyFgXS1koyKyFUXo/Z2oE3Mt+a9eF\nJauu4M2xAgMBAAECggEAHruXlEVL99Voj6YlFGvwGEZUG2sFVHp2QJ3yFl9Blt1x\npmrTdzLpbNQP1ovLZIy3810JpkBgrXFW9mxxk/WnqlyvGzDWLfin/Ic+AURa2ulX\nAleXqthT9ggFCWUmTjJuUt975PynMB2QwZ13KWJXIkD6sfwnr3nViFcHN8vt1E41\nTGNmdTGXFWxvosmNbmvvYtDncv2aUW7rR/nVwHegG2HEqFqJP0YsEFinjGTRcaVS\nye+gQhKwm7DHzWUouftIa/BGwyHwyU9jZjOSDyP/KBaYLxkI4bRcEAy4k91rgBF+\nJ10bC+v6sJbNuoLDzoLfMekTGfGORMFETDmeMaQEKQKBgQDuCEREaie/D/+gV8D0\nAHLsNx1uapanLYBlqB44lHJTIJiAcfqovQtcA6A5vWy5E/HqL6CBEA4lhdNutJ0R\n1PdXXoSgZ7mkljXb93PQlrcw7ICMNmlaQpV52SqdtKxc7hS3b6X4rcxrqq9CBVZp\nQ/8L/mRz3rT+aiFgBOocDpx25QKBgQC5f9xTQm047QzmKi0oKrmBFf6tBHKW375c\nKpubzvsDEWOUl0xYil6IQvQ4tpmg7zADgHyVKfFqkFPaFEOsUA8ysj+YcYjn7mO8\nMKZ0ucEQBkqJ3txCzKIBUSTree6zK2LXO7ifR0RXkaitirZhQtHclW3gln5vJT9G\nMoe7h/ji3QKBgQCEhZe0W0GrrvWLyK+FaWaSOpEpMzCS/NM6RaIlsAgCXehpwoti\nPHXBkcc3vk10sTUDQ+bhVBX8MAip3uZ/0giu3NGMGJOTnYl44Mja/b4Z/+IFrhlz\nhhSAVTbTvI4l4usnwYIu9FwWKV4PrLcSPigV/ljg5cHwzxerxLCuVDgqPQKBgG13\nCHuRjYa0TJJefTtgywtkAV/0afKiomEdO6qcYAAVeOAs0H7HWLWsXRZCmzIfNAQ9\nBEe58p7iALmGj9DVhcJy8ZhyF0pWoUBirTfgjg94xu/JNc2tmESSr+jNkZDln3RH\n59EGa0wJxrJyUuHeXp1/CNIpvP61yjsQgoyl1rd5AoGBAKnLsPqa8gnM9WV2D810\nmBVg2CDC/ulCIAUW1Es6z4ZiWcxj749RHDGSA6uC43vpY8oe/IiLqqkXAhPFAozd\n1PbZTlju7NzYtri1yihaXTBc8ctHE1e2pp670CqdgoDmneWrUMRqX3CP2KR8st1r\nO1YBYkVQTuuhwQlHiPwexY2Z\n-----END PRIVATE KEY-----\n",
+  "client_email": "flutter-bigquery-client@t-bounty-433704-e4.iam.gserviceaccount.com",
+  "client_id": "116225024951924374542",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/flutter-bigquery-client%40t-bounty-433704-e4.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
