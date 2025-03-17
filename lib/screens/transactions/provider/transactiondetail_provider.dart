@@ -183,6 +183,110 @@ class TransactionDetailProvider with ChangeNotifier {
     }
   }
 
+// Get debug trace data for a transaction
+  Future<Map<String, dynamic>?> getTransactionTrace({
+    required String txHash,
+    required String rpcUrl,
+    Map<String, dynamic>? tracerOptions,
+  }) async {
+    _setLoadingState(true);
+
+    try {
+      final traceData = await _rpcService.debugTraceTransaction(
+        rpcUrl,
+        txHash,
+        tracerOptions: tracerOptions ??
+            {
+              "tracer": "callTracer",
+              "enableMemory": true,
+              "enableReturnData": true,
+            },
+      );
+
+      return traceData;
+    } catch (e) {
+      _setError('Error fetching transaction trace: $e');
+      return null;
+    } finally {
+      _setLoadingState(false);
+    }
+  }
+
+// Extract and return internal transactions from a transaction
+  Future<List<Map<String, dynamic>>?> getInternalTransactions({
+    required String txHash,
+    required String rpcUrl,
+    required NetworkType networkType,
+    required String currentAddress,
+  }) async {
+    // First check if we already have this transaction with trace data in cache
+    if (_transactionDetailsCache.containsKey(txHash) &&
+        _transactionDetailsCache[txHash]?.internalTransactions != null) {
+      return _transactionDetailsCache[txHash]?.internalTransactions;
+    }
+
+    // If not in cache or no trace data, fetch the full transaction details
+    final details = await getTransactionDetails(
+      txHash: txHash,
+      rpcUrl: rpcUrl,
+      networkType: networkType,
+      currentAddress: currentAddress,
+      forceRefresh: true, // Force refresh to get the trace data
+    );
+
+    return details?.internalTransactions;
+  }
+
+// Get detailed error info for failed transactions
+  Future<String?> getTransactionErrorDetails({
+    required String txHash,
+    required String rpcUrl,
+    required NetworkType networkType,
+    required String currentAddress,
+  }) async {
+    // First check if we already have this transaction with error data in cache
+    if (_transactionDetailsCache.containsKey(txHash) &&
+        _transactionDetailsCache[txHash]?.errorMessage != null) {
+      return _transactionDetailsCache[txHash]?.errorMessage;
+    }
+
+    // If not in cache or no error message, fetch the full transaction details
+    final details = await getTransactionDetails(
+      txHash: txHash,
+      rpcUrl: rpcUrl,
+      networkType: networkType,
+      currentAddress: currentAddress,
+      forceRefresh: true, // Force refresh to get the error data
+    );
+
+    return details?.errorMessage;
+  }
+
+// Get raw trace data specifically for developers/debugging purposes
+  Future<Map<String, dynamic>?> getRawTraceData({
+    required String txHash,
+    required String rpcUrl,
+    required NetworkType networkType,
+    required String currentAddress,
+  }) async {
+    // First check if we already have this transaction with trace data in cache
+    if (_transactionDetailsCache.containsKey(txHash) &&
+        _transactionDetailsCache[txHash]?.traceData != null) {
+      return _transactionDetailsCache[txHash]?.traceData;
+    }
+
+    // If not in cache or no trace data, fetch the full transaction details
+    final details = await getTransactionDetails(
+      txHash: txHash,
+      rpcUrl: rpcUrl,
+      networkType: networkType,
+      currentAddress: currentAddress,
+      forceRefresh: true, // Force refresh to get the trace data
+    );
+
+    return details?.traceData;
+  }
+
   // Helper to set loading state and notify listeners once
   void _setLoadingState(bool loading) {
     if (_isLoading != loading) {

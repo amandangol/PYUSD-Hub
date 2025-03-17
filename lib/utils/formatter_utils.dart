@@ -27,12 +27,30 @@ class FormatterUtils {
   }
 
   /// Formats a BigInt value (in wei) to ETH with appropriate precision
-  static String formatEther(BigInt? wei) {
-    if (wei == null) return '0 ETH';
-    final ether = wei / BigInt.from(1e18);
-    return ether >= 1
-        ? '${ether.toStringAsFixed(4)} ETH' // Use 4 decimal places for large values
-        : '${ether.toStringAsPrecision(6)} ETH'; // Use 6 significant figures for small values
+  static String formatEther(String value) {
+    try {
+      // Convert hex string to BigInt if it starts with '0x'
+      BigInt bigIntValue;
+      if (value.startsWith('0x')) {
+        bigIntValue = BigInt.parse(value.substring(2), radix: 16);
+      } else {
+        bigIntValue = BigInt.parse(value);
+      }
+
+      // Convert to ETH (1 ETH = 10^18 wei)
+      final double ethValue = bigIntValue / BigInt.from(10).pow(18);
+
+      // Format based on size
+      if (ethValue < 0.00001) {
+        return ethValue.toStringAsExponential(6);
+      } else if (ethValue < 1) {
+        return ethValue.toStringAsFixed(8);
+      } else {
+        return ethValue.toStringAsFixed(6);
+      }
+    } catch (e) {
+      return value;
+    }
   }
 
   /// Formats a large number with commas (e.g., 1000000 -> "1,000,000")

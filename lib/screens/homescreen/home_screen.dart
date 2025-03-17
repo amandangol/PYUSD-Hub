@@ -30,27 +30,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Track the last refresh time
   DateTime? _lastRefreshTime;
   // Minimum duration between auto-refreshes (5 minutes)
-  final _refreshCooldown = const Duration(minutes: 5);
+  // final _refreshCooldown = const Duration(minutes: 5);
 
   // Timer for periodic refresh
   Timer? _refreshTimer;
 
   @override
-  void initState() {
-    super.initState();
+  // void initState() {
+  //   super.initState();
 
-    // Check if we need to refresh on init - with a small delay to ensure providers are ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndRefreshIfNeeded();
+  //   // Check if we need to refresh on init - with a small delay to ensure providers are ready
+  //   // WidgetsBinding.instance.addPostFrameCallback((_) {
+  //   //   _checkAndRefreshIfNeeded();
 
-      // Set up a periodic refresh timer (every 5 minutes)
-      _refreshTimer = Timer.periodic(_refreshCooldown, (_) {
-        if (mounted) {
-          _checkAndRefreshIfNeeded();
-        }
-      });
-    });
-  }
+  //   // Set up a periodic refresh timer (every 5 minutes)
+  //   // _refreshTimer = Timer.periodic(_refreshCooldown, (_) {
+  //   //   if (mounted) {
+  //   //     _checkAndRefreshIfNeeded();
+  //   //   }
+  //   // });
+  //   // });
+  // }
 
   @override
   void dispose() {
@@ -60,18 +60,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // Check if refresh is needed based on time elapsed
-  void _checkAndRefreshIfNeeded() {
-    if (!mounted) return;
+  // void _checkAndRefreshIfNeeded() {
+  //   if (!mounted) return;
 
-    final now = DateTime.now();
+  //   final now = DateTime.now();
 
-    // If no previous refresh or if cooldown period has passed
-    if (_lastRefreshTime == null ||
-        now.difference(_lastRefreshTime!) > _refreshCooldown) {
-      // Refresh in background without blocking UI
-      _refreshWalletData(showLoadingIndicator: false);
-    }
-  }
+  //   // If no previous refresh or if cooldown period has passed
+  //   if (_lastRefreshTime == null ||
+  //       now.difference(_lastRefreshTime!) > _refreshCooldown) {
+  //     // Refresh in background without blocking UI
+  //     _refreshWalletData(showLoadingIndicator: false);
+  //   }
+  // }
 
   Future<void> _refreshWalletData(
       {bool forceRefresh = false, bool showLoadingIndicator = true}) async {
@@ -222,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ).then((_) {
                     if (mounted) {
                       // Force refresh data after sending transaction
-                      _refreshWalletData(forceRefresh: true);
+                      _refreshWalletData(forceRefresh: false);
                     }
                   });
                 },

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../providers/network_provider.dart';
-import '../../../../utils/formatter_utils.dart';
 import '../../model/transaction_model.dart';
 import '../../provider/transactiondetail_provider.dart';
-import '../../../../utils/datetime_utils.dart';
 import '../../../../services/market_service.dart';
+import 'widgets/gasdetails_widget.dart';
+import 'widgets/interrnal_transaction_widget.dart';
+import 'widgets/marketanalysis_widget.dart';
+import 'widgets/statuscard_wudget.dart';
+import 'widgets/transaction_details_widget.dart';
+import 'widgets/transaction_trace_widget.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -40,6 +45,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   late final TransactionDetailProvider _transactionDetailProvider;
   final MarketService _marketService = MarketService();
   Map<String, double> _marketPrices = {};
+  Map<String, dynamic>? _traceData;
+  List<Map<String, dynamic>>? _internalTransactions;
 
   @override
   void initState() {
@@ -80,8 +87,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         await _fetchTransactionDetails();
       }
 
-      // After fetching transaction details, fetch market data
+      // After fetching transaction details, fetch trace data and internal transactions
       if (_detailedTransaction != null) {
+        await _fetchTraceData();
+        await _fetchInternalTransactions();
         await _fetchMarketData();
       }
     } catch (e) {
@@ -91,6 +100,47 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         _isInitializing = false;
       });
       _showErrorSnackBar('Error initializing data');
+    }
+  }
+
+  Future<void> _fetchTraceData() async {
+    if (!mounted || _detailedTransaction == null) return;
+
+    try {
+      final traceData = await _transactionDetailProvider.getTransactionTrace(
+        txHash: widget.transaction.hash,
+        rpcUrl: widget.rpcUrl,
+      );
+
+      if (mounted) {
+        setState(() {
+          _traceData = traceData;
+        });
+      }
+    } catch (e) {
+      print('Error fetching transaction trace: $e');
+    }
+  }
+
+  Future<void> _fetchInternalTransactions() async {
+    if (!mounted || _detailedTransaction == null) return;
+
+    try {
+      final internalTxs =
+          await _transactionDetailProvider.getInternalTransactions(
+        txHash: widget.transaction.hash,
+        rpcUrl: widget.rpcUrl,
+        networkType: widget.networkType,
+        currentAddress: widget.currentAddress,
+      );
+
+      if (mounted) {
+        setState(() {
+          _internalTransactions = internalTxs;
+        });
+      }
+    } catch (e) {
+      print('Error fetching internal transactions: $e');
     }
   }
 
@@ -168,6 +218,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     });
 
     await _fetchTransactionDetails(forceRefresh: true);
+    await _fetchTraceData();
+    await _fetchInternalTransactions();
     await _fetchMarketData();
   }
 
@@ -202,7 +254,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         widget.transaction.direction == TransactionDirection.incoming;
     final theme = Theme.of(context);
 
-    // Get colors from theme to match HomeScreen
+    // Get colors from theme
     final primaryColor =
         widget.isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor =
@@ -223,34 +275,63 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: const Text('Transaction Details'),
-        backgroundColor: Colors.transparent,
-        foregroundColor: textColor,
-        elevation: 0,
-        actions: [
-          // Refresh button
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isRefreshing ? null : _refreshTransactionDetails,
-            tooltip: 'Refresh transaction details',
-          ),
-          // Etherscan button
-          IconButton(
-            icon: const Icon(Icons.open_in_new),
-            onPressed: _openBlockExplorer,
-            tooltip: 'View on Etherscan',
-          ),
-        ],
-      ),
+      appBar: _buildAppBar(textColor, primaryColor),
       body: RefreshIndicator(
         color: primaryColor,
         onRefresh: _refreshTransactionDetails,
         child: _detailedTransaction == null
             ? _buildErrorView(backgroundColor, textColor, primaryColor)
-            : _buildTransactionDetails(statusColor, isIncoming, cardColor,
-                textColor, subtitleColor, primaryColor),
+            : _buildTransactionDetails(
+                statusColor,
+                isIncoming,
+                cardColor,
+                textColor,
+                subtitleColor,
+                primaryColor,
+              ),
       ),
+    );
+  }
+
+  AppBar _buildAppBar(Color textColor, Color primaryColor) {
+    return AppBar(
+      title: const Text('Transaction Details'),
+      backgroundColor: Colors.transparent,
+      foregroundColor: textColor,
+      elevation: 0,
+      actions: [
+        // Debug trace button
+        if (_detailedTransaction != null &&
+            _detailedTransaction!.status != TransactionStatus.pending)
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () => _fetchTraceData().then((_) {
+              if (_traceData != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Transaction trace loaded')),
+                );
+              } else {
+                SnackbarUtil.showSnackbar(
+                    context: context,
+                    isError: true,
+                    message: 'Failed to load transaction trace');
+              }
+            }),
+            tooltip: 'Debug Trace',
+          ),
+        // Refresh button
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _isRefreshing ? null : _refreshTransactionDetails,
+          tooltip: 'Refresh transaction details',
+        ),
+        // Etherscan button
+        IconButton(
+          icon: const Icon(Icons.open_in_new),
+          onPressed: _openBlockExplorer,
+          tooltip: 'View on Etherscan',
+        ),
+      ],
     );
   }
 
@@ -320,12 +401,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   Widget _buildTransactionDetails(
-      Color statusColor,
-      bool isIncoming,
-      Color cardColor,
-      Color textColor,
-      Color subtitleColor,
-      Color primaryColor) {
+    Color statusColor,
+    bool isIncoming,
+    Color cardColor,
+    Color textColor,
+    Color subtitleColor,
+    Color primaryColor,
+  ) {
     if (_detailedTransaction == null) return const SizedBox.shrink();
 
     return Stack(
@@ -337,22 +419,76 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Transaction status and type card
-              _buildStatusCard(
-                  statusColor, isIncoming, cardColor, textColor, subtitleColor),
+              StatusCardWidget(
+                transaction: _detailedTransaction!,
+                isIncoming: isIncoming,
+                statusColor: statusColor,
+                cardColor: cardColor,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+              ),
               const SizedBox(height: 16),
 
-              // Market Analysis Card - New Addition
-              _buildMarketAnalysisCard(
-                  cardColor, textColor, subtitleColor, primaryColor),
+              // Market Analysis Card
+              MarketAnalysisWidget(
+                transaction: _detailedTransaction!,
+                marketPrices: _marketPrices,
+                isLoadingMarketData: _isLoadingMarketData,
+                cardColor: cardColor,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+                primaryColor: primaryColor,
+              ),
               const SizedBox(height: 16),
 
               // Transaction details card
-              _buildDetailsCard(
-                  cardColor, textColor, subtitleColor, primaryColor),
+              TransactionDetailsWidget(
+                transaction: _detailedTransaction!,
+                currentAddress: widget.currentAddress,
+                cardColor: cardColor,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+                primaryColor: primaryColor,
+                onShowErrorDetails: _showErrorDetails,
+              ),
               const SizedBox(height: 16),
 
               // Gas details card
-              _buildGasDetailsCard(cardColor, textColor, subtitleColor),
+              GasDetailsWidget(
+                transaction: _detailedTransaction!,
+                isDarkMode: widget.isDarkMode,
+                cardColor: cardColor,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+              ),
+              const SizedBox(height: 16),
+
+              // Internal transactions card
+              if (_internalTransactions != null &&
+                  _internalTransactions!.isNotEmpty)
+                InternalTransactionWidget(
+                  internalTransactions: _internalTransactions!,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtitleColor: subtitleColor,
+                  primaryColor: primaryColor,
+                ),
+              if (_internalTransactions != null &&
+                  _internalTransactions!.isNotEmpty)
+                const SizedBox(height: 16),
+
+              // Transaction trace card
+              // Transaction trace card
+              if (_traceData != null)
+                TransactionTraceWidget(
+                  traceData: _traceData!,
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtitleColor: subtitleColor,
+                  primaryColor: primaryColor,
+                  onShowRawTraceData: _showRawTraceData,
+                ),
+              if (_traceData != null) const SizedBox(height: 16),
 
               // Extra space at bottom for better scrolling experience
               const SizedBox(height: 40),
@@ -376,552 +512,81 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     );
   }
 
-  Widget _buildMarketAnalysisCard(Color cardColor, Color textColor,
-      Color subtitleColor, Color primaryColor) {
-    final tx = _detailedTransaction!;
-    final tokenSymbol = tx.tokenSymbol ?? 'ETH';
-    final currentPrice = _marketPrices[tokenSymbol] ?? 0.0;
-
-    return Card(
-      color: cardColor,
-      elevation: 3,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.trending_up, size: 18, color: primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Market Analysis',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Current market value1
-            _buildDetailRow(
-              title: 'Current Price',
-              value: _isLoadingMarketData
-                  ? 'Loading...'
-                  : '\$${currentPrice.toStringAsFixed(6)} USD',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-              valueColor: primaryColor,
-            ),
-
-            // Transaction value at current price
-            _buildDetailRow(
-              title: 'Value Now',
-              value: currentPrice <= 0 || _isLoadingMarketData
-                  ? 'Loading...'
-                  : '\$${(tx.amount * currentPrice).toStringAsFixed(6)} USD',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-
-            // Gas fee in USD
-            _buildDetailRow(
-              title: 'Gas Fee (USD)',
-              value: _marketPrices['ETH'] == null || _isLoadingMarketData
-                  ? 'Loading...'
-                  : '\$${(tx.fee * _marketPrices['ETH']!).toStringAsFixed(6)} USD',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-
-            // Transaction efficiency (value to fee ratio)
-            if (!_isLoadingMarketData &&
-                _marketPrices['ETH'] != null &&
-                _marketPrices['ETH']! > 0)
-              _buildDetailRow(
-                title: 'Value/Fee Ratio',
-                value: _calculateValueToFeeRatio(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-                valueColor: _getValueToFeeRatioColor(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _calculateValueToFeeRatio() {
-    final tx = _detailedTransaction!;
-    final ethPrice = _marketPrices['ETH'] ?? 0.0;
-
-    if (ethPrice <= 0 || tx.fee <= 0) return 'N/A';
-
-    // For token transactions
-    if (tx.tokenSymbol != null) {
-      final tokenPrice = _marketPrices[tx.tokenSymbol!] ?? 0.0;
-      if (tokenPrice <= 0) return 'N/A';
-
-      final txValueUsd = tx.amount * tokenPrice;
-      final feeValueUsd = tx.fee * ethPrice;
-
-      if (feeValueUsd <= 0) return 'N/A';
-
-      final ratio = txValueUsd / feeValueUsd;
-      return ratio.toStringAsFixed(1) + 'x';
-    }
-    // For ETH transactions
-    else {
-      final txValueUsd = tx.amount * ethPrice;
-      final feeValueUsd = tx.fee * ethPrice;
-
-      if (feeValueUsd <= 0) return 'N/A';
-
-      final ratio = txValueUsd / feeValueUsd;
-      return ratio.toStringAsFixed(1) + 'x';
-    }
-  }
-
-  Color _getValueToFeeRatioColor() {
-    try {
-      final ratioText = _calculateValueToFeeRatio();
-      if (ratioText == 'N/A') return Colors.grey;
-
-      final ratio = double.parse(ratioText.replaceAll('x', ''));
-
-      if (ratio < 1) return Colors.red;
-      if (ratio < 10) return Colors.orange;
-      if (ratio < 50) return Colors.green;
-      return Colors.blue;
-    } catch (_) {
-      return Colors.grey;
-    }
-  }
-
-  Widget _buildStatusCard(Color statusColor, bool isIncoming, Color cardColor,
-      Color textColor, Color subtitleColor) {
-    final tx = _detailedTransaction!;
-
-    return Card(
-      color: cardColor,
-      elevation: 3,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Status icon
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _getStatusIcon(widget.transaction.status),
-                color: statusColor,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Transaction type and status
-            Text(
-              isIncoming ? 'Received' : 'Sent',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Status with confirmations
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    _getStatusText(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: statusColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Amount
-            Text(
-              _formatAmount(tx),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isIncoming ? Colors.green : Colors.red,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Fee and date
-            Text(
-              'Fee: ${tx.fee.toStringAsFixed(10)} ETH',
-              style: TextStyle(
-                fontSize: 14,
-                color: subtitleColor,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              DateTimeUtils.formatDateTime(tx.timestamp),
-              style: TextStyle(
-                fontSize: 14,
-                color: subtitleColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsCard(Color cardColor, Color textColor,
-      Color subtitleColor, Color primaryColor) {
-    final tx = _detailedTransaction!;
-
-    return Card(
-      color: cardColor,
-      elevation: 3,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.assignment_outlined, size: 18, color: primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Transaction Details',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildDetailRow(
-              title: 'Transaction Hash',
-              value: FormatterUtils.formatHash(tx.hash),
-              canCopy: true,
-              data: tx.hash,
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Status',
-              value: _getStatusTextWithConfirmations(),
-              valueColor: _getStatusColor(tx.status),
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Block',
-              value: tx.blockNumber != 'Pending' ? tx.blockNumber : 'Pending',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Block Hash',
-              value: tx.blockHash != 'Pending'
-                  ? FormatterUtils.formatHash(tx.blockHash)
-                  : 'Pending',
-              canCopy: tx.blockHash != 'Pending',
-              data: tx.blockHash != 'Pending' ? tx.blockHash : null,
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'From',
-              value: FormatterUtils.formatHash(tx.from),
-              canCopy: true,
-              data: tx.from,
-              valueColor:
-                  tx.from.toLowerCase() == widget.currentAddress.toLowerCase()
-                      ? primaryColor
-                      : null,
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'To',
-              value: FormatterUtils.formatHash(tx.to),
-              canCopy: true,
-              data: tx.to,
-              valueColor:
-                  tx.to.toLowerCase() == widget.currentAddress.toLowerCase()
-                      ? primaryColor
-                      : null,
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            if (tx.tokenContractAddress != null) ...[
-              _buildDetailRow(
-                title: 'Token',
-                value: tx.tokenSymbol ?? 'Unknown Token',
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-              if (tx.tokenName != null)
-                _buildDetailRow(
-                  title: 'Token Name',
-                  value: tx.tokenName!,
-                  textColor: textColor,
-                  subtitleColor: subtitleColor,
-                ),
-              if (tx.tokenDecimals != null)
-                _buildDetailRow(
-                  title: 'Token Decimals',
-                  value: tx.tokenDecimals.toString(),
-                  textColor: textColor,
-                  subtitleColor: subtitleColor,
-                ),
-              _buildDetailRow(
-                title: 'Token Contract',
-                value: FormatterUtils.formatHash(tx.tokenContractAddress!),
-                canCopy: true,
-                data: tx.tokenContractAddress!,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-            ],
-            _buildDetailRow(
-              title: 'Nonce',
-              value: tx.nonce.toString(),
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            if (tx.isError && tx.errorMessage != null)
-              _buildDetailRow(
-                title: 'Error',
-                value: tx.errorMessage!,
-                valueColor: Colors.red,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-            if (tx.data != null && tx.data!.length > 2)
-              _buildDetailRow(
-                title: 'Transaction Data',
-                value: FormatterUtils.formatHash(tx.data!),
-                canCopy: true,
-                data: tx.data,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGasDetailsCard(
-      Color cardColor, Color textColor, Color subtitleColor) {
-    final tx = _detailedTransaction!;
-
-    return Card(
-      color: cardColor,
-      elevation: 3,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.local_gas_station_outlined,
-                  size: 18,
-                  color: widget.isDarkMode ? Colors.orange : Colors.deepOrange,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Gas Information',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildDetailRow(
-              title: 'Gas Limit',
-              value: '${tx.gasUsed.toStringAsFixed(0)} units',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Gas Used',
-              value: '${tx.gasUsed.toStringAsFixed(0)} units',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Gas Price',
-              value: '${tx.gasPrice.toStringAsFixed(9)} Gwei',
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Gas Efficiency',
-              value: _calculateGasEfficiency(),
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-            _buildDetailRow(
-              title: 'Transaction Fee',
-              value: '${tx.fee.toStringAsFixed(8)} ETH',
-              valueColor: widget.isDarkMode ? Colors.orange : Colors.deepOrange,
-              textColor: textColor,
-              subtitleColor: subtitleColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow({
-    required String title,
-    required String value,
-    bool canCopy = false,
-    String? data,
-    Color? valueColor,
-    required Color textColor,
-    required Color subtitleColor,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              title,
-              style: TextStyle(
-                color: subtitleColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+  void _showRawTraceData() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Raw Trace Data'),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            _traceData.toString(),
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 12,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? textColor,
-              ),
-            ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: _traceData.toString()));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Copied to clipboard')),
+              );
+            },
+            child: const Text('Copy'),
           ),
-          if (canCopy && data != null)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: data));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Copied to clipboard')),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Icon(
-                    Icons.copy_outlined,
-                    size: 16,
-                    color: subtitleColor,
-                  ),
-                ),
-              ),
-            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
   }
 
-  String _formatAmount(TransactionDetailModel tx) {
-    if (tx.tokenSymbol != null) {
-      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
-    } else {
-      return '${tx.amount.toStringAsFixed(6)} ETH';
-    }
-  }
+  Future<void> _showErrorDetails() async {
+    if (_detailedTransaction == null || !_detailedTransaction!.isError) return;
 
-  String _getStatusText() {
-    switch (widget.transaction.status) {
-      case TransactionStatus.pending:
-        return 'Pending';
-      case TransactionStatus.confirmed:
-        return 'Confirmed';
-      case TransactionStatus.failed:
-        return 'Failed';
-    }
-  }
+    try {
+      final errorDetails =
+          await _transactionDetailProvider.getTransactionErrorDetails(
+        txHash: widget.transaction.hash,
+        rpcUrl: widget.rpcUrl,
+        networkType: widget.networkType,
+        currentAddress: widget.currentAddress,
+      );
 
-  String _getStatusTextWithConfirmations() {
-    if (_detailedTransaction == null) return 'Unknown';
+      if (!mounted) return;
 
-    switch (_detailedTransaction!.status) {
-      case TransactionStatus.pending:
-        return 'Pending';
-      case TransactionStatus.confirmed:
-        return 'Confirmed (${_detailedTransaction!.confirmations} confirmations)';
-      case TransactionStatus.failed:
-        return 'Failed';
-    }
-  }
-
-  IconData _getStatusIcon(TransactionStatus status) {
-    switch (status) {
-      case TransactionStatus.confirmed:
-        return Icons.check_circle;
-      case TransactionStatus.pending:
-        return Icons.pending;
-      case TransactionStatus.failed:
-        return Icons.error;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Transaction Error Details'),
+          content: SingleChildScrollView(
+            child:
+                Text(errorDetails ?? 'No detailed error information available'),
+          ),
+          actions: [
+            if (errorDetails != null)
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: errorDetails));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Copied to clipboard')),
+                  );
+                },
+                child: const Text('Copy'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _showErrorSnackBar('Error fetching transaction error details');
     }
   }
 
@@ -934,27 +599,5 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       case TransactionStatus.failed:
         return Colors.red;
     }
-  }
-
-  String _calculateGasEfficiency() {
-    final tx = _detailedTransaction!;
-
-    // Check if gasPrice is not zero to avoid division by zero
-    if (tx.gasPrice <= 0) {
-      return 'N/A';
-    }
-
-    // Calculate what percentage of the gas limit was actually used
-    final double gasLimit =
-        tx.gasUsed; // Assuming gasUsed here is actually gas limit
-    final double gasUsed = tx.gasUsed;
-
-    // If we have both values, calculate efficiency
-    if (gasLimit > 0 && gasUsed > 0) {
-      final double efficiency = (gasUsed / gasLimit) * 100;
-      return '${efficiency.toStringAsFixed(1)}%';
-    }
-
-    return 'N/A';
   }
 }

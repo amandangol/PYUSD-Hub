@@ -88,6 +88,47 @@ class TransactionModel {
       network: network ?? this.network,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'hash': hash,
+      'timestamp': timestamp.millisecondsSinceEpoch,
+      'from': from,
+      'to': to,
+      'amount': amount,
+      'gasUsed': gasUsed,
+      'gasPrice': gasPrice,
+      'status': status.index,
+      'direction': direction.index,
+      'confirmations': confirmations,
+      'tokenSymbol': tokenSymbol,
+      'tokenName': tokenName,
+      'tokenDecimals': tokenDecimals,
+      'tokenContractAddress': tokenContractAddress,
+      'network': network.index,
+    };
+  }
+
+// Create TransactionModel from JSON
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    return TransactionModel(
+      hash: json['hash'],
+      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
+      from: json['from'],
+      to: json['to'],
+      amount: json['amount'],
+      gasUsed: json['gasUsed'],
+      gasPrice: json['gasPrice'],
+      status: TransactionStatus.values[json['status']],
+      direction: TransactionDirection.values[json['direction']],
+      confirmations: json['confirmations'],
+      tokenSymbol: json['tokenSymbol'],
+      tokenName: json['tokenName'],
+      tokenDecimals: json['tokenDecimals'],
+      tokenContractAddress: json['tokenContractAddress'],
+      network: NetworkType.values[json['network']],
+    );
+  }
 }
 
 // Add this model for transaction details
@@ -97,6 +138,8 @@ class TransactionDetailModel extends TransactionModel {
   final String blockHash;
   final bool isError;
   final String? errorMessage;
+  final Map<String, dynamic>? traceData;
+  final List<Map<String, dynamic>>? internalTransactions;
 
   TransactionDetailModel({
     required String hash,
@@ -114,6 +157,8 @@ class TransactionDetailModel extends TransactionModel {
     required this.nonce,
     required this.blockHash,
     required this.isError,
+    this.traceData,
+    this.internalTransactions,
     this.errorMessage,
     String? tokenSymbol,
     String? tokenName,

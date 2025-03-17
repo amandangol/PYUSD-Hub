@@ -114,7 +114,7 @@ class TransactionFeeCard extends StatelessWidget {
                       Text(
                         estimatedGasFee > 0
                             ? '${estimatedGasFee.toStringAsFixed(6)} ETH'
-                            : 'Enter details above',
+                            : 'Enter details below',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: colorScheme.primary,
@@ -139,10 +139,10 @@ class TransactionFeeCard extends StatelessWidget {
                 Text('Slow', style: theme.textTheme.bodySmall),
                 Expanded(
                   child: Slider(
-                    value: gasPrice.clamp(5.0, 100.0),
-                    min: 5.0,
-                    max: 100.0,
-                    divisions: 19,
+                    value: gasPrice.clamp(0.5, 20.0),
+                    min: 0.5,
+                    max: 20.0,
+                    divisions: 40,
                     label: '${gasPrice.toStringAsFixed(1)} Gwei',
                     onChanged: onGasPriceChanged,
                   ),

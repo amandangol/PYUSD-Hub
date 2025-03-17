@@ -167,6 +167,57 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
   }
 
+  Future<bool?> _showConfirmationDialog(
+    BuildContext context,
+    String address,
+    double amount,
+  ) async {
+    if (!_mounted) return false;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Transaction'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Recipient: $address'),
+            Text('Amount: $amount ${_selectedAsset}'),
+            const SizedBox(height: 8),
+            const Text('Gas Details:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Estimated Gas Units: $_estimatedGas'),
+            Text('Gas Price: ${_gasPrice.toStringAsFixed(2)} Gwei'),
+            Text('Total Gas Fee: ${_estimatedGasFee.toStringAsFixed(6)} ETH'),
+            if (_selectedAsset == 'ETH')
+              Text(
+                  'Total Amount (with gas): ${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH'),
+            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            const Text('Please confirm this transaction details.',
+                style:
+                    TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pushReplacementNamed(context, '/main'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendTransaction() async {
     if (!_mounted || !_formKey.currentState!.validate()) return;
 
@@ -222,18 +273,62 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
     if (confirmed != true || !_mounted) return;
 
-    // Start the transaction process in the background
-    _startTransactionInBackground(address, amount);
+    // Show loading indicator
+    _safeSetState(() {
+      _isLoading = true;
+    });
 
-    // Show a brief message that the transaction is being processed
-    SnackbarUtil.showSnackbar(
-      context: context,
-      message: 'Transaction initiated',
-      isError: false,
-    );
+    try {
+      String txHash;
 
-    // Navigate back to the main screen immediately
-    Navigator.of(context).pop();
+      // Execute the transaction and get the hash
+      if (_selectedAsset == 'PYUSD') {
+        txHash = await transactionProvider.sendPYUSD(
+          address,
+          amount,
+          gasPrice: _gasPrice,
+          gasLimit: _estimatedGas,
+        );
+      } else {
+        txHash = await transactionProvider.sendETH(
+          address,
+          amount,
+          gasPrice: _gasPrice,
+          gasLimit: _estimatedGas,
+        );
+      }
+
+      // Show a success message
+      if (_mounted && context.mounted) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Transaction submitted: ${txHash.substring(0, 10)}...',
+          isError: false,
+        );
+      }
+
+      // Ensure we're using the correct navigation to return to the main screen
+      if (_mounted && context.mounted) {
+        // Make sure we're not popping too many screens
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Show error message
+      if (_mounted && context.mounted) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Transaction failed: ${e.toString().substring(0, 50)}',
+          isError: true,
+        );
+      }
+    } finally {
+      // Reset loading state
+      if (_mounted) {
+        _safeSetState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
 // New method to handle the transaction in the background
@@ -265,57 +360,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       // We'll handle errors in the transaction provider
       print('Error initiating transaction: $e');
     }
-  }
-
-  Future<bool?> _showConfirmationDialog(
-    BuildContext context,
-    String address,
-    double amount,
-  ) async {
-    if (!_mounted) return false;
-
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Transaction'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Recipient: $address'),
-            Text('Amount: $amount ${_selectedAsset}'),
-            const SizedBox(height: 8),
-            const Text('Gas Details:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('Estimated Gas Units: $_estimatedGas'),
-            Text('Gas Price: ${_gasPrice.toStringAsFixed(2)} Gwei'),
-            Text('Total Gas Fee: ${_estimatedGasFee.toStringAsFixed(6)} ETH'),
-            if (_selectedAsset == 'ETH')
-              Text(
-                  'Total Amount (with gas): ${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH'),
-            const SizedBox(height: 8),
-            const SizedBox(height: 12),
-            const Text('Please confirm this transaction details.',
-                style:
-                    TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _scanQRCode() async {

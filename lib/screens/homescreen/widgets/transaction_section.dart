@@ -236,18 +236,17 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   }
 
   // Helper method to filter transactions based on selected filter
+  // Helper method to filter transactions based on selected filter
   List<TransactionModel> _getFilteredTransactions() {
+    final allTransactions = widget.transactions;
+
     if (_filter == 'All') {
-      return widget.transactions;
+      return allTransactions;
     } else if (_filter == 'PYUSD') {
-      return widget.transactions
-          .where((tx) => tx.tokenSymbol == 'PYUSD')
-          .toList();
+      return allTransactions.where((tx) => tx.tokenSymbol == 'PYUSD').toList();
     } else {
       // ETH
-      return widget.transactions
-          .where((tx) => tx.tokenSymbol == 'ETH')
-          .toList();
+      return allTransactions.where((tx) => tx.tokenSymbol == 'ETH').toList();
     }
   }
 

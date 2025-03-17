@@ -302,6 +302,40 @@ class EthereumRpcService {
     }
   }
 
+  // Update the debugTraceTransaction method to handle this specific error
+  Future<Map<String, dynamic>?> debugTraceTransaction(
+    String rpcUrl,
+    String txHash, {
+    Map<String, dynamic>? tracerOptions,
+  }) async {
+    try {
+      // Default tracer options if none provided
+      final options = tracerOptions ??
+          {
+            "tracer": "callTracer",
+            "timeout": "30s",
+          };
+
+      final response = await _makeRpcCall(
+        rpcUrl,
+        'debug_traceTransaction',
+        [txHash, options],
+      );
+
+      return response['result'] as Map<String, dynamic>;
+    } catch (e) {
+      print('Error in debug trace transaction: $e');
+
+      // Check if it's the specific "historical state not available" error
+      if (e.toString().contains('historical state not available')) {
+        print('Historical state not available for this transaction');
+        return null; // Return null instead of throwing
+      }
+
+      throw Exception('Failed to trace transaction: $e');
+    }
+  }
+
   // Get token transactions for an address (from Etherscan API)
   Future<List<Map<String, dynamic>>> getTokenTransactions(
     String address,
@@ -376,7 +410,7 @@ class EthereumRpcService {
       if (receiptData == null) {
         return TransactionDetailModel(
           hash: txHash,
-          timestamp: DateTime.now(), // Pending tx, use current time
+          timestamp: DateTime.now(),
           from: txData['from'] ?? '',
           to: txData['to'] ?? '',
           amount: txData['value'] != null && txData['value'] != '0x0'
@@ -388,7 +422,6 @@ class EthereumRpcService {
           gasPrice: txData['gasPrice'] != null
               ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
               : 0.0,
-
           status: TransactionStatus.pending,
           direction: _compareAddresses(txData['from'], userAddress)
               ? TransactionDirection.outgoing
@@ -463,26 +496,61 @@ class EthereumRpcService {
 
       // Gather error message if available
       String? errorMessage;
+      Map<String, dynamic>? traceData;
+      List<Map<String, dynamic>>? internalTransactions;
+
+      // Inside the getTransactionDetails method, update the trace data handling
       if (status == TransactionStatus.failed) {
         try {
-          // Get the error message if available
-          final traceResponse = await _makeRpcCall(
+          // Get the detailed trace using debug_traceTransaction
+          final traceResponse = await debugTraceTransaction(
             rpcUrl,
-            'debug_traceTransaction',
-            [
-              txHash,
-              {"tracer": "callTracer"}
-            ],
+            txHash,
+            tracerOptions: {
+              "tracer": "callTracer",
+              "enableMemory": true,
+              "enableReturnData": true,
+            },
           );
 
-          final traceData = traceResponse['result'] as Map<String, dynamic>?;
-          if (traceData != null && traceData.containsKey('error')) {
-            errorMessage = traceData['error'];
+          traceData = traceResponse; // This may be null now
+
+          // Extract error message if trace data is available
+          if (traceData != null) {
+            if (traceData.containsKey('error')) {
+              errorMessage = traceData['error'];
+            } else if (traceData.containsKey('revert') &&
+                traceData['revert'] != null) {
+              // Parse revert data to get a meaningful error message
+              errorMessage = _parseRevertReason(traceData['revert'].toString());
+            } else {
+              // Look for error in call trace
+              errorMessage = _findErrorInTrace(traceData);
+            }
+
+            // Extract internal transactions from trace data
+            internalTransactions = _extractInternalTransactions(traceData);
           } else {
-            errorMessage = 'Transaction failed';
+            // If trace data is null, we can try to get more basic failure information
+            errorMessage = 'Transaction failed. Detailed trace unavailable.';
+
+            // You might want to try a different method to get transaction status info
+            // For example, you could check if the transaction used all gas as a sign of failure
+            final gasUsed = receiptData['gasUsed'] != null
+                ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
+                : 0.0;
+            final gasLimit = txData['gas'] != null
+                ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
+                : 0.0;
+
+            if (gasUsed >= gasLimit * 0.95) {
+              errorMessage = 'Transaction failed. Likely out of gas.';
+            }
           }
         } catch (e) {
-          errorMessage = 'Transaction failed';
+          print('Error getting trace data: $e');
+          errorMessage =
+              'Transaction failed: unable to retrieve detailed error information';
         }
       }
       return TransactionDetailModel(
@@ -518,10 +586,185 @@ class EthereumRpcService {
         isError: status == TransactionStatus.failed,
         errorMessage: errorMessage,
         data: txData['input'],
+        traceData: traceData,
+        internalTransactions: internalTransactions,
       );
     } catch (e) {
       throw Exception('Failed to get transaction details: $e');
     }
+  }
+
+  Future<String> _getFailureReasonAlternative(
+    String rpcUrl,
+    String txHash,
+    Map<String, dynamic> txData,
+    Map<String, dynamic> receiptData,
+  ) async {
+    // Check if transaction used all or nearly all gas (likely out of gas error)
+    final gasUsed = receiptData['gasUsed'] != null
+        ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
+        : 0.0;
+    final gasLimit = txData['gas'] != null
+        ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
+        : 0.0;
+
+    if (gasUsed >= gasLimit * 0.95) {
+      return 'Transaction failed: Likely out of gas';
+    }
+
+    // Check logs for error events
+    if (receiptData.containsKey('logs') && receiptData['logs'] is List) {
+      List logs = receiptData['logs'];
+      for (var log in logs) {
+        // Look for common error events in logs
+        // Many contracts emit events on failure
+        if (log['topics'] != null &&
+            log['topics'] is List &&
+            log['topics'].isNotEmpty) {
+          String topic = log['topics'][0];
+          // Check for common error event signatures
+          if (topic == '0x08c379a0') {
+            return 'Transaction failed: Contract emitted an error event';
+          }
+        }
+      }
+    }
+
+    // Try to get method signature from input data
+    if (txData['input'] != null && txData['input'].toString().length >= 10) {
+      String methodId = txData['input'].toString().substring(0, 10);
+      // You could maintain a mapping of known method signatures if needed
+      return 'Transaction failed when calling method ID: $methodId';
+    }
+
+    // Default generic message
+    return 'Transaction failed. Detailed trace unavailable - your RPC node may not support debug_traceTransaction or have historical state available.';
+  }
+
+  // Helper method to parse revert reason from data
+  String _parseRevertReason(String revertData) {
+    if (revertData.isEmpty || revertData == '0x') {
+      return 'Unknown reason';
+    }
+
+    try {
+      // Remove 0x prefix if present
+      final cleanData =
+          revertData.startsWith('0x') ? revertData.substring(2) : revertData;
+
+      // The first 4 bytes are the error signature, followed by the string data
+      // For standard revert strings, try to decode them
+      if (cleanData.length > 8) {
+        // Extract the string data portion (skip first 8 chars which are function selector)
+        String strData = cleanData.substring(8);
+
+        // Convert hex to bytes
+        List<int> bytes = [];
+        for (int i = 0; i < strData.length; i += 2) {
+          if (i + 2 <= strData.length) {
+            bytes.add(int.parse(strData.substring(i, i + 2), radix: 16));
+          }
+        }
+
+        // Attempt to decode as UTF-8
+        try {
+          // The first 32 bytes (64 chars) in the data represent the string length
+          int strLen = int.parse(strData.substring(0, 64), radix: 16);
+          if (strLen > 0 && strLen * 2 <= strData.length - 64) {
+            List<int> msgBytes = bytes.sublist(32, 32 + strLen);
+            return utf8.decode(msgBytes);
+          }
+        } catch (e) {
+          print('Error decoding revert data: $e');
+        }
+      }
+
+      // If standard decoding failed, try to match known error signatures
+      final errorSig = cleanData.substring(0, 8);
+      switch (errorSig) {
+        case '08c379a0':
+          return 'Error: Revert with reason';
+        case '4e487b71':
+          return 'Error: Panic (arithmetic error, overflow, division by zero)';
+        case '01336cea':
+          return 'Error: Custom error';
+        default:
+          return 'Transaction reverted (0x$errorSig)';
+      }
+    } catch (e) {
+      return 'Revert: $revertData';
+    }
+  }
+
+// Find error in trace
+  String? _findErrorInTrace(Map<String, dynamic> traceData) {
+    // Recursive function to search for error
+    String? findError(Map<String, dynamic>? node) {
+      if (node == null) return null;
+
+      // Check current node for error
+      if (node.containsKey('error')) return node['error'];
+      if (node.containsKey('revert')) return 'Revert: ${node['revert']}';
+
+      // Check calls array if it exists
+      if (node.containsKey('calls') && node['calls'] is List) {
+        for (var call in node['calls']) {
+          if (call is Map<String, dynamic>) {
+            final callError = findError(call);
+            if (callError != null) return callError;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    return findError(traceData) ?? 'Transaction failed';
+  }
+
+// Extract internal transactions from trace data
+  List<Map<String, dynamic>> _extractInternalTransactions(
+      Map<String, dynamic>? traceData) {
+    List<Map<String, dynamic>> result = [];
+
+    // Recursive function to extract value transfers from trace
+    void extractTransfers(Map<String, dynamic>? node, {String? parentCall}) {
+      if (node == null) return;
+
+      final from = node['from'] ?? '';
+      final to = node['to'] ?? '';
+      final value = node['value'] ?? '0x0';
+      final valueNum = FormatterUtils.parseBigInt(value);
+
+      // Add to list if there was value transferred and it's not a parent->child call
+      if (from.isNotEmpty && to.isNotEmpty && valueNum > BigInt.zero) {
+        result.add({
+          'from': from,
+          'to': to,
+          'value': value,
+          'valueInEth': valueNum.toDouble() / 1e18,
+          'type': node['type'] ?? 'CALL',
+          'callPath': parentCall != null
+              ? '$parentCall → ${node['type']}'
+              : node['type'],
+        });
+      }
+
+      // Process child calls
+      if (node.containsKey('calls') && node['calls'] is List) {
+        for (var call in node['calls']) {
+          if (call is Map<String, dynamic>) {
+            extractTransfers(call,
+                parentCall: parentCall != null
+                    ? '$parentCall → ${node['type']}'
+                    : node['type']);
+          }
+        }
+      }
+    }
+
+    extractTransfers(traceData);
+    return result;
   }
 
   // Helper method to compare addresses (case-insensitive)
