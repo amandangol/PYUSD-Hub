@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../providers/network_provider.dart';
@@ -29,15 +30,6 @@ class EthereumRpcService {
       _clientCache[rpcUrl] = Web3Client(rpcUrl, http.Client());
     }
     return _clientCache[rpcUrl];
-  }
-
-  // Helper method to safely parse BigInt from hex strings
-  BigInt _parseBigInt(String? hex) {
-    if (hex == null || hex.isEmpty || hex == '0x0' || hex == '0x') {
-      return BigInt.zero;
-    }
-    return BigInt.parse(hex.startsWith('0x') ? hex.substring(2) : hex,
-        radix: 16);
   }
 
   // Make HTTP POST request to RPC endpoint with error handling
@@ -86,7 +78,7 @@ class EthereumRpcService {
         [address, 'latest'],
       );
 
-      final BigInt weiBalance = _parseBigInt(response['result']);
+      final BigInt weiBalance = FormatterUtils.parseBigInt(response['result']);
       return EtherAmount.fromBigInt(EtherUnit.wei, weiBalance)
           .getValueInUnit(EtherUnit.ether);
     } catch (e) {
@@ -124,7 +116,7 @@ class EthereumRpcService {
       final String hexBalance = response['result'];
       if (hexBalance == '0x') return 0.0;
 
-      final BigInt tokenBalance = _parseBigInt(hexBalance);
+      final BigInt tokenBalance = FormatterUtils.parseBigInt(hexBalance);
       return tokenBalance / BigInt.from(10).pow(decimals);
     } catch (e) {
       print('Error fetching token balance: $e');
@@ -169,7 +161,8 @@ class EthereumRpcService {
 
       // Parse token decimals
       if (decimalsResponse['result'].length > 2) {
-        tokenDecimals = _parseBigInt(decimalsResponse['result']).toInt();
+        tokenDecimals =
+            FormatterUtils.parseBigInt(decimalsResponse['result']).toInt();
       } else {
         tokenDecimals = 18; // Default to 18 decimals
       }
@@ -177,7 +170,8 @@ class EthereumRpcService {
       // Extract token value from input data
       if (tx['input'].length >= 138) {
         final String valueHex = tx['input'].substring(74);
-        final BigInt tokenValueBigInt = _parseBigInt("0x" + valueHex);
+        final BigInt tokenValueBigInt =
+            FormatterUtils.parseBigInt("0x" + valueHex);
         tokenValue = tokenValueBigInt / BigInt.from(10).pow(tokenDecimals);
       }
     } catch (e) {
@@ -206,7 +200,7 @@ class EthereumRpcService {
   // Get current gas price
   Future<BigInt> _getCurrentGasPrice(String rpcUrl) async {
     final gasPriceResponse = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);
-    return _parseBigInt(gasPriceResponse['result']);
+    return FormatterUtils.parseBigInt(gasPriceResponse['result']);
   }
 
   // Send Ethereum transaction with improved error handling
@@ -386,13 +380,13 @@ class EthereumRpcService {
           from: txData['from'] ?? '',
           to: txData['to'] ?? '',
           amount: txData['value'] != null && txData['value'] != '0x0'
-              ? _parseBigInt(txData['value']).toDouble() / 1e18
+              ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
               : 0.0,
           gasUsed: txData['gas'] != null
-              ? _parseBigInt(txData['gas']).toDouble()
+              ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
               : 0.0,
           gasPrice: txData['gasPrice'] != null
-              ? _parseBigInt(txData['gasPrice']).toDouble() / 1e9
+              ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
               : 0.0,
 
           status: TransactionStatus.pending,
@@ -452,7 +446,7 @@ class EthereumRpcService {
       } else {
         // Regular ETH transfer
         amount = txData['value'] != null
-            ? _parseBigInt(txData['value']).toDouble() / 1e18
+            ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
             : 0.0;
       }
 
@@ -462,7 +456,8 @@ class EthereumRpcService {
           : TransactionStatus.failed;
 
       // Calculate confirmations
-      final txBlockNumber = _parseBigInt(receiptData['blockNumber']);
+      final txBlockNumber =
+          FormatterUtils.parseBigInt(receiptData['blockNumber']);
       final confirmations =
           await _calculateConfirmations(rpcUrl, txBlockNumber);
 
@@ -498,10 +493,10 @@ class EthereumRpcService {
         to: toAddress,
         amount: amount,
         gasUsed: receiptData['gasUsed'] != null
-            ? _parseBigInt(receiptData['gasUsed']).toDouble()
+            ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
             : 0.0,
         gasPrice: txData['gasPrice'] != null
-            ? _parseBigInt(txData['gasPrice']).toDouble() / 1e9
+            ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
             : 0.0,
         status: status,
         direction: _compareAddresses(txData['from'], userAddress)
@@ -514,7 +509,7 @@ class EthereumRpcService {
         tokenContractAddress: tokenContractAddress,
         network: networkType,
         blockNumber: receiptData['blockNumber'] != null
-            ? _parseBigInt(receiptData['blockNumber']).toString()
+            ? FormatterUtils.parseBigInt(receiptData['blockNumber']).toString()
             : '0',
         nonce: txData['nonce'] != null
             ? int.parse(txData['nonce'].substring(2), radix: 16)
@@ -769,7 +764,7 @@ class EthereumRpcService {
   Future<double> getGasPrice(String rpcUrl) async {
     try {
       final response = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);
-      final BigInt weiGasPrice = _parseBigInt(response['result']);
+      final BigInt weiGasPrice = FormatterUtils.parseBigInt(response['result']);
       return weiGasPrice / BigInt.from(10).pow(9); // Convert to Gwei
     } catch (e) {
       print('Error fetching gas price: $e');
@@ -782,7 +777,8 @@ class EthereumRpcService {
       String rpcUrl, BigInt txBlockNumber) async {
     try {
       final response = await _makeRpcCall(rpcUrl, 'eth_blockNumber', []);
-      final BigInt currentBlock = _parseBigInt(response['result']);
+      final BigInt currentBlock =
+          FormatterUtils.parseBigInt(response['result']);
       return (currentBlock - txBlockNumber).toInt();
     } catch (e) {
       print('Error calculating confirmations: $e');

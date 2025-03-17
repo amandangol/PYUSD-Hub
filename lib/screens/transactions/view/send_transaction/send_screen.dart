@@ -222,52 +222,48 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
     if (confirmed != true || !_mounted) return;
 
-    _safeSetState(() {
-      _isLoading = true;
-    });
+    // Start the transaction process in the background
+    _startTransactionInBackground(address, amount);
+
+    // Show a brief message that the transaction is being processed
+    SnackbarUtil.showSnackbar(
+      context: context,
+      message: 'Transaction initiated',
+      isError: false,
+    );
+
+    // Navigate back to the main screen immediately
+    Navigator.of(context).pop();
+  }
+
+// New method to handle the transaction in the background
+  Future<void> _startTransactionInBackground(
+      String address, double amount) async {
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
 
     try {
-      String txHash;
-
+      // Execute the transaction without blocking the UI
       if (_selectedAsset == 'PYUSD') {
-        txHash = await transactionProvider.sendPYUSD(
+        transactionProvider.sendPYUSD(
           address,
           amount,
           gasPrice: _gasPrice,
           gasLimit: _estimatedGas,
         );
-      } else {
-        txHash = await transactionProvider.sendETH(
+      } else if (_selectedAsset == 'ETH') {
+        transactionProvider.sendETH(
           address,
           amount,
           gasPrice: _gasPrice,
           gasLimit: _estimatedGas,
         );
       }
-
-      // Show success message and navigate only if still mounted
-      if (_mounted) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Transaction sent! Hash: ${txHash.substring(0, 10)}...',
-          isError: false,
-        );
-
-        // Navigate back to the previous screen
-        Navigator.of(context).pop();
-      }
+      // Note: We're not awaiting the result here, as we want to return to the main screen
+      // immediately. The transaction will be processed in the background.
     } catch (e) {
-      if (_mounted) {
-        SnackbarUtil.showSnackbar(
-            context: context,
-            message: 'Error sending transaction: $e',
-            isError: true);
-        print(e);
-      }
-    } finally {
-      _safeSetState(() {
-        _isLoading = false;
-      });
+      // We'll handle errors in the transaction provider
+      print('Error initiating transaction: $e');
     }
   }
 

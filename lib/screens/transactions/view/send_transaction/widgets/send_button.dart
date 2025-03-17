@@ -31,7 +31,6 @@ class SendButton extends StatelessWidget {
 
     final bool canSend = isValidAddress &&
         amountController.text.isNotEmpty &&
-        !isLoading &&
         !isEstimatingGas &&
         !(selectedAsset == 'PYUSD' &&
             estimatedGasFee > walletProvider.ethBalance &&
@@ -75,36 +74,24 @@ class SendButton extends StatelessWidget {
                 : null,
           ),
           child: Center(
-            child: isLoading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.0,
-                    ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.send_rounded,
-                        color: canSend
-                            ? Colors.white
-                            : colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Send $selectedAsset',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: canSend
-                              ? Colors.white
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.send_rounded,
+                  color: canSend ? Colors.white : colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Send $selectedAsset',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color:
+                        canSend ? Colors.white : colorScheme.onSurfaceVariant,
                   ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

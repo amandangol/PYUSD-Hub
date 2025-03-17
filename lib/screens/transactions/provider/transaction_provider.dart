@@ -203,12 +203,20 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  // Process and combine transactions
+// Process and combine transactions
   List<TransactionModel> _processTransactions(List<dynamic> ethTxs,
       List<dynamic> tokenTxs, String address, NetworkType currentNetwork) {
     List<TransactionModel> newTransactions = [];
+    Set<String> tokenTxHashes = {}; // Store token transaction hashes
 
-    // Process ETH transactions
+    // First, collect all token transaction hashes
+    for (final tx in tokenTxs) {
+      if (tx['hash'] != null) {
+        tokenTxHashes.add(tx['hash']);
+      }
+    }
+
+    // Process ETH transactions, skip those that are just gas payments for token transactions
     for (final tx in ethTxs) {
       // Skip transactions with missing critical data
       if (tx['hash'] == null ||
@@ -216,13 +224,22 @@ class TransactionProvider extends ChangeNotifier {
           tx['to'] == null ||
           tx['to'] == '') continue;
 
+      // Skip ETH transactions that are just gas payments for token transfers
+      if (tokenTxHashes.contains(tx['hash'])) continue;
+
       final direction = _compareAddresses(tx['from'] ?? '', address)
           ? TransactionDirection.outgoing
           : TransactionDirection.incoming;
 
-      final status = int.parse(tx['isError'] ?? '0') == 0
-          ? TransactionStatus.confirmed
-          : TransactionStatus.failed;
+      // Determine transaction status
+      TransactionStatus status;
+      if (tx['blockNumber'] == null || tx['blockNumber'] == '0') {
+        status = TransactionStatus.pending;
+      } else if (int.parse(tx['isError'] ?? '0') == 0) {
+        status = TransactionStatus.confirmed;
+      } else {
+        status = TransactionStatus.failed;
+      }
 
       final timestamp = DateTime.fromMillisecondsSinceEpoch(
           int.parse(tx['timeStamp']) * 1000);
@@ -245,14 +262,23 @@ class TransactionProvider extends ChangeNotifier {
         direction: direction,
         confirmations: int.parse(confirmations),
         network: currentNetwork,
+        tokenSymbol: 'ETH', // Add ETH as token symbol for ETH transactions
       ));
     }
 
-    // Process token transactions
+    // Process token transactions with same improvements
     for (final tx in tokenTxs) {
       final direction = _compareAddresses(tx['from'], address)
           ? TransactionDirection.outgoing
           : TransactionDirection.incoming;
+
+      // Determine transaction status for tokens
+      TransactionStatus status;
+      if (tx['blockNumber'] == null || tx['blockNumber'] == '0') {
+        status = TransactionStatus.pending;
+      } else {
+        status = TransactionStatus.confirmed;
+      }
 
       final timestamp = DateTime.fromMillisecondsSinceEpoch(
           int.parse(tx['timeStamp']) * 1000);
@@ -271,7 +297,7 @@ class TransactionProvider extends ChangeNotifier {
         amount: tokenAmount,
         gasUsed: double.parse(tx['gasUsed']),
         gasPrice: double.parse(tx['gasPrice']) / 1e9,
-        status: TransactionStatus.confirmed,
+        status: status,
         direction: direction,
         confirmations: int.parse(tx['confirmations']),
         tokenSymbol: tx['tokenSymbol'],
@@ -287,7 +313,6 @@ class TransactionProvider extends ChangeNotifier {
     return newTransactions;
   }
 
-  // Load more transactions
   Future<void> loadMoreTransactions() async {
     if (!_hasMoreTransactions || _isFetchingTransactions || _disposed) return;
     await fetchTransactions();
@@ -299,6 +324,7 @@ class TransactionProvider extends ChangeNotifier {
     return address1.toLowerCase() == address2.toLowerCase();
   }
 
+  // Send ETH to another address
   // Send ETH to another address
   Future<String> sendETH(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
@@ -326,7 +352,9 @@ class TransactionProvider extends ChangeNotifier {
       _setError(error);
       throw Exception(error);
     } finally {
-      _setLoading(false);
+      if (!_disposed) {
+        _setLoading(false);
+      }
     }
   }
 
@@ -364,7 +392,9 @@ class TransactionProvider extends ChangeNotifier {
       _setError(error);
       throw Exception(error);
     } finally {
-      _setLoading(false);
+      if (!_disposed) {
+        _setLoading(false);
+      }
     }
   }
 

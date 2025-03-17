@@ -31,9 +31,9 @@ class _TransactionItemState extends State<TransactionItem> {
   // Helper method to format amount - updated to match the detail screen formatting
   String _formatAmount(TransactionModel tx) {
     if (tx.tokenSymbol != null) {
-      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
+      return '${tx.amount.toStringAsFixed(4)} ${tx.tokenSymbol}';
     } else {
-      return '${tx.amount.toStringAsFixed(6)} ETH';
+      return '${tx.amount.toStringAsFixed(4)} ETH';
     }
   }
 
@@ -110,7 +110,8 @@ class _TransactionItemState extends State<TransactionItem> {
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(8)),
                             color: Colors.white.withOpacity(0.2),
                           ),
                           child: Text(

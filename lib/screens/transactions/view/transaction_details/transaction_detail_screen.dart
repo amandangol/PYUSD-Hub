@@ -7,6 +7,7 @@ import '../../../../utils/formatter_utils.dart';
 import '../../model/transaction_model.dart';
 import '../../provider/transactiondetail_provider.dart';
 import '../../../../utils/datetime_utils.dart';
+import '../../../../services/market_service.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -35,7 +36,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   TransactionDetailModel? _detailedTransaction;
   bool _isRefreshing = false;
   bool _isInitializing = true;
+  bool _isLoadingMarketData = false;
   late final TransactionDetailProvider _transactionDetailProvider;
+  final MarketService _marketService = MarketService();
+  Map<String, double> _marketPrices = {};
 
   @override
   void initState() {
@@ -75,6 +79,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         // If not cached, fetch it
         await _fetchTransactionDetails();
       }
+
+      // After fetching transaction details, fetch market data
+      if (_detailedTransaction != null) {
+        await _fetchMarketData();
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -82,6 +91,36 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         _isInitializing = false;
       });
       _showErrorSnackBar('Error initializing data');
+    }
+  }
+
+  Future<void> _fetchMarketData() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingMarketData = true;
+    });
+
+    try {
+      // Determine which tokens to fetch prices for
+      final tokensToFetch = ['ETH'];
+
+      // If this is a token transaction, add the token symbol
+      if (_detailedTransaction?.tokenSymbol != null &&
+          _detailedTransaction!.tokenSymbol!.isNotEmpty) {
+        tokensToFetch.add(_detailedTransaction!.tokenSymbol!);
+      }
+
+      // Fetch current market prices
+      _marketPrices = await _marketService.getCurrentPrices(tokensToFetch);
+    } catch (e) {
+      print('Error fetching market data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMarketData = false;
+        });
+      }
     }
   }
 
@@ -129,6 +168,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     });
 
     await _fetchTransactionDetails(forceRefresh: true);
+    await _fetchMarketData();
   }
 
   Future<void> _openBlockExplorer() async {
@@ -301,6 +341,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   statusColor, isIncoming, cardColor, textColor, subtitleColor),
               const SizedBox(height: 16),
 
+              // Market Analysis Card - New Addition
+              _buildMarketAnalysisCard(
+                  cardColor, textColor, subtitleColor, primaryColor),
+              const SizedBox(height: 16),
+
               // Transaction details card
               _buildDetailsCard(
                   cardColor, textColor, subtitleColor, primaryColor),
@@ -329,6 +374,135 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           ),
       ],
     );
+  }
+
+  Widget _buildMarketAnalysisCard(Color cardColor, Color textColor,
+      Color subtitleColor, Color primaryColor) {
+    final tx = _detailedTransaction!;
+    final tokenSymbol = tx.tokenSymbol ?? 'ETH';
+    final currentPrice = _marketPrices[tokenSymbol] ?? 0.0;
+
+    return Card(
+      color: cardColor,
+      elevation: 3,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.trending_up, size: 18, color: primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  'Market Analysis',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Current market value1
+            _buildDetailRow(
+              title: 'Current Price',
+              value: _isLoadingMarketData
+                  ? 'Loading...'
+                  : '\$${currentPrice.toStringAsFixed(6)} USD',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
+              valueColor: primaryColor,
+            ),
+
+            // Transaction value at current price
+            _buildDetailRow(
+              title: 'Value Now',
+              value: currentPrice <= 0 || _isLoadingMarketData
+                  ? 'Loading...'
+                  : '\$${(tx.amount * currentPrice).toStringAsFixed(6)} USD',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
+            ),
+
+            // Gas fee in USD
+            _buildDetailRow(
+              title: 'Gas Fee (USD)',
+              value: _marketPrices['ETH'] == null || _isLoadingMarketData
+                  ? 'Loading...'
+                  : '\$${(tx.fee * _marketPrices['ETH']!).toStringAsFixed(6)} USD',
+              textColor: textColor,
+              subtitleColor: subtitleColor,
+            ),
+
+            // Transaction efficiency (value to fee ratio)
+            if (!_isLoadingMarketData &&
+                _marketPrices['ETH'] != null &&
+                _marketPrices['ETH']! > 0)
+              _buildDetailRow(
+                title: 'Value/Fee Ratio',
+                value: _calculateValueToFeeRatio(),
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+                valueColor: _getValueToFeeRatioColor(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _calculateValueToFeeRatio() {
+    final tx = _detailedTransaction!;
+    final ethPrice = _marketPrices['ETH'] ?? 0.0;
+
+    if (ethPrice <= 0 || tx.fee <= 0) return 'N/A';
+
+    // For token transactions
+    if (tx.tokenSymbol != null) {
+      final tokenPrice = _marketPrices[tx.tokenSymbol!] ?? 0.0;
+      if (tokenPrice <= 0) return 'N/A';
+
+      final txValueUsd = tx.amount * tokenPrice;
+      final feeValueUsd = tx.fee * ethPrice;
+
+      if (feeValueUsd <= 0) return 'N/A';
+
+      final ratio = txValueUsd / feeValueUsd;
+      return ratio.toStringAsFixed(1) + 'x';
+    }
+    // For ETH transactions
+    else {
+      final txValueUsd = tx.amount * ethPrice;
+      final feeValueUsd = tx.fee * ethPrice;
+
+      if (feeValueUsd <= 0) return 'N/A';
+
+      final ratio = txValueUsd / feeValueUsd;
+      return ratio.toStringAsFixed(1) + 'x';
+    }
+  }
+
+  Color _getValueToFeeRatioColor() {
+    try {
+      final ratioText = _calculateValueToFeeRatio();
+      if (ratioText == 'N/A') return Colors.grey;
+
+      final ratio = double.parse(ratioText.replaceAll('x', ''));
+
+      if (ratio < 1) return Colors.red;
+      if (ratio < 10) return Colors.orange;
+      if (ratio < 50) return Colors.green;
+      return Colors.blue;
+    } catch (_) {
+      return Colors.grey;
+    }
   }
 
   Widget _buildStatusCard(Color statusColor, bool isIncoming, Color cardColor,

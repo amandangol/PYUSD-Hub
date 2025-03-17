@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../transactions/view/all_transactions/all_transaction_screen.dart';
 import '../../transactions/model/transaction_model.dart';
-import 'transaction_list_item.dart';
+import 'transaction_item.dart';
 
 class TransactionsSection extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -129,7 +129,19 @@ class _TransactionsSectionState extends State<TransactionsSection> {
           _buildEmptyState()
         // Show transactions
         else
-          _buildTransactionsList(displayTransactions, cardColor),
+          Column(
+            children: displayTransactions
+                .map((tx) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: TransactionItem(
+                        transaction: tx,
+                        currentAddress: widget.currentAddress,
+                        isDarkMode: widget.isDarkMode,
+                        cardColor: cardColor,
+                      ),
+                    ))
+                .toList(),
+          ),
 
         // View All button - only show if we have transactions and there are more than 3
         if (_filteredTransactions.isNotEmpty &&
@@ -161,25 +173,6 @@ class _TransactionsSectionState extends State<TransactionsSection> {
           ],
         ),
       ),
-    );
-  }
-
-  // Helper method to build transactions list
-  Widget _buildTransactionsList(
-      List<TransactionModel> transactions, Color cardColor) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: transactions.length,
-      itemBuilder: (context, index) {
-        final tx = transactions[index];
-        return TransactionItem(
-          transaction: tx,
-          currentAddress: widget.currentAddress,
-          isDarkMode: widget.isDarkMode,
-          cardColor: cardColor,
-        );
-      },
     );
   }
 
@@ -253,7 +246,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     } else {
       // ETH
       return widget.transactions
-          .where((tx) => tx.tokenSymbol == null || tx.tokenSymbol == 'ETH')
+          .where((tx) => tx.tokenSymbol == 'ETH')
           .toList();
     }
   }
