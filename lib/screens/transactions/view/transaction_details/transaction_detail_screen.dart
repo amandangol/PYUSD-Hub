@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../providers/network_provider.dart';
 import '../../model/transaction_model.dart';
@@ -23,14 +22,14 @@ class TransactionDetailScreen extends StatefulWidget {
   final bool needsRefresh;
 
   const TransactionDetailScreen({
-    Key? key,
+    super.key,
     required this.transaction,
     required this.currentAddress,
     required this.isDarkMode,
     required this.networkType,
     required this.rpcUrl,
     this.needsRefresh = false,
-  }) : super(key: key);
+  });
 
   @override
   State<TransactionDetailScreen> createState() =>
@@ -89,8 +88,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
       // After fetching transaction details, fetch trace data and internal transactions
       if (_detailedTransaction != null) {
-        await _fetchTraceData();
-        await _fetchInternalTransactions();
         await _fetchMarketData();
       }
     } catch (e) {
@@ -100,47 +97,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         _isInitializing = false;
       });
       _showErrorSnackBar('Error initializing data');
-    }
-  }
-
-  Future<void> _fetchTraceData() async {
-    if (!mounted || _detailedTransaction == null) return;
-
-    try {
-      final traceData = await _transactionDetailProvider.getTransactionTrace(
-        txHash: widget.transaction.hash,
-        rpcUrl: widget.rpcUrl,
-      );
-
-      if (mounted) {
-        setState(() {
-          _traceData = traceData;
-        });
-      }
-    } catch (e) {
-      print('Error fetching transaction trace: $e');
-    }
-  }
-
-  Future<void> _fetchInternalTransactions() async {
-    if (!mounted || _detailedTransaction == null) return;
-
-    try {
-      final internalTxs =
-          await _transactionDetailProvider.getInternalTransactions(
-        txHash: widget.transaction.hash,
-        rpcUrl: widget.rpcUrl,
-        networkType: widget.networkType,
-        currentAddress: widget.currentAddress,
-      );
-
-      if (mounted) {
-        setState(() {
-          _internalTransactions = internalTxs;
-        });
-      }
-    } catch (e) {
-      print('Error fetching internal transactions: $e');
     }
   }
 
@@ -218,8 +174,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     });
 
     await _fetchTransactionDetails(forceRefresh: true);
-    await _fetchTraceData();
-    await _fetchInternalTransactions();
+
     await _fetchMarketData();
   }
 
@@ -300,25 +255,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       foregroundColor: textColor,
       elevation: 0,
       actions: [
-        // Debug trace button
-        if (_detailedTransaction != null &&
-            _detailedTransaction!.status != TransactionStatus.pending)
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: () => _fetchTraceData().then((_) {
-              if (_traceData != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Transaction trace loaded')),
-                );
-              } else {
-                SnackbarUtil.showSnackbar(
-                    context: context,
-                    isError: true,
-                    message: 'Failed to load transaction trace');
-              }
-            }),
-            tooltip: 'Debug Trace',
-          ),
         // Refresh button
         IconButton(
           icon: const Icon(Icons.refresh),

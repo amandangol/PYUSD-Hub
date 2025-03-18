@@ -183,35 +183,6 @@ class TransactionDetailProvider with ChangeNotifier {
     }
   }
 
-// Get debug trace data for a transaction
-  Future<Map<String, dynamic>?> getTransactionTrace({
-    required String txHash,
-    required String rpcUrl,
-    Map<String, dynamic>? tracerOptions,
-  }) async {
-    _setLoadingState(true);
-
-    try {
-      final traceData = await _rpcService.debugTraceTransaction(
-        rpcUrl,
-        txHash,
-        tracerOptions: tracerOptions ??
-            {
-              "tracer": "callTracer",
-              "enableMemory": true,
-              "enableReturnData": true,
-            },
-      );
-
-      return traceData;
-    } catch (e) {
-      _setError('Error fetching transaction trace: $e');
-      return null;
-    } finally {
-      _setLoadingState(false);
-    }
-  }
-
 // Extract and return internal transactions from a transaction
   Future<List<Map<String, dynamic>>?> getInternalTransactions({
     required String txHash,

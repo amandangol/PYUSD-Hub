@@ -140,6 +140,7 @@ class TransactionDetailModel extends TransactionModel {
   final String? errorMessage;
   final Map<String, dynamic>? traceData;
   final List<Map<String, dynamic>>? internalTransactions;
+  final bool traceDataUnavailable;
 
   TransactionDetailModel({
     required String hash,
@@ -165,6 +166,7 @@ class TransactionDetailModel extends TransactionModel {
     int? tokenDecimals,
     String? tokenContractAddress,
     String? data,
+    this.traceDataUnavailable = false,
   }) : super(
           hash: hash,
           timestamp: timestamp,

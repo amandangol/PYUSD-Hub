@@ -1,0 +1,711 @@
+// import 'package:flutter/material.dart';
+// import '../../../authentication/provider/auth_provider.dart';
+// import '../../../providers/network_provider.dart';
+// import '../../../providers/wallet_provider.dart';
+// import '../model/transaction_model.dart';
+// import '../repositories/transaction_repository.dart';
+// import '../services/transaction_service.dart';
+// import '../constants/transaction_constants.dart';
+
+// class TransactionProvider extends ChangeNotifier {
+//   final AuthProvider _authProvider;
+//   final NetworkProvider _networkProvider;
+//   final WalletProvider _walletProvider;
+//   final TransactionRepository _repository = TransactionRepository();
+//   final TransactionService _service = TransactionService();
+
+//   // Transactions
+//   final Map<NetworkType, List<TransactionModel>> _transactionsByNetwork = {};
+
+//   // Transaction tracking
+//   final Map<String, DateTime> _lastTransactionCheck = {};
+//   final Map<String, int> _transactionCheckRetries = {};
+
+//   // State
+//   bool _isLoading = false;
+//   bool _isFetchingTransactions = false;
+//   String? _error;
+//   bool _disposed = false;
+//   bool _hasMoreTransactions = true;
+//   int _currentPage = 1;
+//   DateTime? _lastRefresh;
+
+//   // Transaction tracking
+//   final Map<NetworkType, Map<String, TransactionModel>> _pendingTransactionMap =
+//       {};
+
+//   // Getters
+//   List<TransactionModel> get transactions =>
+//       _transactionsByNetwork[_networkProvider.currentNetwork] ?? [];
+//   bool get isLoading => _isLoading;
+//   String? get error => _error;
+//   bool get hasMoreTransactions => _hasMoreTransactions;
+//   bool get isFetchingTransactions => _isFetchingTransactions;
+
+//   // Constructor with dependency injection
+//   TransactionProvider({
+//     required AuthProvider authProvider,
+//     required NetworkProvider networkProvider,
+//     required WalletProvider walletProvider,
+//   })  : _authProvider = authProvider,
+//         _networkProvider = networkProvider,
+//         _walletProvider = walletProvider {
+//     _initializeTransactionMaps();
+//     _networkProvider.addListener(_onNetworkChanged);
+
+//     // Initial transactions fetch - only if wallet is initialized
+//     if (_authProvider.getCurrentAddress() != null) {
+//       fetchTransactions();
+//     }
+//   }
+
+//   // Initialize maps for all available networks
+//   void _initializeTransactionMaps() {
+//     for (final network in _networkProvider.availableNetworks) {
+//       _transactionsByNetwork[network] = [];
+//       _pendingTransactionMap[network] = {};
+//     }
+
+//     // Load any pending transactions from SharedPreferences
+//     loadPendingTransactionsFromPrefs();
+//   }
+
+//   // Handle network change
+//   void _onNetworkChanged() {
+//     if (!_disposed) {
+//       fetchTransactions(forceRefresh: true);
+//     }
+//   }
+
+//   // Get transactions with optional filtering
+//   List<TransactionModel> getFilteredTransactions({
+//     TransactionDirection? direction,
+//     String? tokenSymbol,
+//   }) {
+//     final allTransactions = transactions;
+
+//     return allTransactions.where((tx) {
+//       // Filter by direction if specified
+//       if (direction != null && tx.direction != direction) {
+//         return false;
+//       }
+
+//       // Filter by token symbol if specified
+//       if (tokenSymbol != null) {
+//         if (tokenSymbol == 'ETH') {
+//           return tx.tokenSymbol == 'ETH'; // ETH transactions have ETH as symbol
+//         } else {
+//           return tx.tokenSymbol == tokenSymbol;
+//         }
+//       }
+
+//       return true;
+//     }).toList();
+//   }
+
+//   // Fetch transaction details
+//   Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
+//     if (_disposed) return null;
+
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+//       final currentNetwork = _networkProvider.currentNetwork;
+//       final address = _authProvider.getCurrentAddress() ?? '';
+
+//       return await _repository.getTransactionDetails(
+//         rpcUrl,
+//         txHash,
+//         currentNetwork,
+//         address,
+//       );
+//     } catch (e) {
+//       _setError('Failed to get transaction details: $e');
+//       return null;
+//     }
+//   }
+
+//   Future<void> checkPendingTransactionsStatus() async {
+//     if (_disposed) return;
+
+//     final address = _authProvider.getCurrentAddress();
+//     if (address == null || address.isEmpty) return;
+
+//     final currentNetwork = _networkProvider.currentNetwork;
+//     final pendingTxs =
+//         _pendingTransactionMap[currentNetwork]?.values.toList() ?? [];
+
+//     if (pendingTxs.isEmpty) return;
+
+//     final rpcUrl = _networkProvider.currentRpcEndpoint;
+//     bool hasChanges = false;
+
+//     // Create a list of transactions to remove after processing
+//     final pendingTxsToRemove = <String>[];
+
+//     for (final pendingTx in List<TransactionModel>.from(pendingTxs)) {
+//       final txHash = pendingTx.hash;
+
+//       // Skip if we've checked this transaction too recently
+//       final lastCheck = _lastTransactionCheck[txHash];
+//       if (lastCheck != null &&
+//           DateTime.now().difference(lastCheck) <
+//               TransactionConstants.transactionCheckInterval) {
+//         continue;
+//       }
+
+//       // Update last check time
+//       _lastTransactionCheck[txHash] = DateTime.now();
+
+//       try {
+//         // Get transaction details from blockchain
+//         final txDetails = await _repository.getTransactionDetails(
+//           rpcUrl,
+//           txHash,
+//           currentNetwork,
+//           address,
+//         );
+
+//         // Log the transaction details for debugging
+//         print(
+//             'Transaction check: $txHash, Status: ${txDetails?.status ?? "null"}');
+
+//         // Skip further processing if txDetails is null
+//         if (txDetails == null) {
+//           print('Transaction details not found for $txHash, will retry later');
+//           continue;
+//         }
+
+//         // If transaction is now confirmed or failed
+//         if (txDetails.status != TransactionStatus.pending) {
+//           print(
+//               'Transaction status changed: $txHash, New status: ${txDetails.status}');
+
+//           // Find the transaction in the main list to update it
+//           final index = _transactionsByNetwork[currentNetwork]
+//               ?.indexWhere((tx) => tx.hash == txHash);
+
+//           if (index != null && index != -1) {
+//             // Update the transaction with confirmed details
+//             _transactionsByNetwork[currentNetwork]![index] = txDetails;
+//             print(
+//                 'Updated transaction at index $index with status ${txDetails.status}');
+//           } else {
+//             // If transaction not found in main list, add it
+//             _transactionsByNetwork[currentNetwork]?.insert(0, txDetails);
+//             print('Added new transaction with status ${txDetails.status}');
+//           }
+
+//           // Mark this transaction for removal from pending transactions
+//           pendingTxsToRemove.add(txHash);
+//           hasChanges = true;
+//         } else {
+//           // Transaction still pending, increment retry counter with a max limit
+//           final retries = _transactionCheckRetries[txHash] ?? 0;
+//           if (retries < TransactionConstants.maxTransactionCheckRetries) {
+//             _transactionCheckRetries[txHash] = retries + 1;
+//           } else {
+//             // We've tried too many times, consider updating UI to show "status unknown"
+//             print('Max retries reached for transaction: $txHash');
+
+//             // Mark this transaction for removal to prevent infinite checking
+//             pendingTxsToRemove.add(txHash);
+//             hasChanges = true;
+//           }
+//         }
+//       } catch (e) {
+//         print('Error checking transaction status: $e');
+//         // Don't increment retry counter for network issues
+//         if (!e.toString().contains("Failed host lookup") &&
+//             !e.toString().contains("Connection refused")) {
+//           final retries = _transactionCheckRetries[txHash] ?? 0;
+//           _transactionCheckRetries[txHash] = retries + 1;
+//         }
+//       }
+//     }
+
+//     // Remove transactions that have been marked for removal
+//     for (final txHash in pendingTxsToRemove) {
+//       final txToRemove = _pendingTransactionMap[currentNetwork]?[txHash];
+//       if (txToRemove != null) {
+//         _pendingTransactionMap[currentNetwork]?.remove(txHash);
+//         _transactionCheckRetries.remove(txHash);
+//         _lastTransactionCheck.remove(txHash);
+//         await _service.removePendingTransactionFromPrefs(txToRemove);
+//       }
+//     }
+
+//     // Notify listeners if any changes were made
+//     if (hasChanges && !_disposed) {
+//       _safeNotifyListeners();
+//     }
+//   }
+
+//   Future<void> fetchTransactions(
+//       {bool forceRefresh = false, bool skipPendingCheck = false}) async {
+//     if (_disposed) return;
+
+//     final address = _authProvider.getCurrentAddress();
+//     if (address == null || address.isEmpty || _isFetchingTransactions) return;
+
+//     // Always check pending transactions first unless explicitly skipped
+//     if (!skipPendingCheck) {
+//       await checkPendingTransactionsStatus();
+//     }
+
+//     // Check if cache is valid
+//     if (!forceRefresh && _lastRefresh != null) {
+//       final timeSinceLastRefresh = DateTime.now().difference(_lastRefresh!);
+//       if (timeSinceLastRefresh < TransactionConstants.cacheValidDuration &&
+//           transactions.isNotEmpty) {
+//         return;
+//       }
+//     }
+
+//     _isFetchingTransactions = true;
+//     _safeNotifyListeners();
+
+//     try {
+//       final currentNetwork = _networkProvider.currentNetwork;
+
+//       // Reset data if forced refresh
+//       if (forceRefresh) {
+//         _currentPage = 1;
+//         _hasMoreTransactions = true;
+//         _transactionsByNetwork[currentNetwork] = [];
+//       }
+
+//       // Skip if we already loaded all transactions
+//       if (!_hasMoreTransactions && !forceRefresh) {
+//         _isFetchingTransactions = false;
+//         _safeNotifyListeners();
+//         return;
+//       }
+
+//       // Fetch normal transactions
+//       final ethTxs = await _repository.getTransactions(
+//         address,
+//         currentNetwork,
+//         page: _currentPage,
+//         perPage: TransactionConstants.perPage,
+//       );
+
+//       // Fetch token transactions
+//       final tokenTxs = await _repository.getTokenTransactions(
+//         address,
+//         currentNetwork,
+//         page: _currentPage,
+//         perPage: TransactionConstants.perPage,
+//       );
+
+//       if (_disposed) return; // Check if disposed after async operations
+
+//       // Process transactions
+//       final newTransactions = _repository.processTransactions(
+//           ethTxs, tokenTxs, address, currentNetwork, _pendingTransactionMap);
+
+//       // Determine if we have more transactions
+//       _hasMoreTransactions =
+//           newTransactions.length >= TransactionConstants.perPage;
+//       _currentPage++;
+
+//       // Add to existing transactions
+//       if (_transactionsByNetwork[currentNetwork] == null) {
+//         _transactionsByNetwork[currentNetwork] = [];
+//       }
+
+//       if (forceRefresh) {
+//         _transactionsByNetwork[currentNetwork] = newTransactions;
+//       } else {
+//         _transactionsByNetwork[currentNetwork]!.addAll(newTransactions);
+//       }
+
+//       // Update last refresh time
+//       _lastRefresh = DateTime.now();
+//     } catch (e) {
+//       _setError('Failed to fetch transactions: $e');
+//     } finally {
+//       if (!_disposed) {
+//         _isFetchingTransactions = false;
+//         _safeNotifyListeners();
+//       }
+//     }
+//   }
+
+//   void addPendingTransaction(
+//       String txHash, bool isToken, String to, double amount,
+//       {String? tokenSymbol, String? tokenName, int? tokenDecimals}) {
+//     if (_disposed) return;
+
+//     final address = _authProvider.getCurrentAddress();
+//     if (address == null || address.isEmpty) return;
+
+//     final currentNetwork = _networkProvider.currentNetwork;
+
+//     // Check if this transaction is already in the pending map
+//     if (_pendingTransactionMap[currentNetwork]?.containsKey(txHash) == true) {
+//       // Transaction already exists as pending, don't add it again
+//       print('Transaction already in pending list: $txHash');
+//       return;
+//     }
+
+//     // Create new pending transaction
+//     final pendingTx = TransactionModel(
+//       hash: txHash,
+//       timestamp: DateTime.now(),
+//       from: address,
+//       to: to,
+//       amount: amount,
+//       gasUsed: 0, // Will be updated when confirmed
+//       gasPrice: 0, // Will be updated when confirmed
+//       status: TransactionStatus.pending,
+//       direction: TransactionDirection.outgoing,
+//       confirmations: 0,
+//       network: currentNetwork,
+//       tokenSymbol: isToken ? tokenSymbol : 'ETH',
+//       tokenName: tokenName,
+//       tokenDecimals: tokenDecimals,
+//     );
+
+//     // Initialize maps if needed
+//     if (_pendingTransactionMap[currentNetwork] == null) {
+//       _pendingTransactionMap[currentNetwork] = {};
+//     }
+//     if (_transactionsByNetwork[currentNetwork] == null) {
+//       _transactionsByNetwork[currentNetwork] = [];
+//     }
+
+//     // Store in pending map
+//     _pendingTransactionMap[currentNetwork]![txHash] = pendingTx;
+
+//     // Add to beginning of transactions list (newest first)
+//     // First remove any existing transaction with the same hash to avoid duplicates
+//     _transactionsByNetwork[currentNetwork]!
+//         .removeWhere((tx) => tx.hash == txHash);
+
+//     // Then add the new pending transaction
+//     _transactionsByNetwork[currentNetwork]!.insert(0, pendingTx);
+
+//     // Store in SharedPreferences
+//     _service.storePendingTransactionToPrefs(pendingTx);
+
+//     // Initialize tracking variables
+//     _lastTransactionCheck[txHash] = DateTime.now();
+//     _transactionCheckRetries[txHash] = 0;
+
+//     // Ensure the UI is updated immediately
+//     _safeNotifyListeners();
+//   }
+
+//   // Method to load pending transactions from SharedPreferences
+//   Future<void> loadPendingTransactionsFromPrefs() async {
+//     try {
+//       // Load for all available networks
+//       for (final network in _networkProvider.availableNetworks) {
+//         final pendingTxs = await _service.getPendingTransactions(network);
+
+//         // Initialize maps if needed
+//         if (_pendingTransactionMap[network] == null) {
+//           _pendingTransactionMap[network] = {};
+//         }
+//         if (_transactionsByNetwork[network] == null) {
+//           _transactionsByNetwork[network] = [];
+//         }
+
+//         // Convert JSON back to TransactionModel objects
+//         for (final tx in pendingTxs) {
+//           // Only keep pending transactions that are recent (less than 24 hours old)
+//           if (DateTime.now().difference(tx.timestamp).inHours < 24) {
+//             _pendingTransactionMap[network]![tx.hash] = tx;
+
+//             // Also add to the main transactions list to ensure they're displayed
+//             if (!_transactionsByNetwork[network]!
+//                 .any((t) => t.hash == tx.hash)) {
+//               _transactionsByNetwork[network]!.insert(0, tx);
+//             }
+
+//             // Initialize tracking variables
+//             _lastTransactionCheck[tx.hash] = DateTime.now();
+//             _transactionCheckRetries[tx.hash] = 0;
+//           }
+//         }
+//       }
+
+//       // Notify listeners to update UI
+//       _safeNotifyListeners();
+//     } catch (e) {
+//       print('Error loading pending transactions: $e');
+//     }
+//   }
+
+//   Future<void> loadMoreTransactions() async {
+//     if (!_hasMoreTransactions || _isFetchingTransactions || _disposed) return;
+//     await fetchTransactions();
+//   }
+
+//   // Helper method to compare addresses (case-insensitive)
+//   bool _compareAddresses(String? address1, String? address2) {
+//     if (address1 == null || address2 == null) return false;
+//     return address1.toLowerCase() == address2.toLowerCase();
+//   }
+
+//   // Send ETH to another address
+//   Future<String> sendETH(String toAddress, double amount,
+//       {double? gasPrice, int? gasLimit}) async {
+//     if (_disposed) throw Exception('TransactionProvider is disposed');
+//     if (_authProvider.wallet == null)
+//       throw Exception('Wallet is not initialized');
+
+//     _setLoading(true);
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+//       final txHash = await _repository.sendEthTransaction(
+//         rpcUrl,
+//         _authProvider.wallet!.privateKey,
+//         toAddress,
+//         amount,
+//         gasPrice: gasPrice,
+//         gasLimit: gasLimit,
+//       );
+
+//       // Add the transaction to pending list immediately
+//       addPendingTransaction(txHash, false, toAddress, amount);
+
+//       // Post-transaction operations with disposal check
+//       await _refreshAfterTransaction();
+//       return txHash;
+//     } catch (e) {
+//       final error = 'Failed to send ETH: $e';
+//       _setError(error);
+//       throw Exception(error);
+//     } finally {
+//       if (!_disposed) {
+//         _setLoading(false);
+//       }
+//     }
+//   }
+
+//   // Send token to another address
+//   Future<String> sendToken(String toAddress, double amount, String tokenSymbol,
+//       String tokenName, int tokenDecimals,
+//       {double? gasPrice, int? gasLimit}) async {
+//     if (_disposed) throw Exception('TransactionProvider is disposed');
+//     if (_authProvider.wallet == null)
+//       throw Exception('Wallet is not initialized');
+
+//     _setLoading(true);
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+//       final tokenAddress = _repository.tokenContractAddresses(
+//           _networkProvider.currentNetwork, tokenSymbol);
+
+//       final txHash = await _repository.sendTokenTransaction(
+//         rpcUrl,
+//         _authProvider.wallet!.privateKey,
+//         tokenAddress,
+//         toAddress,
+//         amount,
+//         tokenDecimals,
+//         gasPrice: gasPrice,
+//         gasLimit: gasLimit,
+//       );
+
+//       // Add the transaction to pending list immediately
+//       addPendingTransaction(txHash, true, toAddress, amount,
+//           tokenSymbol: tokenSymbol,
+//           tokenName: tokenName,
+//           tokenDecimals: tokenDecimals);
+
+//       // Post-transaction operations with disposal check
+//       await _refreshAfterTransaction();
+//       return txHash;
+//     } catch (e) {
+//       final error = 'Failed to send $tokenSymbol: $e';
+//       _setError(error);
+//       throw Exception(error);
+//     } finally {
+//       if (!_disposed) {
+//         _setLoading(false);
+//       }
+//     }
+//   }
+
+//   // Common refresh logic after transactions
+//   Future<void> _refreshAfterTransaction() async {
+//     if (_disposed) return;
+
+//     await Future.delayed(const Duration(seconds: 2));
+
+//     if (!_disposed) {
+//       await _walletProvider.refreshBalances(forceRefresh: true);
+
+//       if (!_disposed) {
+//         await fetchTransactions(forceRefresh: true);
+//       }
+//     }
+//   }
+
+//   // Estimate gas for ETH transfer
+//   Future<int> estimateEthTransferGas(String toAddress, double amount) async {
+//     if (_disposed) return 21000; // Default gas if disposed
+//     if (_authProvider.wallet == null)
+//       throw Exception('Wallet is not initialized');
+
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+//       return await _repository.estimateEthGas(
+//         rpcUrl,
+//         _authProvider.wallet!.address,
+//         toAddress,
+//         amount,
+//       );
+//     } catch (e) {
+//       _setError('Failed to estimate gas: $e');
+//       return 21000; // Default gas limit for ETH transfers
+//     }
+//   }
+
+//   // Estimate gas for token transfer
+//   Future<int> estimateTokenTransferGas(String toAddress, double amount,
+//       String tokenSymbol, int tokenDecimals) async {
+//     if (_disposed) return 100000; // Default gas if disposed
+//     if (_authProvider.wallet == null)
+//       throw Exception('Wallet is not initialized');
+
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+//       final tokenAddress = _repository.getTokenAddressForNetwork(
+//           _networkProvider.currentNetwork, tokenSymbol);
+
+//       return await _repository.estimateTokenGas(
+//         rpcUrl,
+//         _authProvider.wallet!.address,
+//         tokenAddress,
+//         toAddress,
+//         amount,
+//         tokenDecimals,
+//       );
+//     } catch (e) {
+//       _setError('Failed to estimate token gas: $e');
+//       return 100000; // Default gas limit for token transfers
+//     }
+//   }
+
+//   // Get estimated transaction fee as a formatted string
+//   Future<String> getEstimatedFee(String toAddress, double amount, bool isToken,
+//       {String? tokenSymbol, int? tokenDecimals}) async {
+//     if (_disposed) return 'Fee calculation unavailable';
+
+//     try {
+//       final feeDetails = await calculateTransactionFee(
+//           toAddress, amount, isToken,
+//           tokenSymbol: tokenSymbol, tokenDecimals: tokenDecimals);
+//       return '${feeDetails['feeInEth']?.toStringAsFixed(8)} ETH';
+//     } catch (e) {
+//       return 'Fee calculation failed';
+//     }
+//   }
+
+//   // Calculate transaction fee details
+//   Future<Map<String, double>> calculateTransactionFee(
+//       String toAddress, double amount, bool isToken,
+//       {String? tokenSymbol, int? tokenDecimals}) async {
+//     if (_disposed) throw Exception('TransactionProvider is disposed');
+
+//     final address = _authProvider.getCurrentAddress();
+//     if (address == null) throw Exception('Wallet address not available');
+
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+
+//       // Get current gas price in Gwei
+//       final gasPrice = await _repository.getGasPrice(rpcUrl);
+
+//       // Estimate gas based on transaction type
+//       final int estimatedGas = await _estimateGas(
+//           rpcUrl, address, toAddress, amount, isToken,
+//           tokenSymbol: tokenSymbol, tokenDecimals: tokenDecimals);
+
+//       // Calculate fee in ETH
+//       final feeInWei = BigInt.from(gasPrice * 1e9) * BigInt.from(estimatedGas);
+//       final feeInEth = feeInWei.toDouble() / (1e18);
+
+//       return {
+//         'gasPrice': gasPrice, // in Gwei
+//         'estimatedGas': estimatedGas.toDouble(),
+//         'feeInEth': feeInEth
+//       };
+//     } catch (e) {
+//       throw Exception('Failed to calculate transaction fee: $e');
+//     }
+//   }
+
+//   // Helper method to estimate gas based on transaction type
+//   Future<int> _estimateGas(String rpcUrl, String fromAddress, String toAddress,
+//       double amount, bool isToken,
+//       {String? tokenSymbol, int? tokenDecimals}) async {
+//     if (_disposed)
+//       return isToken ? 100000 : 21000; // Default values if disposed
+
+//     if (isToken) {
+//       if (tokenSymbol == null || tokenDecimals == null) {
+//         throw Exception(
+//             'Token symbol and decimals are required for token gas estimation');
+//       }
+
+//       final tokenAddress = _repository.getTokenAddressForNetwork(
+//           _networkProvider.currentNetwork, tokenSymbol);
+//       return await _repository.estimateTokenGas(
+//           rpcUrl, fromAddress, tokenAddress, toAddress, amount, tokenDecimals);
+//     } else {
+//       return await _repository.estimateEthGas(
+//           rpcUrl, fromAddress, toAddress, amount);
+//     }
+//   }
+
+//   // Get current gas price
+//   Future<double> getCurrentGasPrice() async {
+//     if (_disposed) return 20.0; // Default gas price if disposed
+
+//     try {
+//       final rpcUrl = _networkProvider.currentRpcEndpoint;
+//       return await _repository.getGasPrice(rpcUrl);
+//     } catch (e) {
+//       // Default gas price in Gwei if estimation fails
+//       return 20.0;
+//     }
+//   }
+
+//   // Helper methods
+//   void _setLoading(bool loading) {
+//     if (_disposed) return;
+//     _isLoading = loading;
+//     _safeNotifyListeners();
+//   }
+
+//   void _setError(String? errorMsg) {
+//     if (_disposed) return;
+//     _error = errorMsg;
+//     print('TransactionProvider error: $errorMsg');
+//     _safeNotifyListeners();
+//   }
+
+//   // Safe way to notify listeners preventing "called after dispose" errors
+//   void _safeNotifyListeners() {
+//     if (!_disposed) {
+//       notifyListeners();
+//     }
+//   }
+
+//   void clearError() {
+//     if (_disposed) return;
+//     _error = null;
+//     _safeNotifyListeners();
+//   }
+
+//   @override
+//   void dispose() {
+//     _disposed = true;
+//     _networkProvider.removeListener(_onNetworkChanged);
+//     super.dispose();
+//   }
+// }

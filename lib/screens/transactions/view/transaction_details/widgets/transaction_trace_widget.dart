@@ -12,14 +12,14 @@ class TransactionTraceWidget extends StatelessWidget {
   final VoidCallback onShowRawTraceData;
 
   const TransactionTraceWidget({
-    Key? key,
+    super.key,
     required this.traceData,
     required this.cardColor,
     required this.textColor,
     required this.subtitleColor,
     required this.primaryColor,
     required this.onShowRawTraceData,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

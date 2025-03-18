@@ -134,7 +134,8 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  // Improved transaction status check with retry mechanism
+// In TransactionProvider.dart - modify the checkPendingTransactionsStatus method
+
   Future<void> checkPendingTransactionsStatus() async {
     if (_disposed) return;
 
@@ -150,7 +151,10 @@ class TransactionProvider extends ChangeNotifier {
     final rpcUrl = _networkProvider.currentRpcEndpoint;
     bool hasChanges = false;
 
-    for (final pendingTx in pendingTxs) {
+    // Create a list of transactions to remove after processing
+    final pendingTxsToRemove = <String>[];
+
+    for (final pendingTx in List<TransactionModel>.from(pendingTxs)) {
       final txHash = pendingTx.hash;
 
       // Skip if we've checked this transaction too recently
@@ -163,18 +167,6 @@ class TransactionProvider extends ChangeNotifier {
       // Update last check time
       _lastTransactionCheck[txHash] = DateTime.now();
 
-      // Check how many times we've retried this transaction
-      final retries = _transactionCheckRetries[txHash] ?? 0;
-      if (retries >= _maxTransactionCheckRetries) {
-        // We've tried too many times, remove from pending
-        _pendingTransactionMap[currentNetwork]?.remove(txHash);
-        _transactionCheckRetries.remove(txHash);
-        _lastTransactionCheck.remove(txHash);
-        await _removePendingTransactionFromPrefs(pendingTx);
-        hasChanges = true;
-        continue;
-      }
-
       try {
         // Get transaction details from blockchain
         final txDetails = await _rpcService.getTransactionDetails(
@@ -184,37 +176,72 @@ class TransactionProvider extends ChangeNotifier {
           address,
         );
 
+        // Log the transaction details for debugging
+        print(
+            'Transaction check: $txHash, Status: ${txDetails?.status ?? "null"}');
+
+        // Skip further processing if txDetails is null
+        if (txDetails == null) {
+          print('Transaction details not found for $txHash, will retry later');
+          continue;
+        }
+
         // If transaction is now confirmed or failed
-        if (txDetails != null &&
-            txDetails.status != TransactionStatus.pending) {
-          // Find the transaction in the main list
+        if (txDetails.status != TransactionStatus.pending) {
+          print(
+              'Transaction status changed: $txHash, New status: ${txDetails.status}');
+
+          // Find the transaction in the main list to update it
           final index = _transactionsByNetwork[currentNetwork]
               ?.indexWhere((tx) => tx.hash == txHash);
 
           if (index != null && index != -1) {
             // Update the transaction with confirmed details
             _transactionsByNetwork[currentNetwork]![index] = txDetails;
+            print(
+                'Updated transaction at index $index with status ${txDetails.status}');
           } else {
             // If transaction not found in main list, add it
             _transactionsByNetwork[currentNetwork]?.insert(0, txDetails);
+            print('Added new transaction with status ${txDetails.status}');
           }
 
-          // Remove from pending transactions
-          _pendingTransactionMap[currentNetwork]?.remove(txHash);
-          _transactionCheckRetries.remove(txHash);
-          _lastTransactionCheck.remove(txHash);
-
-          // Update stored pending transactions in SharedPreferences
-          await _removePendingTransactionFromPrefs(pendingTx);
+          // Mark this transaction for removal from pending transactions
+          pendingTxsToRemove.add(txHash);
           hasChanges = true;
         } else {
-          // Transaction still pending, increment retry counter
-          _transactionCheckRetries[txHash] = retries + 1;
+          // Transaction still pending, increment retry counter with a max limit
+          final retries = _transactionCheckRetries[txHash] ?? 0;
+          if (retries < _maxTransactionCheckRetries) {
+            _transactionCheckRetries[txHash] = retries + 1;
+          } else {
+            // We've tried too many times, consider updating UI to show "status unknown"
+            print('Max retries reached for transaction: $txHash');
+
+            // Mark this transaction for removal to prevent infinite checking
+            pendingTxsToRemove.add(txHash);
+            hasChanges = true;
+          }
         }
       } catch (e) {
         print('Error checking transaction status: $e');
-        // Increment retry counter for failed checks
-        _transactionCheckRetries[txHash] = retries + 1;
+        // Don't increment retry counter for network issues
+        if (!e.toString().contains("Failed host lookup") &&
+            !e.toString().contains("Connection refused")) {
+          final retries = _transactionCheckRetries[txHash] ?? 0;
+          _transactionCheckRetries[txHash] = retries + 1;
+        }
+      }
+    }
+
+    // Remove transactions that have been marked for removal
+    for (final txHash in pendingTxsToRemove) {
+      final txToRemove = _pendingTransactionMap[currentNetwork]?[txHash];
+      if (txToRemove != null) {
+        _pendingTransactionMap[currentNetwork]?.remove(txHash);
+        _transactionCheckRetries.remove(txHash);
+        _lastTransactionCheck.remove(txHash);
+        await _removePendingTransactionFromPrefs(txToRemove);
       }
     }
 
@@ -254,26 +281,14 @@ class TransactionProvider extends ChangeNotifier {
       List<dynamic> tokenTxs, String address, NetworkType currentNetwork) {
     // Track all transactions by hash for deduplication
     final Map<String, TransactionModel> processedTransactions = {};
-    final Set<String> tokenTxHashes = {};
+    final Set<String> processedHashes = {};
 
-    // First collect all token transaction hashes
-    for (final tx in tokenTxs) {
-      if (tx['hash'] != null) {
-        tokenTxHashes.add(tx['hash']);
-      }
-    }
-
-    // Process ETH transactions
+    // Process ETH transactions first
     for (final tx in ethTxs) {
       if (tx['hash'] == null) continue;
 
       final hash = tx['hash'];
-
-      // Skip if it's just a gas payment for a token transaction
-      // Only skip if the transaction is not pending
-      if (tokenTxHashes.contains(hash) &&
-          tx['blockNumber'] != null &&
-          tx['blockNumber'] != '0') continue;
+      processedHashes.add(hash);
 
       final direction = _compareAddresses(tx['from'] ?? '', address)
           ? TransactionDirection.outgoing
@@ -316,7 +331,7 @@ class TransactionProvider extends ChangeNotifier {
         direction: direction,
         confirmations: int.parse(confirmations),
         network: currentNetwork,
-        tokenSymbol: 'ETH',
+        tokenSymbol: 'ETH', // Explicitly set to ETH
       );
     }
 
@@ -325,6 +340,7 @@ class TransactionProvider extends ChangeNotifier {
       if (tx['hash'] == null) continue;
 
       final hash = tx['hash'];
+      processedHashes.add(hash);
 
       final direction = _compareAddresses(tx['from'], address)
           ? TransactionDirection.outgoing
@@ -379,9 +395,22 @@ class TransactionProvider extends ChangeNotifier {
         _pendingTransactionMap[currentNetwork]?.values.toList() ?? [];
 
     for (final pendingTx in pendingTxs) {
-      // Always prioritize pending transactions from our local storage
-      // This ensures they're always visible in the UI
-      processedTransactions[pendingTx.hash] = pendingTx;
+      // Only add pending transactions that weren't already processed from API
+      if (!processedHashes.contains(pendingTx.hash)) {
+        processedTransactions[pendingTx.hash] = pendingTx;
+      }
+      // If the transaction was processed but has a different status, update pending map
+      else if (processedTransactions.containsKey(pendingTx.hash) &&
+          processedTransactions[pendingTx.hash]!.status !=
+              TransactionStatus.pending) {
+        // Remove confirmed/failed transactions from pending map
+        _pendingTransactionMap[currentNetwork]?.remove(pendingTx.hash);
+        // Also remove from tracking maps
+        _transactionCheckRetries.remove(pendingTx.hash);
+        _lastTransactionCheck.remove(pendingTx.hash);
+        // Remove from persistent storage
+        _removePendingTransactionFromPrefs(pendingTx);
+      }
     }
 
     // Convert map to list and sort by timestamp
@@ -391,16 +420,17 @@ class TransactionProvider extends ChangeNotifier {
     return result;
   }
 
-  // Improved fetch transactions method
-  Future<void> fetchTransactions({bool forceRefresh = false}) async {
+  Future<void> fetchTransactions(
+      {bool forceRefresh = false, bool skipPendingCheck = false}) async {
     if (_disposed) return;
 
     final address = _authProvider.getCurrentAddress();
     if (address == null || address.isEmpty || _isFetchingTransactions) return;
 
-    // Check pending transactions status first
-    await checkPendingTransactionsStatus();
-
+    // Always check pending transactions first unless explicitly skipped
+    if (!skipPendingCheck) {
+      await checkPendingTransactionsStatus(); // Make sure this gets called
+    }
     // Check if cache is valid
     if (!forceRefresh && _lastRefresh != null) {
       final timeSinceLastRefresh = DateTime.now().difference(_lastRefresh!);
@@ -479,7 +509,6 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
-  // Add pending transaction method
   void addPendingTransaction(
       String txHash, bool isToken, String to, double amount,
       {String? tokenSymbol, String? tokenName, int? tokenDecimals}) {
@@ -489,6 +518,13 @@ class TransactionProvider extends ChangeNotifier {
     if (address == null || address.isEmpty) return;
 
     final currentNetwork = _networkProvider.currentNetwork;
+
+    // Check if this transaction is already in the pending map
+    if (_pendingTransactionMap[currentNetwork]?.containsKey(txHash) == true) {
+      // Transaction already exists as pending, don't add it again
+      print('Transaction already in pending list: $txHash');
+      return;
+    }
 
     // Create new pending transaction
     final pendingTx = TransactionModel(

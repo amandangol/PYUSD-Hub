@@ -35,6 +35,7 @@ class WalletProvider extends ChangeNotifier {
       _tokenBalances[_networkProvider.currentNetwork] ?? 0.0;
   bool get isBalanceRefreshing => _isBalanceRefreshing;
   String? get error => _error;
+  bool? get hasError => false;
   NetworkType get currentNetwork => _networkProvider.currentNetwork;
 
   bool _isCacheValid(NetworkType network) {

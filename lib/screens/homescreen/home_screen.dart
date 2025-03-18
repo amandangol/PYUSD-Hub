@@ -36,21 +36,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Timer? _refreshTimer;
 
   @override
-  // void initState() {
-  //   super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  //   // Check if we need to refresh on init - with a small delay to ensure providers are ready
-  //   // WidgetsBinding.instance.addPostFrameCallback((_) {
-  //   //   _checkAndRefreshIfNeeded();
+    // Check if we need to refresh on init - with a small delay to ensure providers are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingTransactions();
 
-  //   // Set up a periodic refresh timer (every 5 minutes)
-  //   // _refreshTimer = Timer.periodic(_refreshCooldown, (_) {
-  //   //   if (mounted) {
-  //   //     _checkAndRefreshIfNeeded();
-  //   //   }
-  //   // });
-  //   // });
-  // }
+      // Set up a periodic check for pending transactions (every 30 seconds)
+      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) {
+          _checkPendingTransactions();
+        }
+      });
+    });
+  }
+
+  void _checkPendingTransactions() {
+    if (!mounted) return;
+
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
+
+    // Only check pending transactions without fetching new ones
+    transactionProvider.checkPendingTransactionsStatus();
+  }
 
   @override
   void dispose() {
@@ -84,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (showLoadingIndicator && mounted) {
       setState(() {
         _isRefreshing = true;
+        hasError = false; // Reset error state on refresh attempt
       });
     }
 
@@ -96,9 +108,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
 
-      // Use async/await instead of Future.wait for better control
+      // Refresh wallet balance first
       await walletProvider.refreshBalances(forceRefresh: forceRefresh);
-      await transactionProvider.fetchTransactions(forceRefresh: forceRefresh);
+
+      // Only refresh transactions if wallet refresh was successful
+      // if (!walletProvider.hasError!) {
+      //   await transactionProvider.fetchTransactions(
+      //       forceRefresh: forceRefresh,
+      //       skipPendingCheck:
+      //           true // Skip the pending check to avoid double refreshes
+      //       );
+      // }
 
       // Update the last refresh timestamp
       _lastRefreshTime = DateTime.now();
