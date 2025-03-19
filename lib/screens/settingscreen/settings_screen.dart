@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/wallet_provider.dart';
@@ -8,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/formatter_utils.dart';
 import '../../utils/snackbar_utils.dart';
-import '../wallet_selection_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -651,12 +651,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // Ideally would call walletProvider.clearWallet()
+              final authProvider =
+                  Provider.of<AuthProvider>(context, listen: false);
+
+              // Log out the user first (clear authentication state)
+              await authProvider.logout();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const WalletSelectionScreen()),
+                      builder: (context) => const OnboardingScreen()),
                   (route) => false,
                 );
               }

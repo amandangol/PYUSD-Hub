@@ -4,7 +4,7 @@ class WalletModel {
   final String address;
   final String privateKey;
   final String mnemonic;
-  final EthPrivateKey credentials;
+  final EthPrivateKey? credentials;
   final Map<String, dynamic>? userInfo;
 
   WalletModel({

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/authentication/screen/login_screen.dart';
+import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
 import 'dart:async';
-import '../authentication/provider/auth_provider.dart';
-import '../main.dart';
-import '../providers/theme_provider.dart';
+import '../provider/auth_provider.dart';
+import '../../main.dart';
+import '../../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -44,34 +46,59 @@ class _SplashScreenState extends State<SplashScreen>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
-      // Initialize wallet only once
+      // Initialize wallet
       await authProvider.initWallet();
 
       if (mounted) {
         setState(() {});
 
-        // Navigate to main app after a short delay
-        // This prevents the UI from jumping too quickly
+        // Navigate after a short delay to allow animation to complete
         Timer(const Duration(milliseconds: 500), () {
           if (mounted) {
-            Navigator.of(context).pushReplacement(
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) =>
-                    const MainApp(),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  var begin = const Offset(1.0, 0.0);
-                  var end = Offset.zero;
-                  var curve = Curves.easeInOut;
-                  var tween = Tween(begin: begin, end: end)
-                      .chain(CurveTween(curve: curve));
-                  return SlideTransition(
-                    position: animation.drive(tween),
-                    child: child,
-                  );
-                },
-              ),
-            );
+            if (authProvider.isAuthenticated) {
+              // Navigate directly to main app if already authenticated
+              Navigator.of(context).pushReplacementNamed('/main');
+            } else if (authProvider.wallet != null) {
+              // Navigate to login screen if wallet exists but not authenticated
+              Navigator.of(context).pushReplacement(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const LoginScreen(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    var begin = const Offset(1.0, 0.0);
+                    var end = Offset.zero;
+                    var curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+                ),
+              );
+            } else {
+              // Navigate to onboarding screen if no wallet exists
+              Navigator.of(context).pushReplacement(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const OnboardingScreen(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    var begin = const Offset(1.0, 0.0);
+                    var end = Offset.zero;
+                    var curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+                ),
+              );
+            }
           }
         });
       }

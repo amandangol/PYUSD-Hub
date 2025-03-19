@@ -18,6 +18,8 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  TextEditingController _pinController = TextEditingController();
+
   @override
   void dispose() {
     _mnemonicController.dispose();
@@ -36,8 +38,10 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider
-          .importWalletFromMnemonic(_mnemonicController.text.trim());
+      final pin = _pinController.text.trim();
+      final mnemonic = _mnemonicController.text.trim();
+
+      await authProvider.importWalletFromMnemonic(mnemonic, pin);
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

@@ -15,7 +15,7 @@ import 'screens/homescreen/home_screen.dart';
 import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
-import 'screens/splash_screen.dart';
+import 'authentication/screen/splash_screen.dart';
 import 'screens/transactions/provider/transactiondetail_provider.dart';
 import 'authentication/service/wallet_service.dart';
 import 'theme/app_theme.dart';
