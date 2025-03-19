@@ -72,12 +72,16 @@ class MyApp extends StatelessWidget {
             networkProvider: networkProvider,
           ),
         ),
+        ChangeNotifierProvider(
+          create: (context) => TransactionDetailProvider(),
+        ),
         ChangeNotifierProxyProvider3<AuthProvider, NetworkProvider,
             WalletProvider, TransactionProvider>(
           create: (context) => TransactionProvider(
             authProvider: context.read<AuthProvider>(),
             networkProvider: context.read<NetworkProvider>(),
             walletProvider: context.read<WalletProvider>(),
+            detailProvider: context.read<TransactionDetailProvider>(),
           ),
           update: (context, authProvider, networkProvider, walletProvider,
                   previous) =>
@@ -85,11 +89,10 @@ class MyApp extends StatelessWidget {
             authProvider: authProvider,
             networkProvider: networkProvider,
             walletProvider: walletProvider,
+            detailProvider: context.read<TransactionDetailProvider>(),
           ),
         ),
-        ChangeNotifierProvider(
-          create: (context) => TransactionDetailProvider(),
-        ),
+
         ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
         ),

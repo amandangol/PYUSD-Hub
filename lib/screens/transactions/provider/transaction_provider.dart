@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,11 +8,13 @@ import '../../../services/ethereum_rpc_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/wallet_provider.dart';
 import '../model/transaction_model.dart';
+import 'transactiondetail_provider.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
   final WalletProvider _walletProvider;
+  final TransactionDetailProvider _detailProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
 
   // Transactions
@@ -28,6 +31,9 @@ class TransactionProvider extends ChangeNotifier {
   final Map<String, int> _transactionCheckRetries = {};
   static const int _maxTransactionCheckRetries = 20;
   static const Duration _transactionCheckInterval = Duration(seconds: 15);
+
+  // Periodic status check timer
+  Timer? _statusCheckTimer;
 
   // State
   bool _isLoading = false;
@@ -57,9 +63,11 @@ class TransactionProvider extends ChangeNotifier {
     required AuthProvider authProvider,
     required NetworkProvider networkProvider,
     required WalletProvider walletProvider,
+    required TransactionDetailProvider detailProvider,
   })  : _authProvider = authProvider,
         _networkProvider = networkProvider,
-        _walletProvider = walletProvider {
+        _walletProvider = walletProvider,
+        _detailProvider = detailProvider {
     _initializeTransactionMaps();
     _networkProvider.addListener(_onNetworkChanged);
 
@@ -67,6 +75,9 @@ class TransactionProvider extends ChangeNotifier {
     if (_authProvider.getCurrentAddress() != null) {
       fetchTransactions();
     }
+
+    // Start periodic status check for pending transactions
+    _startStatusCheckTimer();
   }
 
   // Initialize maps for all available networks
@@ -80,6 +91,15 @@ class TransactionProvider extends ChangeNotifier {
     loadPendingTransactionsFromPrefs();
   }
 
+  // Start periodic status check timer
+  void _startStatusCheckTimer() {
+    _statusCheckTimer?.cancel();
+    _statusCheckTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => checkPendingTransactionsStatus(),
+    );
+  }
+
   // Handle network change
   void _onNetworkChanged() {
     if (!_disposed) {
@@ -91,6 +111,7 @@ class TransactionProvider extends ChangeNotifier {
   List<TransactionModel> getFilteredTransactions({
     TransactionDirection? direction,
     String? tokenSymbol,
+    TransactionStatus? status,
   }) {
     final allTransactions = transactions;
 
@@ -109,11 +130,22 @@ class TransactionProvider extends ChangeNotifier {
         }
       }
 
+      // Filter by status if specified
+      if (status != null && tx.status != status) {
+        return false;
+      }
+
       return true;
     }).toList();
   }
 
-  // Fetch transaction details
+  // Get pending transactions for current network
+  List<TransactionModel> getPendingTransactions() {
+    final currentNetwork = _networkProvider.currentNetwork;
+    return _pendingTransactionMap[currentNetwork]?.values.toList() ?? [];
+  }
+
+  // Fetch transaction details (using TransactionDetailProvider)
   Future<TransactionDetailModel?> getTransactionDetails(String txHash) async {
     if (_disposed) return null;
 
@@ -122,19 +154,17 @@ class TransactionProvider extends ChangeNotifier {
       final currentNetwork = _networkProvider.currentNetwork;
       final address = _authProvider.getCurrentAddress() ?? '';
 
-      return await _rpcService.getTransactionDetails(
-        rpcUrl,
-        txHash,
-        currentNetwork,
-        address,
+      return await _detailProvider.getTransactionDetails(
+        txHash: txHash,
+        rpcUrl: rpcUrl,
+        networkType: currentNetwork,
+        currentAddress: address,
       );
     } catch (e) {
       _setError('Failed to get transaction details: $e');
       return null;
     }
   }
-
-// In TransactionProvider.dart - modify the checkPendingTransactionsStatus method
 
   Future<void> checkPendingTransactionsStatus() async {
     if (_disposed) return;
@@ -168,12 +198,13 @@ class TransactionProvider extends ChangeNotifier {
       _lastTransactionCheck[txHash] = DateTime.now();
 
       try {
-        // Get transaction details from blockchain
-        final txDetails = await _rpcService.getTransactionDetails(
-          rpcUrl,
-          txHash,
-          currentNetwork,
-          address,
+        // Get transaction details from TransactionDetailProvider with force refresh
+        final txDetails = await _detailProvider.getTransactionDetails(
+          txHash: txHash,
+          rpcUrl: rpcUrl,
+          networkType: currentNetwork,
+          currentAddress: address,
+          forceRefresh: true,
         );
 
         // Log the transaction details for debugging
@@ -420,8 +451,10 @@ class TransactionProvider extends ChangeNotifier {
     return result;
   }
 
-  Future<void> fetchTransactions(
-      {bool forceRefresh = false, bool skipPendingCheck = false}) async {
+  Future<void> fetchTransactions({
+    bool forceRefresh = false,
+    bool skipPendingCheck = false,
+  }) async {
     if (_disposed) return;
 
     final address = _authProvider.getCurrentAddress();
@@ -429,8 +462,9 @@ class TransactionProvider extends ChangeNotifier {
 
     // Always check pending transactions first unless explicitly skipped
     if (!skipPendingCheck) {
-      await checkPendingTransactionsStatus(); // Make sure this gets called
+      await checkPendingTransactionsStatus();
     }
+
     // Check if cache is valid
     if (!forceRefresh && _lastRefresh != null) {
       final timeSinceLastRefresh = DateTime.now().difference(_lastRefresh!);

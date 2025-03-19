@@ -9,12 +9,17 @@ class TransactionDetailProvider with ChangeNotifier {
   // Track loading states and errors
   bool _isLoading = false;
   String? _error;
+  bool _disposed = false;
 
   // Track ongoing fetches to prevent duplicate requests
   final Map<String, Future<TransactionDetailModel?>> _ongoingFetches = {};
 
   // Cache for transaction details to prevent duplicate fetches
   final Map<String, TransactionDetailModel> _transactionDetailsCache = {};
+
+  // Cache expiration time (10 minutes)
+  static const Duration _cacheExpiration = Duration(minutes: 10);
+  final Map<String, DateTime> _cacheTimestamps = {};
 
   // Getters
   bool get isLoading => _isLoading;
@@ -28,9 +33,12 @@ class TransactionDetailProvider with ChangeNotifier {
     required String currentAddress,
     bool forceRefresh = false,
   }) async {
+    if (_disposed) return null;
+
     // Check cache first if not forcing refresh
-    if (!forceRefresh && _transactionDetailsCache.containsKey(txHash)) {
-      return _transactionDetailsCache[txHash];
+    if (!forceRefresh) {
+      final cachedTransaction = _getCachedTransaction(txHash);
+      if (cachedTransaction != null) return cachedTransaction;
     }
 
     // If there's already an ongoing fetch for this transaction, return that instead of starting a new one
@@ -51,8 +59,22 @@ class TransactionDetailProvider with ChangeNotifier {
     try {
       return await fetchFuture;
     } finally {
-      _ongoingFetches.remove(txHash);
+      if (!_disposed) {
+        _ongoingFetches.remove(txHash);
+      }
     }
+  }
+
+  // Check if a transaction is in the cache and not expired
+  TransactionDetailModel? _getCachedTransaction(String txHash) {
+    if (_transactionDetailsCache.containsKey(txHash)) {
+      final timestamp = _cacheTimestamps[txHash];
+      if (timestamp != null &&
+          DateTime.now().difference(timestamp) < _cacheExpiration) {
+        return _transactionDetailsCache[txHash];
+      }
+    }
+    return null;
   }
 
   // Private method to actually fetch transaction details
@@ -62,6 +84,8 @@ class TransactionDetailProvider with ChangeNotifier {
     required NetworkType networkType,
     required String currentAddress,
   }) async {
+    if (_disposed) return null;
+
     _setLoadingState(true);
 
     try {
@@ -74,8 +98,9 @@ class TransactionDetailProvider with ChangeNotifier {
       );
 
       // Cache the result if successful
-      if (details != null) {
+      if (details != null && !_disposed) {
         _transactionDetailsCache[txHash] = details;
+        _cacheTimestamps[txHash] = DateTime.now();
       }
 
       return details;
@@ -83,7 +108,9 @@ class TransactionDetailProvider with ChangeNotifier {
       _setError('Error fetching transaction details: $e');
       return null;
     } finally {
-      _setLoadingState(false);
+      if (!_disposed) {
+        _setLoadingState(false);
+      }
     }
   }
 
@@ -93,7 +120,10 @@ class TransactionDetailProvider with ChangeNotifier {
     required String rpcUrl,
     required NetworkType networkType,
     required String currentAddress,
+    bool forceRefresh = false,
   }) async {
+    if (_disposed) return [];
+
     // First, deduplicate the hashes
     final uniqueHashes = txHashes.toSet().toList();
     final results = <TransactionDetailModel>[];
@@ -101,15 +131,22 @@ class TransactionDetailProvider with ChangeNotifier {
 
     // Check which transactions are already in cache
     for (final hash in uniqueHashes) {
-      if (_transactionDetailsCache.containsKey(hash)) {
-        results.add(_transactionDetailsCache[hash]!);
-      } else if (!_ongoingFetches.containsKey(hash)) {
-        hashesToFetch.add(hash);
-      } else {
+      if (!forceRefresh) {
+        final cachedTransaction = _getCachedTransaction(hash);
+        if (cachedTransaction != null) {
+          results.add(cachedTransaction);
+          continue;
+        }
+      }
+
+      if (_ongoingFetches.containsKey(hash)) {
         // Add to hashes to wait for from ongoing fetches
-        _ongoingFetches[hash]!.then((result) {
-          if (result != null) results.add(result);
+        final future = _ongoingFetches[hash]!;
+        future.then((result) {
+          if (result != null && !_disposed) results.add(result);
         });
+      } else {
+        hashesToFetch.add(hash);
       }
     }
 
@@ -125,6 +162,8 @@ class TransactionDetailProvider with ChangeNotifier {
         // Create batch futures in smaller chunks to avoid overloading the network
         const batchSize = 10;
         for (int i = 0; i < hashesToFetch.length; i += batchSize) {
+          if (_disposed) break;
+
           final end = (i + batchSize < hashesToFetch.length)
               ? i + batchSize
               : hashesToFetch.length;
@@ -136,8 +175,9 @@ class TransactionDetailProvider with ChangeNotifier {
                 .getTransactionDetails(
                     rpcUrl, hash, networkType, currentAddress)
                 .then((details) {
-              if (details != null) {
+              if (details != null && !_disposed) {
                 _transactionDetailsCache[hash] = details;
+                _cacheTimestamps[hash] = DateTime.now();
                 return details;
               }
               return null;
@@ -153,6 +193,8 @@ class TransactionDetailProvider with ChangeNotifier {
           // Wait for this batch to complete
           final batchResults = await Future.wait(futures);
 
+          if (_disposed) break;
+
           // Clean up ongoing fetches and add results
           for (int j = 0; j < batch.length; j++) {
             _ongoingFetches.remove(batch[j]);
@@ -162,6 +204,8 @@ class TransactionDetailProvider with ChangeNotifier {
           }
         }
       }
+
+      if (_disposed) return results;
 
       // Wait for any remaining ongoing fetches that we added to our tracking
       final remainingFutures = _ongoingFetches.values.toList();
@@ -179,21 +223,25 @@ class TransactionDetailProvider with ChangeNotifier {
       _setError('Error fetching multiple transaction details: $e');
       return results; // Return what we have so far
     } finally {
-      _setLoadingState(false);
+      if (!_disposed) {
+        _setLoadingState(false);
+      }
     }
   }
 
-// Extract and return internal transactions from a transaction
+  // Extract and return internal transactions from a transaction
   Future<List<Map<String, dynamic>>?> getInternalTransactions({
     required String txHash,
     required String rpcUrl,
     required NetworkType networkType,
     required String currentAddress,
   }) async {
+    if (_disposed) return null;
+
     // First check if we already have this transaction with trace data in cache
-    if (_transactionDetailsCache.containsKey(txHash) &&
-        _transactionDetailsCache[txHash]?.internalTransactions != null) {
-      return _transactionDetailsCache[txHash]?.internalTransactions;
+    final cachedTransaction = _getCachedTransaction(txHash);
+    if (cachedTransaction?.internalTransactions != null) {
+      return cachedTransaction!.internalTransactions;
     }
 
     // If not in cache or no trace data, fetch the full transaction details
@@ -208,17 +256,19 @@ class TransactionDetailProvider with ChangeNotifier {
     return details?.internalTransactions;
   }
 
-// Get detailed error info for failed transactions
+  // Get detailed error info for failed transactions
   Future<String?> getTransactionErrorDetails({
     required String txHash,
     required String rpcUrl,
     required NetworkType networkType,
     required String currentAddress,
   }) async {
+    if (_disposed) return null;
+
     // First check if we already have this transaction with error data in cache
-    if (_transactionDetailsCache.containsKey(txHash) &&
-        _transactionDetailsCache[txHash]?.errorMessage != null) {
-      return _transactionDetailsCache[txHash]?.errorMessage;
+    final cachedTransaction = _getCachedTransaction(txHash);
+    if (cachedTransaction?.errorMessage != null) {
+      return cachedTransaction!.errorMessage;
     }
 
     // If not in cache or no error message, fetch the full transaction details
@@ -233,17 +283,19 @@ class TransactionDetailProvider with ChangeNotifier {
     return details?.errorMessage;
   }
 
-// Get raw trace data specifically for developers/debugging purposes
+  // Get raw trace data specifically for developers/debugging purposes
   Future<Map<String, dynamic>?> getRawTraceData({
     required String txHash,
     required String rpcUrl,
     required NetworkType networkType,
     required String currentAddress,
   }) async {
+    if (_disposed) return null;
+
     // First check if we already have this transaction with trace data in cache
-    if (_transactionDetailsCache.containsKey(txHash) &&
-        _transactionDetailsCache[txHash]?.traceData != null) {
-      return _transactionDetailsCache[txHash]?.traceData;
+    final cachedTransaction = _getCachedTransaction(txHash);
+    if (cachedTransaction?.traceData != null) {
+      return cachedTransaction!.traceData;
     }
 
     // If not in cache or no trace data, fetch the full transaction details
@@ -260,6 +312,8 @@ class TransactionDetailProvider with ChangeNotifier {
 
   // Helper to set loading state and notify listeners once
   void _setLoadingState(bool loading) {
+    if (_disposed) return;
+
     if (_isLoading != loading) {
       _isLoading = loading;
       if (!loading) _error = null;
@@ -269,6 +323,8 @@ class TransactionDetailProvider with ChangeNotifier {
 
   // Set error state and notify listeners
   void _setError(String errorMsg) {
+    if (_disposed) return;
+
     _error = errorMsg;
     print('TransactionDetailProvider error: $errorMsg');
     notifyListeners();
@@ -276,44 +332,61 @@ class TransactionDetailProvider with ChangeNotifier {
 
   // Check if transaction details are already cached
   bool isTransactionCached(String txHash) {
-    return _transactionDetailsCache.containsKey(txHash);
+    return _getCachedTransaction(txHash) != null;
   }
 
   // Get cached transaction details by hash
   TransactionDetailModel? getCachedTransactionDetails(String txHash) {
-    return _transactionDetailsCache[txHash];
+    return _getCachedTransaction(txHash);
   }
 
-  // Refresh transaction status (useful for pending transactions)
-  Future<TransactionDetailModel?> refreshTransactionStatus(
-    String txHash,
-    String rpcUrl,
-    NetworkType networkType,
-    String currentAddress,
-  ) =>
-      getTransactionDetails(
-        txHash: txHash,
-        rpcUrl: rpcUrl,
-        networkType: networkType,
-        currentAddress: currentAddress,
-        forceRefresh: true,
-      );
+  // Periodically clean expired cache entries
+  void cleanExpiredCache() {
+    if (_disposed) return;
+
+    final now = DateTime.now();
+    final expiredKeys = <String>[];
+
+    _cacheTimestamps.forEach((hash, timestamp) {
+      if (now.difference(timestamp) > _cacheExpiration) {
+        expiredKeys.add(hash);
+      }
+    });
+
+    for (final key in expiredKeys) {
+      _transactionDetailsCache.remove(key);
+      _cacheTimestamps.remove(key);
+    }
+  }
 
   // Clear cache for a specific transaction or all transactions
   void clearCache({String? txHash}) {
+    if (_disposed) return;
+
     if (txHash != null) {
       _transactionDetailsCache.remove(txHash);
+      _cacheTimestamps.remove(txHash);
     } else {
       _transactionDetailsCache.clear();
+      _cacheTimestamps.clear();
     }
     notifyListeners();
   }
 
   // Clear error state
   void clearError() {
+    if (_disposed) return;
+
     if (_error != null) {
       _error = null;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _ongoingFetches.clear();
+    super.dispose();
   }
 }
