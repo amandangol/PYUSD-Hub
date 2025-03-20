@@ -25,7 +25,7 @@ class PyusdService {
               '$etherscanEndpoint?module=stats&action=tokensupply&contractaddress=$pyusdContractAddress&apikey=$etherscanApiKey',
             ),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -69,7 +69,7 @@ class PyusdService {
             headers: {'Content-Type': 'application/json'},
             body: payload,
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -101,7 +101,7 @@ class PyusdService {
               '$etherscanEndpoint?module=account&action=tokentx&contractaddress=$pyusdContractAddress&page=1&offset=$limit&sort=desc&apikey=$etherscanApiKey',
             ),
           )
-          .timeout(Duration(seconds: 10));
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -135,7 +135,7 @@ class PyusdService {
   Future<List<Map<String, dynamic>>> _getRecentTransfersRPC(int limit) async {
     try {
       // The Transfer event signature hash for ERC20
-      final transferEventSignature =
+      const transferEventSignature =
           '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
       // Get recent blocks
@@ -162,7 +162,7 @@ class PyusdService {
       final latestBlock =
           int.parse(blockData['result'].substring(2), radix: 16);
       final fromBlock = '0x${(latestBlock - 10000).toRadixString(16)}';
-      final toBlock = 'latest';
+      const toBlock = 'latest';
 
       // Get transfer logs
       final logsResponse = await http.post(
@@ -334,7 +334,7 @@ class PyusdService {
     final channel = WebSocketChannel.connect(uri);
 
     // Add delay to simulate a normal connection attempt before it would fail
-    Future.delayed(Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () {
       try {
         channel.sink.close();
       } catch (e) {

@@ -52,20 +52,18 @@ dependencies:
   flutter_launcher_icons: ^0.14.3
   local_auth: ^2.0.0
   shared_preferences: ^2.3.3
-  package_info_plus: ^8.3.0
   share_plus: ^10.1.4
   path_provider: ^2.1.5
   web_socket_channel: ^2.1.0
   googleapis: ^13.1.0
   googleapis_auth: ^1.3.1
   web3auth_flutter: ^6.1.2
-  csv: ^6.0.0
-  sqflite: ^2.3.3+1
-  walletconnect_dart: ^0.0.11
   qr_code_scanner: ^1.0.1
   encrypt: ^5.0.3
-  font_awesome_flutter: ^10.8.0
 
+  crypto: any
+  uuid: any
+  pinput: ^5.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -77,10 +75,10 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^3.0.0
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
+  # For information on the generic Dart part of this file, see the
+  # following page: https://dart.dev/tools/pub/pubspec
 
-# The following section is specific to Flutter packages.
+  # The following section is specific to Flutter packages.
 flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

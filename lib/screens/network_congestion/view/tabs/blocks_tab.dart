@@ -413,7 +413,7 @@ class BlocksTab extends StatelessWidget {
     final dividerColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    final accentColor = Colors.blue;
+    const accentColor = Colors.blue;
     final utilColor = utilization > 90
         ? Colors.red
         : utilization > 70
@@ -473,7 +473,7 @@ class BlocksTab extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.dashboard_rounded,
                                 size: 16,
                                 color: accentColor,
@@ -481,7 +481,7 @@ class BlocksTab extends StatelessWidget {
                               const SizedBox(width: 6),
                               Text(
                                 'Block #$blockNumber',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: accentColor,
                                   fontSize: 15,
@@ -680,7 +680,7 @@ class BlocksTab extends StatelessWidget {
                                     color: textColor,
                                   ),
                                 ),
-                                leading: Icon(
+                                leading: const Icon(
                                   Icons.info_outline_rounded,
                                   color: accentColor,
                                 ),
@@ -747,7 +747,7 @@ class BlocksTab extends StatelessWidget {
                         // Transactions section header
                         Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.receipt_long_rounded,
                               color: accentColor,
                               size: 20,
@@ -771,7 +771,7 @@ class BlocksTab extends StatelessWidget {
                               ),
                               child: Text(
                                 '${transactions.length}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: accentColor,
                                   fontSize: 12,
@@ -876,7 +876,7 @@ class BlocksTab extends StatelessWidget {
                                               children: [
                                                 Row(
                                                   children: [
-                                                    Icon(
+                                                    const Icon(
                                                       Icons.paid_rounded,
                                                       size: 16,
                                                       color: accentColor,
@@ -1153,7 +1153,7 @@ class BlocksTab extends StatelessWidget {
                             label: const Text('Copy Block Hash'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: accentColor,
-                              side: BorderSide(color: accentColor),
+                              side: const BorderSide(color: accentColor),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1163,12 +1163,12 @@ class BlocksTab extends StatelessWidget {
                               final hash = block['hash'] as String? ?? '';
                               Clipboard.setData(ClipboardData(text: hash));
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text(
+                                const SnackBar(
+                                  content: Text(
                                       'Block hash copied to clipboard'),
                                   behavior: SnackBarBehavior.floating,
                                   backgroundColor: accentColor,
-                                  duration: const Duration(seconds: 1),
+                                  duration: Duration(seconds: 1),
                                 ),
                               );
                             },
@@ -1290,7 +1290,7 @@ class BlocksTab extends StatelessWidget {
   }) {
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    final accentColor = Colors.blue;
+    const accentColor = Colors.blue;
 
     return InkWell(
       onTap: onTap,
@@ -1352,11 +1352,11 @@ class BlocksTab extends StatelessWidget {
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: valueToCopy));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Copied to clipboard'),
+                        const SnackBar(
+                          content: Text('Copied to clipboard'),
                           behavior: SnackBarBehavior.floating,
                           backgroundColor: accentColor,
-                          duration: const Duration(seconds: 1),
+                          duration: Duration(seconds: 1),
                         ),
                       );
                     },
@@ -1392,7 +1392,7 @@ class BlocksTab extends StatelessWidget {
     final textColor = isDark ? Colors.white : Colors.black87;
     final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
     final dividerColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
-    final accentColor = Colors.blue;
+    const accentColor = Colors.blue;
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -1503,7 +1503,7 @@ class BlocksTab extends StatelessWidget {
                                         color: accentColor.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: Icon(Icons.receipt_rounded,
+                                      child: const Icon(Icons.receipt_rounded,
                                           color: accentColor, size: 18),
                                     ),
                                     const SizedBox(width: 12),

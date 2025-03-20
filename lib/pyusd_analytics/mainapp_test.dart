@@ -18,7 +18,7 @@ void main() {
 }
 
 class PyusdTrackerApp extends StatelessWidget {
-  const PyusdTrackerApp({Key? key}) : super(key: key);
+  const PyusdTrackerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,7 @@ class PyusdTrackerApp extends StatelessWidget {
 }
 
 class PyusdDashboard extends StatefulWidget {
-  const PyusdDashboard({Key? key}) : super(key: key);
+  const PyusdDashboard({super.key});
 
   @override
   State<PyusdDashboard> createState() => _PyusdDashboardState();
@@ -142,8 +142,7 @@ class _PyusdDashboardState extends State<PyusdDashboard> {
 class SupplyInfoCards extends StatelessWidget {
   final PyusdDataProvider dataProvider;
 
-  const SupplyInfoCards({Key? key, required this.dataProvider})
-      : super(key: key);
+  const SupplyInfoCards({super.key, required this.dataProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +234,7 @@ class SupplyInfoCards extends StatelessWidget {
 class SupplyChart extends StatelessWidget {
   final PyusdDataProvider dataProvider;
 
-  const SupplyChart({Key? key, required this.dataProvider}) : super(key: key);
+  const SupplyChart({super.key, required this.dataProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +244,7 @@ class SupplyChart extends StatelessWidget {
 
     return LineChart(
       LineChartData(
-        gridData: FlGridData(
+        gridData: const FlGridData(
           show: true,
           drawVerticalLine: true,
           horizontalInterval: 1000000000,
@@ -330,8 +329,7 @@ class SupplyChart extends StatelessWidget {
 class MintingHistoryList extends StatelessWidget {
   final PyusdDataProvider dataProvider;
 
-  const MintingHistoryList({Key? key, required this.dataProvider})
-      : super(key: key);
+  const MintingHistoryList({super.key, required this.dataProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -477,10 +475,10 @@ class PyusdDataProvider extends ChangeNotifier {
   Future<void> _fetchCurrentSupply() async {
     try {
       // Total supply function signature from PYUSD ERC20 contract
-      final totalSupplySignature = '0x18160ddd'; // totalSupply()
+      const totalSupplySignature = '0x18160ddd'; // totalSupply()
 
       // Circulating supply function signature (varies by token implementation)
-      final circulatingSupplySignature = '0xd6a0c7af'; // circulatingSupply()
+      const circulatingSupplySignature = '0xd6a0c7af'; // circulatingSupply()
 
       // Call RPC endpoint for total supply
       final totalSupplyResponse = await http.post(

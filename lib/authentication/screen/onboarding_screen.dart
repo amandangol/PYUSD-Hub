@@ -8,8 +8,7 @@ import 'login_screen.dart';
 class OnboardingScreen extends StatefulWidget {
   final bool forceOnboarding;
 
-  const OnboardingScreen({Key? key, this.forceOnboarding = false})
-      : super(key: key);
+  const OnboardingScreen({super.key, this.forceOnboarding = false});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();

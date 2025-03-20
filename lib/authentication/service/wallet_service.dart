@@ -102,6 +102,7 @@ class WalletService {
   }
 
   // Decrypt and load wallet
+  // Decrypt and load wallet
   Future<WalletModel?> decryptAndLoadWallet(String pin) async {
     final address = await _secureStorage.read(key: _walletAddressKey);
     final encryptedPrivateKey =

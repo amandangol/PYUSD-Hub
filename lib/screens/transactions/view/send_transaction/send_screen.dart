@@ -183,7 +183,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Recipient: $address'),
-            Text('Amount: $amount ${_selectedAsset}'),
+            Text('Amount: $amount $_selectedAsset'),
             const SizedBox(height: 8),
             const Text('Gas Details:',
                 style: TextStyle(fontWeight: FontWeight.bold)),

@@ -1,4 +1,3 @@
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
@@ -95,7 +94,7 @@ class BigQueryService {
   // Query holder distribution with optimized categories
   Future<Map<String, dynamic>> queryHolderDistribution() async {
     // Simplified query to categorize holders
-    final String query = '''
+    const String query = '''
       WITH holder_balances AS (
         SELECT
           address,
@@ -202,7 +201,7 @@ class BigQueryService {
         }
 
         // Wait before retrying
-        await Future.delayed(Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 2));
       }
     }
 

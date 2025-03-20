@@ -6,7 +6,7 @@ import 'pin_input_widget.dart.dart';
 import 'onboarding_screen.dart'; // Make sure this import is correct
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

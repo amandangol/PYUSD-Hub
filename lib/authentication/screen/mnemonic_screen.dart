@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import '../../main.dart';
-import '../provider/auth_provider.dart';
 
 class MnemonicConfirmationScreen extends StatefulWidget {
   final String mnemonic;
   final String pin;
 
   const MnemonicConfirmationScreen({
-    Key? key,
+    super.key,
     required this.mnemonic,
     required this.pin,
-  }) : super(key: key);
+  });
 
   @override
   State<MnemonicConfirmationScreen> createState() =>
@@ -25,7 +23,7 @@ class _MnemonicConfirmationScreenState
   bool _isMnemonicVisible = false;
   bool _hasCopied = false;
   List<String> _mnemonicWords = [];
-  List<String> _selectedWords = [];
+  final List<String> _selectedWords = [];
   List<String> _verificationWords = [];
   List<int> _verificationIndices = [];
 

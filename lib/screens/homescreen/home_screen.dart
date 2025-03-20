@@ -9,14 +9,13 @@ import '../../utils/snackbar_utils.dart';
 import '../transactions/provider/transaction_provider.dart';
 import '../transactions/view/receive_transaction/receive_screen.dart';
 import '../transactions/view/send_transaction/send_screen.dart';
-import '../settingscreen/settings_screen.dart';
 import 'widgets/action_button.dart';
 import 'widgets/balance_card.dart';
 import 'widgets/network_status_card.dart';
 import 'widgets/transaction_section.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -290,12 +289,12 @@ class NetworkOption extends StatelessWidget {
   final VoidCallback onTap;
 
   const NetworkOption({
-    Key? key,
+    super.key,
     required this.name,
     required this.isSelected,
     required this.isDarkMode,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -5,9 +5,9 @@ class DangerSection extends StatelessWidget {
   final Function onLogoutTap;
 
   const DangerSection({
-    Key? key,
+    super.key,
     required this.onLogoutTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

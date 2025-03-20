@@ -6,7 +6,7 @@ class AssetSelectionCard extends StatelessWidget {
   final double balance;
   final VoidCallback onTap;
 
-  const AssetSelectionCard({
+  const AssetSelectionCard({super.key, 
     required this.assetName,
     required this.isSelected,
     required this.balance,
@@ -26,7 +26,7 @@ class AssetSelectionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? colorScheme.inversePrimary
-              : colorScheme.surfaceVariant,
+              : colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:

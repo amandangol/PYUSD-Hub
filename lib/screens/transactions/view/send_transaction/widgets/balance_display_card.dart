@@ -8,13 +8,13 @@ class BalanceDisplayCard extends StatelessWidget {
   final String networkName;
 
   const BalanceDisplayCard({
-    Key? key,
+    super.key,
     required this.selectedAsset,
     required this.availableBalance,
     required this.maxSendableEth,
     required this.estimatedGasFee,
     required this.networkName,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -317,7 +317,7 @@ class BalanceCard extends StatelessWidget {
                           );
                         },
                         child: Container(
-                          padding: EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isDarkMode
                                 ? Colors.white.withOpacity(0.08)

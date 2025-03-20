@@ -5,9 +5,9 @@ class AboutSection extends StatelessWidget {
   final String appVersion;
 
   const AboutSection({
-    Key? key,
+    super.key,
     required this.appVersion,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

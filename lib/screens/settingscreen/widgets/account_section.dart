@@ -9,9 +9,9 @@ class AccountSection extends StatelessWidget {
   final AuthProvider authProvider;
 
   const AccountSection({
-    Key? key,
+    super.key,
     required this.authProvider,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

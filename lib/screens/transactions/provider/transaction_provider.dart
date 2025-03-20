@@ -703,8 +703,9 @@ class TransactionProvider extends ChangeNotifier {
   Future<String> sendETH(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
     if (_disposed) throw Exception('TransactionProvider is disposed');
-    if (_authProvider.wallet == null)
+    if (_authProvider.wallet == null) {
       throw Exception('Wallet is not initialized');
+    }
 
     _setLoading(true);
     try {
@@ -739,8 +740,9 @@ class TransactionProvider extends ChangeNotifier {
   Future<String> sendPYUSD(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
     if (_disposed) throw Exception('TransactionProvider is disposed');
-    if (_authProvider.wallet == null)
+    if (_authProvider.wallet == null) {
       throw Exception('Wallet is not initialized');
+    }
 
     _setLoading(true);
     try {
@@ -799,8 +801,9 @@ class TransactionProvider extends ChangeNotifier {
   // Estimate gas for ETH transfer
   Future<int> estimateEthTransferGas(String toAddress, double amount) async {
     if (_disposed) return 21000; // Default gas if disposed
-    if (_authProvider.wallet == null)
+    if (_authProvider.wallet == null) {
       throw Exception('Wallet is not initialized');
+    }
 
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
@@ -819,8 +822,9 @@ class TransactionProvider extends ChangeNotifier {
   // Estimate gas for PYUSD token transfer
   Future<int> estimateTokenTransferGas(String toAddress, double amount) async {
     if (_disposed) return 100000; // Default gas if disposed
-    if (_authProvider.wallet == null)
+    if (_authProvider.wallet == null) {
       throw Exception('Wallet is not initialized');
+    }
 
     try {
       final rpcUrl = _networkProvider.currentRpcEndpoint;
@@ -892,8 +896,9 @@ class TransactionProvider extends ChangeNotifier {
   // Helper method to estimate gas based on transaction type
   Future<int> _estimateGas(String rpcUrl, String fromAddress, String toAddress,
       double amount, bool isToken) async {
-    if (_disposed)
+    if (_disposed) {
       return isToken ? 100000 : 21000; // Default values if disposed
+    }
 
     if (isToken) {
       final tokenAddress = _getTokenAddressForCurrentNetwork();

@@ -7,12 +7,12 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? title;
 
   const PyusdAppBar({
-    Key? key,
+    super.key,
     required this.isDarkMode,
     this.onRefreshPressed,
     this.title,
     this.hasWallet = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

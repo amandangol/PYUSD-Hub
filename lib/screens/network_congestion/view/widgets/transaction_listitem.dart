@@ -9,10 +9,10 @@ class TransactionListItem extends StatelessWidget {
   final VoidCallback? onTap;
 
   const TransactionListItem({
-    Key? key,
+    super.key,
     required this.transaction,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

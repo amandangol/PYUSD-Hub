@@ -9,12 +9,12 @@ class RecipientCard extends StatelessWidget {
   final VoidCallback onScanQRCode;
 
   const RecipientCard({
-    Key? key,
+    super.key,
     required this.addressController,
     required this.isValidAddress,
     required this.onAddressChanged,
     required this.onScanQRCode,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

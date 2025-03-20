@@ -171,7 +171,7 @@ class EthereumRpcService {
       if (tx['input'].length >= 138) {
         final String valueHex = tx['input'].substring(74);
         final BigInt tokenValueBigInt =
-            FormatterUtils.parseBigInt("0x" + valueHex);
+            FormatterUtils.parseBigInt("0x$valueHex");
         tokenValue = tokenValueBigInt / BigInt.from(10).pow(tokenDecimals);
       }
     } catch (e) {
@@ -358,7 +358,7 @@ class EthereumRpcService {
       );
 
       // Check if txResponse or txResponse['result'] is null
-      if (txResponse == null || txResponse['result'] == null) {
+      if (txResponse['result'] == null) {
         print('Transaction not found or returned null result: $txHash');
         return null;
       }
@@ -377,7 +377,7 @@ class EthereumRpcService {
       );
 
       final receiptData =
-          receiptResponse != null && receiptResponse['result'] != null
+          receiptResponse['result'] != null
               ? receiptResponse['result'] as Map<String, dynamic>?
               : null;
 
@@ -421,7 +421,7 @@ class EthereumRpcService {
       );
 
       // Check if blockResponse or blockResponse['result] is null
-      if (blockResponse == null || blockResponse['result'] == null) {
+      if (blockResponse['result'] == null) {
         print('Block data not found: ${receiptData['blockHash']}');
         // Return transaction with estimated timestamp since we couldn't get the block
         return TransactionDetailModel(

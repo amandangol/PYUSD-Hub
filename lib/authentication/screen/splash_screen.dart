@@ -4,11 +4,10 @@ import 'package:pyusd_hub/authentication/screen/login_screen.dart';
 import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
 import 'dart:async';
 import '../provider/auth_provider.dart';
-import '../../main.dart';
 import '../../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -162,7 +161,7 @@ class _SplashScreenState extends State<SplashScreen>
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onBackground,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
@@ -172,7 +171,7 @@ class _SplashScreenState extends State<SplashScreen>
                   fontSize: 16,
                   color: Theme.of(context)
                       .colorScheme
-                      .onBackground
+                      .onSurface
                       .withOpacity(0.7),
                 ),
               ),

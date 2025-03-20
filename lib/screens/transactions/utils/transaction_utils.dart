@@ -1,7 +1,6 @@
 // 📂utils/📜transaction_utils.dart
 
 import '../model/transaction_model.dart';
-import '../constants/transaction_constants.dart';
 
 class TransactionUtils {
   // Compare two Ethereum addresses (case-insensitive)

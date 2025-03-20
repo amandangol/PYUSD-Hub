@@ -13,7 +13,7 @@ class CustomTextField extends StatelessWidget {
   final Icon? prefixIcon;
   final String? suffixText;
   const CustomTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.labelText,
     this.hintText,
@@ -24,7 +24,7 @@ class CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.suffixText,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +55,12 @@ class PrimaryButton extends StatelessWidget {
   final double? width;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.child,
     this.color,
     this.width,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

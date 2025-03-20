@@ -12,7 +12,7 @@ class TransactionFeeCard extends StatelessWidget {
   final double tokenBalance;
 
   const TransactionFeeCard({
-    Key? key,
+    super.key,
     required this.selectedAsset,
     required this.onAssetSelected,
     required this.estimatedGasFee,
@@ -21,7 +21,7 @@ class TransactionFeeCard extends StatelessWidget {
     required this.isEstimatingGas,
     required this.ethBalance,
     required this.tokenBalance,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +94,7 @@ class TransactionFeeCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    colorScheme.surfaceVariant,
+                    colorScheme.surfaceContainerHighest,
                     colorScheme.primaryContainer.withOpacity(0.5),
                   ],
                   begin: Alignment.topLeft,

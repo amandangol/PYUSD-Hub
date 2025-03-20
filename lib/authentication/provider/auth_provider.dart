@@ -60,12 +60,31 @@ class AuthProvider extends ChangeNotifier {
       bool savedAuthState = prefs.getBool('isAuthenticated') ?? false;
 
       if (hasPIN) {
-        // Already has PIN but not authenticated yet
+        // Load wallet metadata - just address, not sensitive data yet
         _wallet = await _walletService.loadWalletMetadata();
 
         // If we have a saved auth state, attempt to auto-authenticate
         if (savedAuthState) {
           _isAuthenticated = true;
+
+          // Attempt to load the full wallet data (including private key and mnemonic)
+          // if user has biometrics enabled
+          if (_isBiometricsAvailable &&
+              await _authService.isBiometricsEnabled()) {
+            try {
+              // Get secret key stored with biometric protection
+              String? secretKey = await _authService.getBiometricSecret();
+
+              if (secretKey != null) {
+                // Load wallet with the secret key
+                _wallet =
+                    await _walletService.decryptAndLoadWalletWithKey(secretKey);
+              }
+            } catch (e) {
+              // If biometric loading fails, we'll just keep the metadata-only wallet
+              print('Failed to auto-load wallet with biometrics: $e');
+            }
+          }
         }
       } else {
         // No authentication set up yet
@@ -104,22 +123,27 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Import wallet from mnemonic with PIN protection
+
   Future<void> importWalletFromMnemonic(String mnemonic, String pin) async {
     if (_isLoading) return;
 
     _setLoading(true);
     try {
+      // Delete any existing PIN data first to avoid conflicts
+      await _authService.deleteAuthData();
+
       // Import the wallet
       _wallet = await _walletService.importWalletFromMnemonic(mnemonic);
 
       // Set PIN for authentication
       await _authService.setPIN(pin);
 
-      // Encrypt wallet data with PIN
+      // Encrypt and store wallet data with PIN
       await _walletService.encryptAndStoreWallet(_wallet!, pin);
 
       // Set authenticated state
       _isAuthenticated = true;
+      await saveAuthState(); // Save authentication state
     } catch (e) {
       _setError('Failed to import wallet: $e');
     } finally {
@@ -136,6 +160,9 @@ class AuthProvider extends ChangeNotifier {
       // Import the wallet
       _wallet = await _walletService.importWalletFromPrivateKey(privateKey);
 
+      // Delete any existing PIN data first to avoid conflicts
+      await _authService.deleteAuthData();
+
       // Set PIN for authentication
       await _authService.setPIN(pin);
 
@@ -144,6 +171,7 @@ class AuthProvider extends ChangeNotifier {
 
       // Set authenticated state
       _isAuthenticated = true;
+      await saveAuthState(); // Save authentication state
     } catch (e) {
       _setError('Failed to import wallet: $e');
     } finally {
@@ -151,6 +179,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Authenticate with PIN
   // Authenticate with PIN
   Future<bool> authenticateWithPIN(String pin) async {
     if (_isLoading) return false;
@@ -163,6 +192,13 @@ class AuthProvider extends ChangeNotifier {
       if (isPINValid) {
         // Decrypt and load wallet with PIN
         _wallet = await _walletService.decryptAndLoadWallet(pin);
+
+        // If wallet data is incomplete after loading, try to load just with the address
+        if (_wallet == null) {
+          _setError('Failed to load wallet data');
+          return false;
+        }
+
         _isAuthenticated = true;
         await saveAuthState(); // Save authentication state
         return true;

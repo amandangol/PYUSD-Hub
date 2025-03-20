@@ -167,7 +167,7 @@ class MarketAnalysisWidget extends StatelessWidget {
       if (feeValueUsd <= 0) return 'N/A';
 
       final ratio = txValueUsd / feeValueUsd;
-      return ratio.toStringAsFixed(1) + 'x';
+      return '${ratio.toStringAsFixed(1)}x';
     }
     // For ETH transactions
     else {
@@ -177,7 +177,7 @@ class MarketAnalysisWidget extends StatelessWidget {
       if (feeValueUsd <= 0) return 'N/A';
 
       final ratio = txValueUsd / feeValueUsd;
-      return ratio.toStringAsFixed(1) + 'x';
+      return '${ratio.toStringAsFixed(1)}x';
     }
   }
 

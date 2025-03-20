@@ -13,7 +13,7 @@ class SendButton extends StatelessWidget {
   final Function onPressed;
 
   const SendButton({
-    Key? key,
+    super.key,
     required this.selectedAsset,
     required this.isValidAddress,
     required this.amountController,
@@ -21,7 +21,7 @@ class SendButton extends StatelessWidget {
     required this.isEstimatingGas,
     required this.estimatedGasFee,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +50,7 @@ class SendButton extends StatelessWidget {
           elevation: canSend ? 4 : 0,
           backgroundColor: colorScheme.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: colorScheme.surfaceVariant,
+          disabledBackgroundColor: colorScheme.surfaceContainerHighest,
           disabledForegroundColor: colorScheme.onSurfaceVariant,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

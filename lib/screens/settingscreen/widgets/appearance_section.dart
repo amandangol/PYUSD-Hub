@@ -6,9 +6,9 @@ class AppearanceSection extends StatelessWidget {
   final ThemeProvider themeProvider;
 
   const AppearanceSection({
-    Key? key,
+    super.key,
     required this.themeProvider,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

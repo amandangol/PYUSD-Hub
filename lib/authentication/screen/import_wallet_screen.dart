@@ -18,7 +18,7 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  TextEditingController _pinController = TextEditingController();
+  final TextEditingController _pinController = TextEditingController();
 
   @override
   void dispose() {
@@ -394,11 +394,11 @@ class SecurityTip extends StatelessWidget {
   final bool isDarkMode;
 
   const SecurityTip({
-    Key? key,
+    super.key,
     required this.icon,
     required this.text,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

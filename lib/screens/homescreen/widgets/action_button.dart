@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -10,13 +9,13 @@ class ActionButtons extends StatelessWidget {
   final VoidCallback onSwapPressed;
 
   const ActionButtons({
-    Key? key,
+    super.key,
     required this.primaryColor,
     required this.isDarkMode,
     required this.onSendPressed,
     required this.onReceivePressed,
     required this.onSwapPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -57,13 +56,13 @@ class ActionButton extends StatelessWidget {
   final bool isDarkMode;
 
   const ActionButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.label,
     required this.onPressed,
     required this.color,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

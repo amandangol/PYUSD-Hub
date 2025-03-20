@@ -13,7 +13,7 @@ class AmountCard extends StatelessWidget {
   final VoidCallback onMaxPressed;
 
   const AmountCard({
-    Key? key,
+    super.key,
     required this.amountController,
     required this.selectedAsset,
     required this.availableBalance,
@@ -21,7 +21,7 @@ class AmountCard extends StatelessWidget {
     required this.onAmountChanged,
     required this.onMaxPressed,
     required this.estimatedGasFee,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

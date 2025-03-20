@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../provider/auth_provider.dart';
 import 'mnemonic_screen.dart';
 import 'pin_input_widget.dart.dart';
 
 class CreateWalletScreen extends StatefulWidget {
-  const CreateWalletScreen({Key? key}) : super(key: key);
+  const CreateWalletScreen({super.key});
 
   @override
   State<CreateWalletScreen> createState() => _CreateWalletScreenState();

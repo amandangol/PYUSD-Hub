@@ -7,12 +7,12 @@ class PinInput extends StatefulWidget {
   final String? label;
 
   const PinInput({
-    Key? key,
+    super.key,
     required this.controller,
     this.onCompleted,
     this.pinLength = 6,
     this.label,
-  }) : super(key: key);
+  });
 
   @override
   State<PinInput> createState() => _PinInputState();

@@ -12,12 +12,12 @@ class AllTransactionsScreen extends StatefulWidget {
   final Color primaryColor;
 
   const AllTransactionsScreen({
-    Key? key,
+    super.key,
     required this.transactions,
     required this.currentAddress,
     required this.isDarkMode,
     required this.primaryColor,
-  }) : super(key: key);
+  });
 
   @override
   State<AllTransactionsScreen> createState() => _AllTransactionsScreenState();

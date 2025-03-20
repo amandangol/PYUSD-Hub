@@ -11,13 +11,13 @@ class TransactionsSection extends StatefulWidget {
   final Color primaryColor;
 
   const TransactionsSection({
-    Key? key,
+    super.key,
     required this.transactions,
     required this.currentAddress,
     required this.isLoading,
     required this.isDarkMode,
     required this.primaryColor,
-  }) : super(key: key);
+  });
 
   @override
   State<TransactionsSection> createState() => _TransactionsSectionState();

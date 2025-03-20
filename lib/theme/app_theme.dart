@@ -66,7 +66,6 @@ class AppTheme {
       primary: _lightPrimaryColor,
       secondary: _lightAccentColor,
       surface: _lightSurfaceColor,
-      background: _lightBackgroundColor,
       error: _lightErrorColor,
     ),
     textTheme: _lightTextTheme,
@@ -123,7 +122,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: _lightPrimaryColor,
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
@@ -154,7 +153,6 @@ class AppTheme {
       primary: _darkPrimaryColor,
       secondary: _darkAccentColor,
       surface: _darkSurfaceColor,
-      background: _darkBackgroundColor,
       error: _darkErrorColor,
     ),
     textTheme: _darkTextTheme,
@@ -212,7 +210,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: _darkPrimaryColor,
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),

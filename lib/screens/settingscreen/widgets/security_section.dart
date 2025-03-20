@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../utils/snackbar_utils.dart';
 
 class SecuritySection extends StatelessWidget {
-  const SecuritySection({Key? key}) : super(key: key);
+  const SecuritySection({super.key});
 
   @override
   Widget build(BuildContext context) {
