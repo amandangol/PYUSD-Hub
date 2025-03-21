@@ -123,7 +123,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Import wallet from mnemonic with PIN protection
-
   Future<void> importWalletFromMnemonic(String mnemonic, String pin) async {
     if (_isLoading) return;
 
@@ -179,7 +178,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Authenticate with PIN
   // Authenticate with PIN
   Future<bool> authenticateWithPIN(String pin) async {
     if (_isLoading) return false;
@@ -274,6 +272,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Disable biometric authentication
+  Future<bool> disableBiometrics() async {
+    if (_isLoading || !_isBiometricsAvailable) return false;
+
+    _setLoading(true);
+    try {
+      bool success = await _authService.disableBiometrics();
+      if (!success) {
+        _setError('Failed to disable biometrics');
+      }
+      return success;
+    } catch (e) {
+      _setError('Failed to disable biometrics: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Lock wallet (require authentication again)
   void lockWallet() async {
     _isAuthenticated = false;
@@ -298,7 +315,6 @@ class AuthProvider extends ChangeNotifier {
     return await _authService.checkBiometrics();
   }
 
-  // Add this to your AuthProvider class
   Future<bool> isBiometricsEnabled() async {
     return await _authService.isBiometricsEnabled();
   }

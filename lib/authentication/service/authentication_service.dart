@@ -94,6 +94,19 @@ class AuthService {
     }
   }
 
+  Future<bool> disableBiometrics() async {
+    try {
+      // Simply delete the biometric secret and set enabled to false
+      // No need to authenticate with biometrics to disable it
+      await _secureStorage.delete(key: _biometricSecretKey);
+      await _secureStorage.write(key: _biometricEnabledKey, value: 'false');
+      return true;
+    } catch (e) {
+      print('Error disabling biometrics: $e');
+      return false;
+    }
+  }
+
   // Update biometric secret (when PIN changes)
   Future<bool> updateBiometricSecret(String newPin) async {
     try {

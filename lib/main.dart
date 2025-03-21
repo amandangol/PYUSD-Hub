@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/authentication/provider/security_setting_provider.dart';
+import 'package:pyusd_hub/authentication/provider/session_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Import all providers
 import 'authentication/provider/auth_provider.dart';
+import 'authentication/widget/activity_aware_widget.dart';
 import 'providers/network_provider.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
@@ -56,6 +59,13 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
           create: (_) => AuthProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => SessionProvider(context.read<AuthProvider>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              SecuritySettingsProvider(context.read<AuthProvider>()),
         ),
         ChangeNotifierProvider(
           create: (_) => NetworkProvider(),
@@ -114,7 +124,9 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const SplashScreen(),
+            home: const ActivityAwareWidget(
+              child: SplashScreen(),
+            ),
             routes: {
               '/main': (context) => const MainApp(),
             },

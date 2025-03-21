@@ -189,6 +189,8 @@ class WalletService {
     // Using SHA-256 to derive a 32-byte key from the PIN
     final bytes = utf8.encode(pin);
     final digest = sha256.convert(bytes);
-    return encrypt.Key.fromBase16(digest.toString());
+    // Convert the digest bytes directly to a hex string of the right format
+    final hexString = HEX.encode(digest.bytes);
+    return encrypt.Key.fromBase16(hexString);
   }
 }

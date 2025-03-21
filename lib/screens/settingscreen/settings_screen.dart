@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:googleapis/cloudidentity/v1.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
 import '../../authentication/model/wallet.dart';
 import '../../authentication/provider/auth_provider.dart';
+import '../../authentication/screen/pin_input_widget.dart.dart';
+import '../../authentication/screen/security_setting_screen.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/wallet_provider.dart';
 import 'package:flutter/services.dart';
@@ -216,13 +219,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      title: const Text('Change PIN'),
+                      title: const Text('Security'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
-                        SnackbarUtil.showSnackbar(
-                          context: context,
-                          message: 'PIN change feature coming soon',
-                        );
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const SecuritySettingsScreen(),
+                            ));
                       },
                     ),
                   ],
@@ -453,45 +458,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return StatefulBuilder(builder: (context, setState) {
-          final defaultPinTheme = PinTheme(
-            width: 56,
-            height: 56,
-            textStyle:
-                const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          );
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Enter PIN'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                      'Enter your PIN to view sensitive wallet information'),
+                  const SizedBox(height: 20),
+                  PinInput(
+                    controller: pinController,
+                    pinLength: 6,
+                    onCompleted: (pin) async {
+                      result = await authProvider.authenticateWithPIN(pin);
+                      if (result) {
+                        Navigator.of(context).pop();
+                      } else {
+                        setState(() {
+                          pinError = true;
+                          pinController.clear();
+                        });
 
-          final errorPinTheme = defaultPinTheme.copyWith(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.red),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          );
-
-          return AlertDialog(
-            title: const Text('Enter PIN'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                    'Enter your PIN to view sensitive wallet information'),
-                const SizedBox(height: 20),
-                Pinput(
-                  controller: pinController,
-                  length: 6,
-                  defaultPinTheme: pinError ? errorPinTheme : defaultPinTheme,
-                  focusedPinTheme: defaultPinTheme.copyWith(
-                    decoration: defaultPinTheme.decoration!.copyWith(
-                      border: Border.all(color: Colors.blue),
-                    ),
+                        // Show error message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Incorrect PIN. Please try again.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
                   ),
-                  obscureText: true,
-                  onCompleted: (pin) async {
-                    result = await authProvider.authenticateWithPIN(pin);
+                  if (pinError) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Incorrect PIN. Please try again.',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (pinController.text.length < 6) {
+                      setState(() {
+                        pinError = true;
+                      });
+                      return;
+                    }
+
+                    result = await authProvider
+                        .authenticateWithPIN(pinController.text);
                     if (result) {
                       Navigator.of(context).pop();
                     } else {
@@ -499,56 +523,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         pinError = true;
                         pinController.clear();
                       });
-
-                      // Show error message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Incorrect PIN. Please try again.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
                     }
                   },
+                  child: const Text('Confirm'),
                 ),
-                if (pinError) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Incorrect PIN. Please try again.',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (pinController.text.length < 6) {
-                    setState(() {
-                      pinError = true;
-                    });
-                    return;
-                  }
-
-                  result = await authProvider
-                      .authenticateWithPIN(pinController.text);
-                  if (result) {
-                    Navigator.of(context).pop();
-                  } else {
-                    setState(() {
-                      pinError = true;
-                      pinController.clear();
-                    });
-                  }
-                },
-                child: const Text('Confirm'),
-              ),
-            ],
-          );
-        });
+            );
+          },
+        );
       },
     );
 

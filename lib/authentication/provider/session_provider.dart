@@ -40,8 +40,10 @@ class SessionProvider extends ChangeNotifier {
     // Don't set timer if duration is 0 (never auto-lock)
     if (_autoLockDuration == 0) return;
 
-    // Create new timer
-    _autoLockTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    debugPrint("Starting auto-lock timer: $_autoLockDuration minute(s)");
+
+    // Create new timer that fires more frequently
+    _autoLockTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _checkInactivity();
     });
   }
@@ -59,7 +61,12 @@ class SessionProvider extends ChangeNotifier {
     final currentTime = DateTime.now();
     final inactiveTime = currentTime.difference(_lastActivityTime).inMinutes;
 
+    // Add logging to debug session timeout issues
+    debugPrint(
+        'Inactive time: $inactiveTime minutes of $_autoLockDuration allowed');
+
     if (inactiveTime >= _autoLockDuration && _isActive) {
+      debugPrint('Auto-locking wallet due to inactivity');
       _lockWallet();
     }
   }
