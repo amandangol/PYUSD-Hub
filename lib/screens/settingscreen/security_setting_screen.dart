@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
+import 'package:pyusd_hub/common/pyusd_appbar.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../authentication/provider/security_setting_provider.dart';
@@ -334,6 +335,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
     final onBackground = Theme.of(context).colorScheme.onSurface;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return ChangeNotifierProxyProvider<AuthProvider, SecuritySettingsProvider>(
       create: (ctx) => SecuritySettingsProvider(
@@ -345,12 +348,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         builder: (ctx, securityProvider, _) {
           return Scaffold(
             backgroundColor: backgroundColor,
-            appBar: AppBar(
-              title: const Text('Security Settings'),
-              centerTitle: true,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              foregroundColor: onBackground,
+            appBar: PyusdAppBar(
+              isDarkMode: isDarkMode,
+              showLogo: false,
+              title: "Security Settings",
             ),
             body: SafeArea(
               child: Padding(

@@ -116,19 +116,25 @@ class MyApp extends StatelessWidget {
           value: themeProvider,
         ),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+      child: Consumer2<ThemeProvider, SessionProvider>(
+        builder: (context, themeProvider, sessionProvider, child) {
           return MaterialApp(
             title: 'PYUSD Wallet & Analytics',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const ActivityAwareWidget(
-              child: SplashScreen(),
-            ),
+            // Use the navigator key from SessionProvider
+            navigatorKey: sessionProvider.navigatorKey,
+            // Define initial route
+            initialRoute: '/',
             routes: {
-              '/main': (context) => const MainApp(),
+              '/': (context) => const ActivityAwareWidget(
+                    child: SplashScreen(),
+                  ),
+              '/main': (context) => const ActivityAwareWidget(
+                    child: MainApp(),
+                  ),
             },
             debugShowCheckedModeBanner: false,
           );
