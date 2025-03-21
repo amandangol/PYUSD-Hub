@@ -198,28 +198,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Column(
                   children: [
-                    SwitchListTile(
-                      title: const Text('Biometric Authentication'),
-                      subtitle: Text(
-                        'Use fingerprint or face ID to unlock app',
-                        style: TextStyle(color: textColor.withOpacity(0.7)),
-                      ),
-                      secondary: Icon(Icons.fingerprint, color: primaryColor),
-                      value: false, // Connect to a biometric provider
-                      onChanged: (value) {
-                        // Toggle biometric auth
-                        SnackbarUtil.showSnackbar(
-                          context: context,
-                          message: value
-                              ? 'Biometric authentication enabled'
-                              : 'Biometric authentication disabled',
-                        );
-                      },
-                      activeColor: primaryColor,
-                    ),
-                    const Divider(height: 1),
                     ListTile(
-                      title: const Text('Security'),
+                      title: const Text('Security Settings'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () {
                         Navigator.push(
@@ -540,26 +520,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showPrivateKeyDialog(BuildContext context, WalletModel? wallet) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Check if the wallet exists and has a private key
+    // Check if the wallet exists
     if (wallet == null) {
       _showErrorDialog(context, 'No wallet available');
       return;
     }
 
-    // Check if private key is available
-    if (wallet.privateKey.isEmpty) {
-      // If private key isn't loaded, we need to prompt for authentication
-      bool authenticated = await _showPINDialog(context);
-      if (!authenticated) {
-        return; // User canceled or failed authentication
-      }
+    bool authenticated = await _showPINDialog(context);
+    if (!authenticated) {
+      return; // User canceled or failed authentication
+    }
 
-      // Now the wallet should be fully loaded with private key
-      wallet = authProvider.wallet;
-      if (wallet == null || wallet.privateKey.isEmpty) {
-        _showErrorDialog(context, 'Failed to load private key');
-        return;
-      }
+    wallet = authProvider.wallet;
+    if (wallet == null || wallet.privateKey.isEmpty) {
+      _showErrorDialog(context, 'Failed to load private key');
+      return;
     }
 
     // Now show the private key
@@ -644,26 +619,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       BuildContext context, WalletModel? wallet) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Check if the wallet exists and has a mnemonic
+    // Check if the wallet exists
     if (wallet == null) {
       _showErrorDialog(context, 'No wallet available');
       return;
     }
 
-    // Check if mnemonic is available
-    if (wallet.mnemonic.isEmpty) {
-      // If mnemonic isn't loaded, we need to prompt for authentication
-      bool authenticated = await _showPINDialog(context);
-      if (!authenticated) {
-        return; // User canceled or failed authentication
-      }
+    // Always require PIN authentication for viewing recovery phrase
+    bool authenticated = await _showPINDialog(context);
+    if (!authenticated) {
+      return; // User canceled or failed authentication
+    }
 
-      // Now the wallet should be fully loaded with mnemonic
-      wallet = authProvider.wallet;
-      if (wallet == null || wallet.mnemonic.isEmpty) {
-        _showErrorDialog(context, 'Failed to load recovery phrase');
-        return;
-      }
+    // Now the wallet should be fully loaded with mnemonic
+    wallet = authProvider.wallet;
+    if (wallet == null || wallet.mnemonic.isEmpty) {
+      _showErrorDialog(context, 'Failed to load recovery phrase');
+      return;
     }
 
     // Now show the recovery phrase
