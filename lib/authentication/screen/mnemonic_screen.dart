@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../common/pyusd_appbar.dart';
 import '../../main.dart';
 
 class MnemonicConfirmationScreen extends StatefulWidget {
@@ -131,12 +132,13 @@ class _MnemonicConfirmationScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Backup Recovery Phrase'),
-        centerTitle: true,
-        elevation: 0,
+      appBar: PyusdAppBar(
+        showLogo: false,
+        isDarkMode: isDarkMode,
+        title: "Backup Recovery Phrase",
       ),
       body: SafeArea(
         child: _isConfirming

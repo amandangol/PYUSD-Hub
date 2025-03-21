@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../common/pyusd_appbar.dart';
 import '../provider/auth_provider.dart';
 import 'mnemonic_screen.dart';
 import 'pin_input_widget.dart.dart';
@@ -73,12 +74,13 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create New Wallet'),
-        centerTitle: true,
-        elevation: 0,
+      appBar: PyusdAppBar(
+        showLogo: false,
+        isDarkMode: isDarkMode,
+        title: "Create New Wallet",
       ),
       body: SafeArea(
         child: SingleChildScrollView(

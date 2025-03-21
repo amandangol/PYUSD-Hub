@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import '../provider/auth_provider.dart';
-import '../provider/security_setting_provider.dart';
-import '../provider/session_provider.dart';
+import '../../authentication/provider/auth_provider.dart';
+import '../../authentication/provider/security_setting_provider.dart';
+import '../../authentication/provider/session_provider.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -67,7 +67,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
     final submittedPinTheme = defaultPinTheme.copyWith(
       decoration: defaultPinTheme.decoration!.copyWith(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: primaryColor.withOpacity(0.5),
@@ -166,7 +166,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
     final submittedPinTheme = defaultPinTheme.copyWith(
       decoration: defaultPinTheme.decoration!.copyWith(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: primaryColor.withOpacity(0.5),
@@ -333,7 +333,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    final onBackground = Theme.of(context).colorScheme.onBackground;
+    final onBackground = Theme.of(context).colorScheme.onSurface;
 
     return ChangeNotifierProxyProvider<AuthProvider, SecuritySettingsProvider>(
       create: (ctx) => SecuritySettingsProvider(
@@ -439,7 +439,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Use fingerprint or face recognition to quickly access your wallet',
+                                  'Use fingerprint to quickly access your wallet',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: onBackground.withOpacity(0.7),

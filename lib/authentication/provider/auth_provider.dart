@@ -128,16 +128,16 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      // Delete any existing PIN data first to avoid conflicts
+      // Delete any existing authentication data first
       await _authService.deleteAuthData();
 
       // Import the wallet
       _wallet = await _walletService.importWalletFromMnemonic(mnemonic);
 
-      // Set PIN for authentication
+      // Set a new PIN for authentication
       await _authService.setPIN(pin);
 
-      // Encrypt and store wallet data with PIN
+      // Encrypt and store wallet data with the new PIN
       await _walletService.encryptAndStoreWallet(_wallet!, pin);
 
       // Set authenticated state
@@ -156,16 +156,16 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      // Delete any existing authentication data first
+      await _authService.deleteAuthData();
+
       // Import the wallet
       _wallet = await _walletService.importWalletFromPrivateKey(privateKey);
 
-      // Delete any existing PIN data first to avoid conflicts
-      await _authService.deleteAuthData();
-
-      // Set PIN for authentication
+      // Set a new PIN for authentication
       await _authService.setPIN(pin);
 
-      // Encrypt wallet data with PIN
+      // Encrypt wallet data with the new PIN
       await _walletService.encryptAndStoreWallet(_wallet!, pin);
 
       // Set authenticated state

@@ -5,6 +5,9 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onRefreshPressed;
   final bool hasWallet;
   final String? title;
+  final bool showLogo;
+  final Widget? customBackButton;
+  final VoidCallback? onBackPressed;
 
   const PyusdAppBar({
     super.key,
@@ -12,6 +15,9 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onRefreshPressed,
     this.title,
     this.hasWallet = false,
+    this.showLogo = true,
+    this.customBackButton,
+    this.onBackPressed,
   });
 
   @override
@@ -19,23 +25,37 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      leading: customBackButton ??
+          (onBackPressed != null
+              ? IconButton(
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                  ),
+                  onPressed: onBackPressed,
+                )
+              : null),
+      automaticallyImplyLeading:
+          customBackButton == null && onBackPressed == null,
       title: Row(
         children: [
-          Image.asset(
-            'assets/images/pyusdlogo.png',
-            height: 24,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.paid, size: 24);
-            },
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title!,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+          if (showLogo)
+            Image.asset(
+              'assets/images/pyusdlogo.png',
+              height: 24,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.paid, size: 24);
+              },
             ),
-          ),
+          if (showLogo && title != null) const SizedBox(width: 8),
+          if (title != null)
+            Text(
+              title!,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+              ),
+            ),
         ],
       ),
       actions: [

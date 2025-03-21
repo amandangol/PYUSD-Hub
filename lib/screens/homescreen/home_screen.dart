@@ -152,7 +152,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
-    // Get the current wallet address - either from the local wallet or WalletConnect
     final currentWalletAddress = authProvider.getCurrentAddress() ?? '';
 
     return Scaffold(
@@ -160,7 +159,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         appBar: PyusdAppBar(
           isDarkMode: isDarkMode,
           hasWallet: true,
-          title: "Pyusd Wallet",
+          showLogo: true,
+          title: "PYUSD Wallet",
           onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
         ),
         body: _buildWalletContent(walletProvider, transactionProvider,

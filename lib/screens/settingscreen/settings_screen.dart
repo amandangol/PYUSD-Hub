@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:googleapis/cloudidentity/v1.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
 import '../../authentication/model/wallet.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../authentication/screen/pin_input_widget.dart.dart';
-import '../../authentication/screen/security_setting_screen.dart';
+import '../../common/pyusd_appbar.dart';
+import 'security_setting_screen.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/wallet_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/formatter_utils.dart';
 import '../../utils/snackbar_utils.dart';
-import 'package:pinput/pinput.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,8 +21,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _appVersion = '';
-  bool _isLoading = true;
+  final String _appVersion = '';
 
   Future<void> _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
@@ -48,6 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     final backgroundColor = theme.scaffoldBackgroundColor;
     final cardColor = theme.colorScheme.surface;
@@ -56,16 +55,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'Settings',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
+      appBar: PyusdAppBar(
+        showLogo: true,
+        isDarkMode: isDarkMode,
+        title: "Settings",
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -413,7 +406,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showAboutDialog(
       context: context,
       applicationName: 'PYUSD Hub',
-      applicationVersion: '$_appVersion',
+      applicationVersion: _appVersion,
       applicationIcon: Image.asset(
         "assets/images/pyusdlogo.png",
         height: 30,

@@ -39,7 +39,21 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PYUSD Network Activity'),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/pyusdlogo.png',
+              height: 24,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.paid, size: 24);
+              },
+            ),
+            const SizedBox(
+              width: 8,
+            ),
+            const Text('PYUSD Network Activity'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
