@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../common/pyusd_appbar.dart';
-import '../../main.dart';
+import '../../../common/pyusd_appbar.dart';
+import '../../../main.dart';
 
 class MnemonicConfirmationScreen extends StatefulWidget {
   final String mnemonic;

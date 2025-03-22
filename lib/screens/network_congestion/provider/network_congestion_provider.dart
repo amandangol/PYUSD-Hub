@@ -377,9 +377,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         return;
       }
 
-      // We'll search for PYUSD transactions in the last 10,000 blocks
-      // This is approximately 1-2 days of blocks
-      const int blocksToSearch = 10000;
+      // We'll search for PYUSD transactions in the last 50,000 blocks
+      const int blocksToSearch = 50000;
 
       // Calculate start block
       int startBlock = latestBlockNumber - blocksToSearch;
@@ -399,10 +398,14 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
       ]);
 
+      print(
+          'Attempting to fetch PYUSD logs from blocks $fromBlockHex to $toBlockHex');
+
       if (logsResponse == null || logsResponse is! List) {
         print('Invalid logs response: $logsResponse');
         return;
       }
+      print('Received logs response with ${logsResponse?.length ?? 0} entries');
 
       // Update total PYUSD transaction count
       _congestionData = _congestionData.copyWith(
@@ -430,6 +433,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         final blockNumberB = _parseHexSafely(b['blockNumber']) ?? 0;
         return blockNumberB.compareTo(blockNumberA);
       });
+
+      print('Processing ${logs.length} log entries');
 
       // Take the 50 most recent logs
       final recentLogs = logs.take(50).toList();
@@ -547,6 +552,8 @@ class NetworkCongestionProvider with ChangeNotifier {
           }
         }
       }
+      print(
+          'Extracting PYUSD transactions from ${_recentBlocks.length} blocks');
 
       if (pyusdTxCount > 0) {
         notifyListeners();

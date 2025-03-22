@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/authentication/provider/security_setting_provider.dart';
-import 'package:pyusd_hub/authentication/provider/session_provider.dart';
+import 'package:pyusd_hub/screens/authentication/provider/session_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Import all providers
-import 'authentication/provider/auth_provider.dart';
-import 'authentication/widget/activity_aware_widget.dart';
 import 'providers/network_provider.dart';
+import 'pyusd_analytics/mainapp_test.dart';
+import 'screens/authentication/provider/auth_provider.dart';
+import 'screens/authentication/provider/security_setting_provider.dart';
+import 'screens/authentication/screen/splash_screen.dart';
+import 'screens/authentication/service/wallet_service.dart';
+import 'screens/authentication/widget/activity_aware_widget.dart';
+import 'screens/pyusd_data_provider.dart';
+import 'screens/pyusd_insights.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
@@ -18,9 +23,7 @@ import 'screens/homescreen/home_screen.dart';
 import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
-import 'authentication/screen/splash_screen.dart';
 import 'screens/transactions/provider/transactiondetail_provider.dart';
-import 'authentication/service/wallet_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -102,13 +105,12 @@ class MyApp extends StatelessWidget {
             detailProvider: context.read<TransactionDetailProvider>(),
           ),
         ),
-
         ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
         ),
-        // ChangeNotifierProvider(
-        //   create: (context) => PyusdDataProvider(),
-        // ),
+        ChangeNotifierProvider(
+          create: (context) => PyusdDashboardProvider(),
+        ),
         Provider<WalletService>(
           create: (_) => WalletService(),
         ),
@@ -160,7 +162,7 @@ class _MainAppState extends State<MainApp> {
     final List<Widget> screens = [
       const HomeScreen(),
       const NetworkDashboardScreen(),
-      const HomeScreen(),
+      const PyusdDashboard(),
       const SettingsScreen(),
     ];
 

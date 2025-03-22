@@ -1162,15 +1162,9 @@ class BlocksTab extends StatelessWidget {
                             onPressed: () {
                               final hash = block['hash'] as String? ?? '';
                               Clipboard.setData(ClipboardData(text: hash));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Block hash copied to clipboard'),
-                                  behavior: SnackBarBehavior.floating,
-                                  backgroundColor: accentColor,
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
+                              SnackbarUtil.showSnackbar(
+                                  context: context,
+                                  message: 'Block hash copied to clipboard');
                             },
                           ),
                         ),

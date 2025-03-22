@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../authentication/provider/auth_provider.dart';
+import '../../../authentication/provider/auth_provider.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
 import '../../../../utils/formatter_utils.dart';

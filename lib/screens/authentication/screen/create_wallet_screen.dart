@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../common/pyusd_appbar.dart';
+import '../../../common/pyusd_appbar.dart';
 import '../provider/auth_provider.dart';
 import 'mnemonic_screen.dart';
-import 'pin_input_widget.dart.dart';
+import '../widget/pin_input_widget.dart.dart';
 
 class CreateWalletScreen extends StatefulWidget {
   const CreateWalletScreen({super.key});

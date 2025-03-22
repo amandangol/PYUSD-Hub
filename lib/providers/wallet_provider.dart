@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../authentication/provider/auth_provider.dart';
+import '../screens/authentication/provider/auth_provider.dart';
 import '../services/ethereum_rpc_service.dart';
 import 'network_provider.dart';
 

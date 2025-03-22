@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../services/market_service.dart';
 import '../../model/networkcongestion_model.dart';
 import '../widgets/gasprice_chart.dart';
 
@@ -25,7 +26,9 @@ class GasTab extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Gas Fee Estimator
-          _buildGasFeeEstimator(),
+          GasFeeEstimator(
+            currentGasPrice: congestionData.currentGasPrice,
+          ),
         ],
       ),
     );
@@ -182,28 +185,86 @@ class GasTab extends StatelessWidget {
       ),
     );
   }
+}
 
-  // Gas Fee Estimator
-  Widget _buildGasFeeEstimator() {
-    // These are estimates - in a real app, you'd calculate these values
-    final lowGwei = congestionData.currentGasPrice * 0.8;
-    final mediumGwei = congestionData.currentGasPrice;
-    final highGwei = congestionData.currentGasPrice * 1.2;
+// Gas Fee Estimator
+class GasFeeEstimator extends StatefulWidget {
+  final double currentGasPrice;
+
+  const GasFeeEstimator({
+    Key? key,
+    required this.currentGasPrice,
+  }) : super(key: key);
+
+  @override
+  State<GasFeeEstimator> createState() => _GasFeeEstimatorState();
+}
+
+class _GasFeeEstimatorState extends State<GasFeeEstimator> {
+  // Market service instance
+  final MarketService _marketService = MarketService();
+
+  // ETH price state
+  double _ethPrice = 0.0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEthPrice();
+  }
+
+  // Fetch current ETH price
+  Future<void> _fetchEthPrice() async {
+    try {
+      final prices = await _marketService.getCurrentPrices(['ETH']);
+      setState(() {
+        _ethPrice = prices['ETH'] ?? 0.0;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching ETH price: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // These are estimates - we use the current gas price from congestion data
+    final lowGwei = widget.currentGasPrice * 0.8;
+    final mediumGwei = widget.currentGasPrice;
+    final highGwei = widget.currentGasPrice * 1.2;
 
     // Assume average ETH transfer gas usage
     const gasUsed = 21000;
 
-    // Calculate USD cost (example ETH price = $3000)
-    const ethPrice = 3000.0;
+    // Convert gwei to ETH
     const gweiToEth = 0.000000001;
 
+    // Calculate costs in ETH
     final lowCostEth = lowGwei * gasUsed * gweiToEth;
     final mediumCostEth = mediumGwei * gasUsed * gweiToEth;
     final highCostEth = highGwei * gasUsed * gweiToEth;
 
-    final lowCostUsd = lowCostEth * ethPrice;
-    final mediumCostUsd = mediumCostEth * ethPrice;
-    final highCostUsd = highCostEth * ethPrice;
+    // Calculate costs in USD
+    final lowCostUsd = lowCostEth * _ethPrice;
+    final mediumCostUsd = mediumCostEth * _ethPrice;
+    final highCostUsd = highCostEth * _ethPrice;
+
+    if (_isLoading) {
+      return Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
 
     return Card(
       elevation: 3,
@@ -224,6 +285,14 @@ class GasTab extends StatelessWidget {
             const Text(
               'Estimated costs for a standard ETH transfer',
               style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Current ETH Price: \$${_ethPrice.toStringAsFixed(2)}',
+              style: const TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
               ),
@@ -304,31 +373,42 @@ class GasTab extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  onPressed: _fetchEthPrice,
+                  tooltip: 'Refresh ETH price',
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildGasInfoItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
+Widget _buildGasInfoItem(String label, String value, Color color) {
+  return Column(
+    children: [
+      Text(
+        value,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: color,
         ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
+      ),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.grey,
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }

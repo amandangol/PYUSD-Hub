@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
-import '../../authentication/model/wallet.dart';
-import '../../authentication/provider/auth_provider.dart';
-import '../../authentication/screen/pin_input_widget.dart.dart';
+import 'package:pyusd_hub/screens/authentication/screen/onboarding_screen.dart';
+import '../authentication/model/wallet.dart';
+import '../authentication/provider/auth_provider.dart';
+import '../authentication/widget/pin_input_widget.dart.dart';
 import '../../common/pyusd_appbar.dart';
 import 'security_setting_screen.dart';
 import '../../providers/theme_provider.dart';

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
-import '../../common/pyusd_appbar.dart';
-import '../../main.dart';
-import '../../widgets/loading_overlay.dart';
+import '../../../common/pyusd_appbar.dart';
+import '../../../main.dart';
 import '../provider/auth_provider.dart';
-import 'pin_input_widget.dart.dart';
+import '../widget/pin_input_widget.dart.dart';
 
 class ImportWalletScreen extends StatefulWidget {
   const ImportWalletScreen({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/auth_provider.dart';
-import '../../main.dart';
-import 'pin_input_widget.dart.dart';
+import '../../../main.dart';
+import '../widget/pin_input_widget.dart.dart';
 import 'onboarding_screen.dart'; // Make sure this import is correct
 
 class LoginScreen extends StatefulWidget {

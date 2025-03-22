@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
 import 'package:pyusd_hub/common/pyusd_appbar.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import '../../authentication/provider/auth_provider.dart';
-import '../../authentication/provider/security_setting_provider.dart';
-import '../../authentication/provider/session_provider.dart';
+import '../authentication/provider/auth_provider.dart';
+import '../authentication/provider/security_setting_provider.dart';
+import '../authentication/provider/session_provider.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});

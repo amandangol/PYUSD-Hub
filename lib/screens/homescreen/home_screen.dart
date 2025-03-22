@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../authentication/provider/auth_provider.dart';
+import '../authentication/provider/auth_provider.dart';
 import '../../common/pyusd_appbar.dart';
 import '../../providers/network_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';
+import '../transactions/model/transaction_model.dart';
 import '../transactions/provider/transaction_provider.dart';
 import '../transactions/view/receive_transaction/receive_screen.dart';
 import '../transactions/view/send_transaction/send_screen.dart';
@@ -24,112 +25,98 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool _isRefreshing = false;
-  bool hasError = false;
+  bool _hasError = false;
 
-  // Track the last refresh time
-  DateTime? _lastRefreshTime;
-  // Minimum duration between auto-refreshes (5 minutes)
-  // final _refreshCooldown = const Duration(minutes: 5);
+  // Use a single timer for periodic tasks
+  Timer? _periodicTimer;
 
-  // Timer for periodic refresh
-  Timer? _refreshTimer;
+  // Static duration constants
+  static const Duration _periodicCheckDuration = Duration(seconds: 30);
 
-  @override
   @override
   void initState() {
     super.initState();
 
-    // Check if we need to refresh on init - with a small delay to ensure providers are ready
+    // Use a single post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkPendingTransactions();
-
-      // Set up a periodic check for pending transactions (every 30 seconds)
-      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        if (mounted) {
-          _checkPendingTransactions();
-        }
-      });
+      _initializeData();
+      _startPeriodicChecks();
     });
   }
 
-  void _checkPendingTransactions() {
+  void _initializeData() {
     if (!mounted) return;
 
+    // Get all providers at once to avoid multiple lookups
     final transactionProvider =
         Provider.of<TransactionProvider>(context, listen: false);
+    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
 
-    // Only check pending transactions without fetching new ones
+    // Initial data load
+    _refreshWalletData(showLoadingIndicator: true);
     transactionProvider.checkPendingTransactionsStatus();
+  }
+
+  void _startPeriodicChecks() {
+    // Cancel any existing timer first
+    _periodicTimer?.cancel();
+
+    // Set up a single periodic timer for all periodic tasks
+    _periodicTimer = Timer.periodic(_periodicCheckDuration, (_) {
+      if (mounted) {
+        // Check pending transactions without full refresh
+        Provider.of<TransactionProvider>(context, listen: false)
+            .checkPendingTransactionsStatus();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _periodicTimer?.cancel();
     _scrollController.dispose();
-    _refreshTimer?.cancel();
     super.dispose();
   }
-
-  // Check if refresh is needed based on time elapsed
-  // void _checkAndRefreshIfNeeded() {
-  //   if (!mounted) return;
-
-  //   final now = DateTime.now();
-
-  //   // If no previous refresh or if cooldown period has passed
-  //   if (_lastRefreshTime == null ||
-  //       now.difference(_lastRefreshTime!) > _refreshCooldown) {
-  //     // Refresh in background without blocking UI
-  //     _refreshWalletData(showLoadingIndicator: false);
-  //   }
-  // }
 
   Future<void> _refreshWalletData(
       {bool forceRefresh = false, bool showLoadingIndicator = true}) async {
     // Prevent concurrent refreshes
     if (_isRefreshing && !forceRefresh) return;
-
     if (!mounted) return;
 
-    // Only show loading indicator if explicitly requested
+    // Update UI state if showing indicator
     if (showLoadingIndicator && mounted) {
       setState(() {
         _isRefreshing = true;
-        hasError = false; // Reset error state on refresh attempt
+        _hasError = false; // Reset error state
       });
     }
 
     try {
-      // Get providers safely
-      if (!mounted) return;
-
+      // Get providers only once
       final walletProvider =
           Provider.of<WalletProvider>(context, listen: false);
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
 
-      // Refresh wallet balance first
+      // Refresh wallet balance with timeout protection
       await walletProvider.refreshBalances(forceRefresh: forceRefresh);
 
-      // Only refresh transactions if wallet refresh was successful
-      // if (!walletProvider.hasError!) {
-      //   await transactionProvider.fetchTransactions(
-      //       forceRefresh: forceRefresh,
-      //       skipPendingCheck:
-      //           true // Skip the pending check to avoid double refreshes
-      //       );
-      // }
-
-      // Update the last refresh timestamp
-      _lastRefreshTime = DateTime.now();
+      // Refresh transactions if needed (currently commented out in original)
+      // Uncomment if needed:
+      // await transactionProvider.fetchTransactions(
+      //   forceRefresh: forceRefresh,
+      //   skipPendingCheck: true
+      // );
     } catch (e) {
-      print('Error refreshing wallet data: $e');
+      debugPrint('Error refreshing wallet data: $e');
       if (mounted) {
         setState(() {
-          hasError = true; // Update the error state
+          _hasError = true;
         });
       }
     } finally {
-      // Only update state if widget is still mounted and showing indicator
+      // Update state if needed
       if (mounted && showLoadingIndicator) {
         setState(() {
           _isRefreshing = false;
@@ -140,47 +127,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
-    final transactionProvider = Provider.of<TransactionProvider>(context);
-    final networkProvider = Provider.of<NetworkProvider>(context);
-
+    // Use select instead of Provider.of where possible to minimize rebuilds
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-
     final primaryColor =
         isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
     final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
-    final currentWalletAddress = authProvider.getCurrentAddress() ?? '';
+    // Get wallet address only once
+    final currentWalletAddress = context.select<AuthProvider, String?>(
+            (provider) => provider.getCurrentAddress()) ??
+        '';
+
+    // Read network name once
+    final networkName = context.select<NetworkProvider, String>(
+        (provider) => provider.currentNetwork.name);
 
     return Scaffold(
-        backgroundColor: backgroundColor,
-        appBar: PyusdAppBar(
+      backgroundColor: backgroundColor,
+      appBar: PyusdAppBar(
+        isDarkMode: isDarkMode,
+        hasWallet: true,
+        showLogo: true,
+        title: "PYUSD Wallet",
+        onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
+      ),
+      body: _buildBody(
           isDarkMode: isDarkMode,
-          hasWallet: true,
-          showLogo: true,
-          title: "PYUSD Wallet",
-          onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
-        ),
-        body: _buildWalletContent(walletProvider, transactionProvider,
-            networkProvider, isDarkMode, primaryColor, currentWalletAddress));
+          primaryColor: primaryColor,
+          walletAddress: currentWalletAddress,
+          networkName: networkName),
+    );
   }
 
-  Widget _buildWalletContent(
-      WalletProvider walletProvider,
-      TransactionProvider transactionProvider,
-      NetworkProvider networkProvider,
-      bool isDarkMode,
-      Color primaryColor,
-      String walletAddress) {
-    String networkTypeToString(NetworkType networkType) {
-      return networkType.name;
-    }
-
-    // Show an error message if there was an error loading data
-    // final hasError = walletProvider.hasError || transactionProvider.hasError;
-
+  Widget _buildBody(
+      {required bool isDarkMode,
+      required Color primaryColor,
+      required String walletAddress,
+      required String networkName}) {
     return RefreshIndicator(
       onRefresh: () => _refreshWalletData(forceRefresh: true),
       child: SingleChildScrollView(
@@ -191,88 +175,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (hasError)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'There was an error loading data. Pull down to refresh.',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              // Error message if needed
+              if (_hasError) _buildErrorMessage(),
 
-              BalanceCard(
-                ethBalance: walletProvider.ethBalance,
-                tokenBalance: walletProvider.tokenBalance,
-                walletAddress: walletAddress,
-                isRefreshing: walletProvider.isBalanceRefreshing,
+              // Balance card with selective rebuilds
+              _buildBalanceCard(
+                isDarkMode: isDarkMode,
                 primaryColor: primaryColor,
-                networkName:
-                    networkTypeToString(networkProvider.currentNetwork),
+                walletAddress: walletAddress,
+                networkName: networkName,
               ),
 
-              // Action Buttons
               const SizedBox(height: 24),
+
+              // Action buttons
               ActionButtons(
                 primaryColor: primaryColor,
                 isDarkMode: isDarkMode,
-                onSendPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SendTransactionScreen()),
-                  ).then((_) {
-                    if (mounted) {
-                      // Force refresh data after sending transaction
-                      _refreshWalletData(forceRefresh: false);
-                    }
-                  });
-                },
-                onReceivePressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const ReceiveScreen()),
-                  );
-                },
-                onSwapPressed: () {
-                  SnackbarUtil.showSnackbar(
-                    context: context,
-                    message: "Swap Feature coming soon",
-                  );
-                },
-              ),
-
-              // Network Status Card
-              const SizedBox(height: 24),
-              NetworkStatusCard(
-                isDarkMode: isDarkMode,
+                onSendPressed: _navigateToSend,
+                onReceivePressed: _navigateToReceive,
+                onSwapPressed: _showSwapMessage,
               ),
 
               const SizedBox(height: 24),
-              TransactionsSection(
-                transactions: transactionProvider.transactions,
-                currentAddress: walletAddress,
-                isLoading: transactionProvider.isFetchingTransactions,
+
+              // Network status card
+              NetworkStatusCard(isDarkMode: isDarkMode),
+
+              const SizedBox(height: 24),
+
+              // Transactions with selective rebuilds
+              _buildTransactionsSection(
                 isDarkMode: isDarkMode,
                 primaryColor: primaryColor,
+                walletAddress: walletAddress,
               ),
             ],
           ),
@@ -280,65 +216,106 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
-}
 
-class NetworkOption extends StatelessWidget {
-  final String name;
-  final bool isSelected;
-  final bool isDarkMode;
-  final VoidCallback onTap;
-
-  const NetworkOption({
-    super.key,
-    required this.name,
-    required this.isSelected,
-    required this.isDarkMode,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+  Widget _buildErrorMessage() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.green.withOpacity(0.1)
-              : isDarkMode
-                  ? Colors.transparent
-                  : Colors.grey.withOpacity(0.05),
+          color: Colors.red.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color:
-                isSelected ? Colors.green.withOpacity(0.5) : Colors.transparent,
-            width: 1,
-          ),
         ),
-        child: Row(
+        child: const Row(
           children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.circle_outlined,
-              color: isSelected ? Colors.green : Colors.grey,
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                    ? Colors.green
-                    : isDarkMode
-                        ? Colors.white70
-                        : Colors.black87,
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'There was an error loading data. Pull down to refresh.',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBalanceCard({
+    required bool isDarkMode,
+    required Color primaryColor,
+    required String walletAddress,
+    required String networkName,
+  }) {
+    // Use Selector to minimize rebuilds
+    final ethBalance = context
+        .select<WalletProvider, double?>((provider) => provider.ethBalance);
+
+    final tokenBalance = context
+        .select<WalletProvider, double?>((provider) => provider.tokenBalance);
+
+    final isRefreshing = context.select<WalletProvider, bool>(
+        (provider) => provider.isBalanceRefreshing);
+
+    return BalanceCard(
+      ethBalance: ethBalance!,
+      tokenBalance: tokenBalance!,
+      walletAddress: walletAddress,
+      isRefreshing: isRefreshing,
+      primaryColor: primaryColor,
+      networkName: networkName,
+    );
+  }
+
+  Widget _buildTransactionsSection({
+    required bool isDarkMode,
+    required Color primaryColor,
+    required String walletAddress,
+  }) {
+    // Use Selector to minimize rebuilds
+    final transactions =
+        context.select<TransactionProvider, List<TransactionModel>>(
+            (provider) => provider.transactions);
+    final isLoading = context.select<TransactionProvider, bool>(
+        (provider) => provider.isFetchingTransactions);
+
+    return TransactionsSection(
+      transactions: transactions,
+      currentAddress: walletAddress,
+      isLoading: isLoading,
+      isDarkMode: isDarkMode,
+      primaryColor: primaryColor,
+    );
+  }
+
+  // Navigation methods
+  void _navigateToSend() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SendTransactionScreen()),
+    ).then((_) {
+      if (mounted) {
+        // Refresh data after sending transaction
+        _refreshWalletData(forceRefresh: false);
+      }
+    });
+  }
+
+  void _navigateToReceive() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ReceiveScreen()),
+    );
+  }
+
+  void _showSwapMessage() {
+    SnackbarUtil.showSnackbar(
+      context: context,
+      message: "Swap Feature coming soon",
     );
   }
 }

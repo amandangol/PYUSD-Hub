@@ -6,7 +6,8 @@ class AssetSelectionCard extends StatelessWidget {
   final double balance;
   final VoidCallback onTap;
 
-  const AssetSelectionCard({super.key, 
+  const AssetSelectionCard({
+    super.key,
     required this.assetName,
     required this.isSelected,
     required this.balance,
@@ -25,13 +26,14 @@ class AssetSelectionCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? colorScheme.inversePrimary
-              : colorScheme.surfaceContainerHighest,
+              ? colorScheme.primaryContainer
+              : theme.brightness == Brightness.light
+                  ? colorScheme.surface
+                  : colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color:
-                isSelected ? colorScheme.primary : colorScheme.inversePrimary,
-            width: 2,
+            color: isSelected ? colorScheme.primary : colorScheme.outline,
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
               ? [
@@ -55,14 +57,14 @@ class AssetSelectionCard extends StatelessWidget {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? colorScheme.primary.withOpacity(0.2)
-                            : colorScheme.surface,
+                            ? colorScheme.onSurface
+                            : colorScheme.surfaceVariant,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         assetName == 'PYUSD'
                             ? Icons.attach_money
-                            : Icons.currency_exchange,
+                            : Icons.currency_bitcoin,
                         color: isSelected
                             ? colorScheme.primary
                             : colorScheme.onSurfaceVariant,
@@ -75,7 +77,7 @@ class AssetSelectionCard extends StatelessWidget {
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isSelected
-                            ? colorScheme.primary
+                            ? colorScheme.onSurface
                             : colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -89,7 +91,7 @@ class AssetSelectionCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -106,7 +108,7 @@ class AssetSelectionCard extends StatelessWidget {
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: isSelected
-                        ? colorScheme.primary
+                        ? colorScheme.onSurface
                         : colorScheme.onSurfaceVariant,
                   ),
                 ),

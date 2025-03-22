@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/credentials.dart';
 import '../model/wallet.dart';
-import '../service/authentication_service.dart';
+import '../service/auth_service.dart';
 import '../service/wallet_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -198,7 +198,7 @@ class AuthProvider extends ChangeNotifier {
         }
 
         _isAuthenticated = true;
-        await saveAuthState(); // Save authentication state
+        await saveAuthState();
         return true;
       } else {
         _setError('Invalid PIN');

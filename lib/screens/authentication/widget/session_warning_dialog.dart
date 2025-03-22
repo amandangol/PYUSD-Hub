@@ -18,7 +18,7 @@ class SessionWarningDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // Prevent dismissal with back button
+      onWillPop: () async => false,
       child: AlertDialog(
         title: Text(title),
         content: Column(

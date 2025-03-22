@@ -3,7 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../authentication/provider/auth_provider.dart';
+import '../../authentication/provider/auth_provider.dart';
 import '../../../services/ethereum_rpc_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/wallet_provider.dart';

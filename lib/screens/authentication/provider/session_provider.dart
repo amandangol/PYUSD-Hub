@@ -10,14 +10,12 @@ class SessionProvider extends ChangeNotifier {
   DateTime _lastActivityTime = DateTime.now();
   Timer? _autoLockTimer;
   Timer? _warningTimer;
-  Timer? _warningExpiryTimer; // New timer to handle warning expiry
+  Timer? _warningExpiryTimer;
   bool _isActive = true;
   bool _isShowingWarning = false;
 
-  // Add a navigator key to access navigation from anywhere
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  // Constructor
   SessionProvider(this._authProvider) {
     _startAutoLockTimer();
   }
@@ -31,7 +29,6 @@ class SessionProvider extends ChangeNotifier {
     _lastActivityTime = DateTime.now();
     _isActive = true;
 
-    // Dismiss warning dialog if it's showing
     if (_isShowingWarning) {
       _dismissWarningDialog();
     }
@@ -60,7 +57,6 @@ class SessionProvider extends ChangeNotifier {
 
   // Start timer to check for inactivity
   void _startAutoLockTimer() {
-    // Cancel any existing timers
     _autoLockTimer?.cancel();
     _warningTimer?.cancel();
     _warningExpiryTimer?.cancel();
@@ -84,13 +80,12 @@ class SessionProvider extends ChangeNotifier {
 
   // Check if the app has been inactive for longer than the auto-lock duration
   void _checkInactivity() {
-    if (_autoLockDuration == 0) return; // Skip if auto-lock is disabled
+    if (_autoLockDuration == 0) return;
 
     final currentTime = DateTime.now();
     final inactiveTime = currentTime.difference(_lastActivityTime).inMinutes;
     final inactiveSeconds = currentTime.difference(_lastActivityTime).inSeconds;
 
-    // Add logging to debug session timeout issues
     debugPrint(
         'Inactive time: $inactiveTime minutes of $_autoLockDuration allowed');
 
@@ -131,10 +126,8 @@ class SessionProvider extends ChangeNotifier {
           debugPrint(
               'Warning period expired without user action, forcing logout');
 
-          // Dismiss the warning dialog if it's still showing
           _dismissWarningDialog();
 
-          // Force logout
           _lockWallet();
           _showTimeoutMessageAndNavigate();
         }
@@ -148,26 +141,20 @@ class SessionProvider extends ChangeNotifier {
             // Cancel the warning expiry timer
             _warningExpiryTimer?.cancel();
 
-            // Update the activity timestamp first
             _lastActivityTime = DateTime.now();
             _isActive = true;
 
-            // Then dismiss the dialog
             Navigator.of(dialogContext).pop();
             _isShowingWarning = false;
 
-            // Notify listeners that activity has been updated
             notifyListeners();
           },
           onLogout: () {
-            // Cancel the warning expiry timer
             _warningExpiryTimer?.cancel();
 
-            // Dismiss the dialog
             Navigator.of(dialogContext).pop();
             _isShowingWarning = false;
 
-            // Lock the wallet and navigate
             lockWallet();
           },
         ),
@@ -191,13 +178,11 @@ class SessionProvider extends ChangeNotifier {
             // Close dialog using the dialog's context
             Navigator.of(dialogContext).pop();
 
-            // Navigate to splash screen after dismissing the dialog
-            // Use a small delay to avoid black screen issues
             Future.delayed(const Duration(milliseconds: 100), () {
               if (navigatorKey.currentState != null) {
                 navigatorKey.currentState!.pushNamedAndRemoveUntil(
-                  '/', // Update this to your login route
-                  (route) => false, // Remove all previous routes
+                  '/',
+                  (route) => false,
                 );
               }
             });
@@ -209,8 +194,8 @@ class SessionProvider extends ChangeNotifier {
       Future.delayed(const Duration(milliseconds: 100), () {
         if (navigatorKey.currentState != null) {
           navigatorKey.currentState!.pushNamedAndRemoveUntil(
-            '/', // Update this to your login route
-            (route) => false, // Remove all previous routes
+            '/',
+            (route) => false,
           );
         }
       });
@@ -227,11 +212,10 @@ class SessionProvider extends ChangeNotifier {
   // Manually lock the wallet
   void lockWallet() {
     _lockWallet();
-    // For manual lock, just navigate without the timeout message
     if (navigatorKey.currentState != null) {
       navigatorKey.currentState!.pushNamedAndRemoveUntil(
-        '/', // Update this to your login route
-        (route) => false, // Remove all previous routes
+        '/',
+        (route) => false,
       );
     }
   }

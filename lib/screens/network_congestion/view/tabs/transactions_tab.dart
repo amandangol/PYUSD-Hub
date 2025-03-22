@@ -26,7 +26,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Transaction Activity Overview
-          _buildTransactionOverview(),
+          // _buildTransactionOverview(),
 
           const SizedBox(height: 16),
 
@@ -37,7 +37,6 @@ class _TransactionsTabState extends State<TransactionsTab> {
     );
   }
 
-  // Transaction Activity Overview
   // Transaction Activity Overview
   Widget _buildTransactionOverview() {
     final data = widget.provider.congestionData;

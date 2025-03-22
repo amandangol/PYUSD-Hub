@@ -307,10 +307,11 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
-      // Ensure we're using the correct navigation to return to the main screen
+      // Navigate back to the main screen
       if (_mounted && context.mounted) {
-        // Make sure we're not popping too many screens
-        Navigator.of(context).pop();
+        // Navigate back to the main screen instead of just popping the dialog
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/main', (route) => false);
       }
     } catch (e) {
       // Show error message
@@ -331,7 +332,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
   }
 
-// New method to handle the transaction in the background
   Future<void> _startTransactionInBackground(
       String address, double amount) async {
     final transactionProvider =

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/authentication/screen/login_screen.dart';
-import 'package:pyusd_hub/authentication/screen/onboarding_screen.dart';
+import 'package:pyusd_hub/screens/authentication/screen/login_screen.dart';
+import 'package:pyusd_hub/screens/authentication/screen/onboarding_screen.dart';
 import 'dart:async';
 import '../provider/auth_provider.dart';
-import '../../providers/theme_provider.dart';
+import '../../../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -169,10 +169,8 @@ class _SplashScreenState extends State<SplashScreen>
                 'Digital Asset Management',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.7),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 48),

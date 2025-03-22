@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../provider/auth_provider.dart';
+import 'auth_provider.dart';
 
 enum PinChangeStep {
   none,

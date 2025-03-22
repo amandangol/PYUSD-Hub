@@ -29,22 +29,25 @@ class TransactionFeeCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Card(
-      elevation: 2,
+      elevation: theme.brightness == Brightness.light ? 1 : 2,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Asset Selection
             Text(
               'Select Asset',
-              style: theme.textTheme.titleMedium,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -67,13 +70,16 @@ class TransactionFeeCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Transaction Fee',
-                  style: theme.textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 if (isEstimatingGas)
                   SizedBox(
@@ -90,17 +96,24 @@ class TransactionFeeCard extends StatelessWidget {
 
             // Fee estimation card with gradient background
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    colorScheme.surfaceContainerHighest,
-                    colorScheme.primaryContainer.withOpacity(0.5),
+                    colorScheme.primaryContainer,
+                    colorScheme.secondaryContainer,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
@@ -109,7 +122,10 @@ class TransactionFeeCard extends StatelessWidget {
                     children: [
                       Text(
                         'Estimated Fee:',
-                        style: theme.textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       Text(
                         estimatedGasFee > 0
@@ -117,7 +133,7 @@ class TransactionFeeCard extends StatelessWidget {
                             : 'Enter details below',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
+                          color: colorScheme.onPrimaryContainer,
                         ),
                       ),
                     ],
@@ -126,39 +142,68 @@ class TransactionFeeCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Gas price with slider
             Text(
               'Gas Price:',
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Text('Slow', style: theme.textTheme.bodySmall),
-                Expanded(
-                  child: Slider(
-                    value: gasPrice.clamp(0.5, 20.0),
-                    min: 0.5,
-                    max: 20.0,
-                    divisions: 40,
-                    label: '${gasPrice.toStringAsFixed(1)} Gwei',
-                    onChanged: onGasPriceChanged,
+                Text(
+                  'Slow',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                Text('Fast', style: theme.textTheme.bodySmall),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 4,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 8,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 16,
+                      ),
+                      activeTrackColor: colorScheme.primary,
+                      inactiveTrackColor: colorScheme.surfaceVariant,
+                      thumbColor: colorScheme.primary,
+                      overlayColor: colorScheme.primary.withOpacity(0.2),
+                    ),
+                    child: Slider(
+                      value: gasPrice.clamp(0.5, 20.0),
+                      min: 0.5,
+                      max: 20.0,
+                      divisions: 39,
+                      label: '${gasPrice.toStringAsFixed(1)} Gwei',
+                      onChanged: onGasPriceChanged,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Fast',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
 
             // Current gas price display
             Center(
               child: Container(
+                margin: const EdgeInsets.only(top: 4, bottom: 16),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '${gasPrice.toStringAsFixed(1)} Gwei',
@@ -170,8 +215,6 @@ class TransactionFeeCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 12),
-
             // Network information
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -179,13 +222,13 @@ class TransactionFeeCard extends StatelessWidget {
                 Icon(
                   Icons.info_outline,
                   size: 14,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   'Gas prices in Gwei (1 ETH = 10^9 Gwei)',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
