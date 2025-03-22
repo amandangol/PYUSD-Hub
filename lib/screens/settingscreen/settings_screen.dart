@@ -5,6 +5,7 @@ import '../authentication/model/wallet.dart';
 import '../authentication/provider/auth_provider.dart';
 import '../authentication/widget/pin_input_widget.dart.dart';
 import '../../common/pyusd_appbar.dart';
+import 'q_and_a_screen.dart';
 import 'security_setting_screen.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/wallet_provider.dart';
@@ -304,9 +305,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.info_outline),
-                      title: const Text('About this app'),
-                      onTap: () => _showAboutDialog(context),
+                      leading: Icon(Icons.question_answer, color: primaryColor),
+                      title: const Text('PYUSD Information'),
+                      subtitle: const Text(
+                          'Learn about PYUSD performance & adoption'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PyusdQAScreen(),
+                          ),
+                        );
+                      },
                     ),
                     const Divider(height: 1),
                     ListTile(
@@ -345,6 +356,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         );
                       },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.info_outline),
+                      title: const Text('About this app'),
+                      onTap: () => _showAboutDialog(context),
                     ),
                   ],
                 ),
