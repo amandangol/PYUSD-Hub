@@ -26,12 +26,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool _isRefreshing = false;
   bool _hasError = false;
-
-  // Use a single timer for periodic tasks
-  Timer? _periodicTimer;
+  Timer? _debounceTimer;
 
   // Static duration constants
-  static const Duration _periodicCheckDuration = Duration(seconds: 30);
+  static const Duration _debounceDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -40,89 +38,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Use a single post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeData();
-      _startPeriodicChecks();
     });
   }
 
   void _initializeData() {
     if (!mounted) return;
 
-    // Get all providers at once to avoid multiple lookups
-    final transactionProvider =
-        Provider.of<TransactionProvider>(context, listen: false);
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-
     // Initial data load
     _refreshWalletData(showLoadingIndicator: true);
-    transactionProvider.checkPendingTransactionsStatus();
-  }
-
-  void _startPeriodicChecks() {
-    // Cancel any existing timer first
-    _periodicTimer?.cancel();
-
-    // Set up a single periodic timer for all periodic tasks
-    _periodicTimer = Timer.periodic(_periodicCheckDuration, (_) {
-      if (mounted) {
-        // Check pending transactions without full refresh
-        Provider.of<TransactionProvider>(context, listen: false)
-            .checkPendingTransactionsStatus();
-      }
-    });
   }
 
   @override
   void dispose() {
-    _periodicTimer?.cancel();
+    _debounceTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _refreshWalletData(
       {bool forceRefresh = false, bool showLoadingIndicator = true}) async {
-    // Prevent concurrent refreshes
-    if (_isRefreshing && !forceRefresh) return;
-    if (!mounted) return;
+    // Cancel any pending debounce timer
+    _debounceTimer?.cancel();
 
-    // Update UI state if showing indicator
-    if (showLoadingIndicator && mounted) {
-      setState(() {
-        _isRefreshing = true;
-        _hasError = false; // Reset error state
-      });
-    }
+    // Debounce refresh calls
+    _debounceTimer = Timer(_debounceDuration, () async {
+      // Prevent concurrent refreshes
+      if (_isRefreshing && !forceRefresh) return;
+      if (!mounted) return;
 
-    try {
-      // Get providers only once
-      final walletProvider =
-          Provider.of<WalletProvider>(context, listen: false);
-      final transactionProvider =
-          Provider.of<TransactionProvider>(context, listen: false);
-
-      // Refresh wallet balance with timeout protection
-      await walletProvider.refreshBalances(forceRefresh: forceRefresh);
-
-      // Refresh transactions if needed (currently commented out in original)
-      // Uncomment if needed:
-      // await transactionProvider.fetchTransactions(
-      //   forceRefresh: forceRefresh,
-      //   skipPendingCheck: true
-      // );
-    } catch (e) {
-      debugPrint('Error refreshing wallet data: $e');
-      if (mounted) {
+      // Update UI state if showing indicator
+      if (showLoadingIndicator && mounted) {
         setState(() {
-          _hasError = true;
+          _isRefreshing = true;
+          _hasError = false; // Reset error state
         });
       }
-    } finally {
-      // Update state if needed
-      if (mounted && showLoadingIndicator) {
-        setState(() {
-          _isRefreshing = false;
-        });
+
+      try {
+        // Get providers only once
+        final walletProvider =
+            Provider.of<WalletProvider>(context, listen: false);
+        final transactionProvider =
+            Provider.of<TransactionProvider>(context, listen: false);
+
+        // Refresh both balance and transactions simultaneously
+        await Future.wait([
+          walletProvider.refreshBalances(forceRefresh: forceRefresh),
+          transactionProvider.fetchTransactions(forceRefresh: forceRefresh),
+        ]);
+      } catch (e) {
+        debugPrint('Error refreshing wallet data: $e');
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+          });
+        }
+      } finally {
+        // Update state if needed
+        if (mounted && showLoadingIndicator) {
+          setState(() {
+            _isRefreshing = false;
+          });
+        }
       }
-    }
+    });
   }
 
   @override
@@ -261,11 +240,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isRefreshing = context.select<WalletProvider, bool>(
         (provider) => provider.isBalanceRefreshing);
 
+    final isInitialLoad = context
+        .select<WalletProvider, bool>((provider) => provider.isInitialLoad);
+
     return BalanceCard(
       ethBalance: ethBalance!,
       tokenBalance: tokenBalance!,
       walletAddress: walletAddress,
-      isRefreshing: isRefreshing,
+      isRefreshing: isRefreshing || isInitialLoad,
       primaryColor: primaryColor,
       networkName: networkName,
     );
@@ -300,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ).then((_) {
       if (mounted) {
         // Refresh data after sending transaction
-        _refreshWalletData(forceRefresh: false);
+        _refreshWalletData(forceRefresh: true);
       }
     });
   }

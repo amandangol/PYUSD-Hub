@@ -376,10 +376,9 @@ class EthereumRpcService {
         [txHash],
       );
 
-      final receiptData =
-          receiptResponse['result'] != null
-              ? receiptResponse['result'] as Map<String, dynamic>?
-              : null;
+      final receiptData = receiptResponse['result'] != null
+          ? receiptResponse['result'] as Map<String, dynamic>?
+          : null;
 
       // Handle pending transactions
       if (receiptData == null) {

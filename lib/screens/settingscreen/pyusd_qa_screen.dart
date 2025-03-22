@@ -28,58 +28,86 @@ class _PyusdQAScreenState extends State<PyusdQAScreen> {
     QAItem(
       question: "How does PYUSD impact the Ethereum network?",
       answer:
-          "PYUSD has contributed to increased transaction volume on Ethereum, particularly in DeFi applications. It has helped bring traditional finance users into the blockchain ecosystem through PayPal's established user base.",
+          "PYUSD facilitates increased activity on Ethereum by integrating with DeFi applications and payment services, enabling seamless transactions for users and businesses.",
       icon: Icons.trending_up,
       iconColor: Colors.purple,
     ),
     QAItem(
       question: "What makes PYUSD different from other stablecoins?",
       answer:
-          "PYUSD is regulated by the New York State Department of Financial Services (NYDFS), undergoes regular attestations, and is backed by liquid assets. Its connection to PayPal provides a bridge between traditional payment systems and crypto.",
+          "PYUSD is regulated by the NYDFS, undergoes monthly attestations, and is backed by highly liquid assets. Its integration with PayPal enhances accessibility and adoption in traditional finance.",
       icon: Icons.verified,
       iconColor: Colors.teal,
     ),
     QAItem(
       question: "Where can PYUSD be used?",
       answer:
-          "PYUSD can be used across the Ethereum ecosystem including DeFi protocols, exchanges, and payment services. It's also integrated with PayPal, allowing millions of users and merchants to access stablecoin functionality.",
+          "PYUSD can be used across the Ethereum ecosystem, including DeFi protocols, exchanges, and payment services. It is also integrated with PayPal for user-friendly transactions.",
       icon: Icons.store,
       iconColor: Colors.indigo,
     ),
     QAItem(
       question: "How is PYUSD's adoption growing?",
       answer:
-          "Since its launch, PYUSD has seen steady growth in market capitalization and usage. Multiple DeFi protocols have added support for PYUSD liquidity pools and lending markets, while exchanges have added trading pairs.",
+          "Since its launch, PYUSD has seen steady growth in market capitalization and usage, with multiple DeFi protocols and exchanges supporting it for trading, liquidity pools, and lending markets.",
       icon: Icons.group_add,
       iconColor: Colors.amber,
     ),
     QAItem(
       question: "How is PYUSD secured?",
       answer:
-          "PYUSD is secured through regular third-party attestations that verify its dollar reserves. The stablecoin uses standard ERC-20 token security on Ethereum, with additional security measures implemented by Paxos as the issuer.",
+          "PYUSD is secured through regular third-party attestations verifying its reserves. Additionally, it follows ERC-20 security standards, with Paxos implementing further protections as the issuer.",
       icon: Icons.security,
       iconColor: Colors.red,
     ),
     QAItem(
       question: "What is the transaction fee for PYUSD?",
       answer:
-          "PYUSD transaction fees are determined by the Ethereum network gas fees. Since it's an ERC-20 token, the cost to send PYUSD varies based on network congestion. PayPal may charge additional fees for purchasing or converting PYUSD through their platform.",
+          "PYUSD transaction fees depend on Ethereum gas fees. Since it's an ERC-20 token, costs vary with network congestion. PayPal may also impose additional fees for conversions and transactions.",
       icon: Icons.paid,
       iconColor: Colors.orange,
     ),
     QAItem(
       question: "Can I earn interest on my PYUSD?",
       answer:
-          "Yes, you can earn interest on PYUSD through various DeFi platforms that support it. Lending protocols, liquidity pools, and yield farming opportunities are available that allow you to earn returns on your PYUSD holdings.",
+          "Yes, PYUSD holders can earn interest through DeFi platforms offering lending, staking, and liquidity pools. However, returns depend on market conditions and platform-specific terms.",
       icon: Icons.savings,
       iconColor: Colors.green,
     ),
     QAItem(
       question: "Is PYUSD available globally?",
       answer:
-          "PYUSD availability varies by region due to regulatory considerations. Through PayPal, it's initially available to US customers, with plans for international expansion. When using decentralized platforms, access depends on local regulations regarding cryptocurrency usage.",
+          "PYUSD availability depends on regional regulations. Initially available to US customers through PayPal, it may expand internationally based on compliance approvals.",
       icon: Icons.public,
       iconColor: Colors.blue,
+    ),
+    QAItem(
+      question: "Who issues PYUSD, and is it regulated?",
+      answer:
+          "PYUSD is issued by Paxos Trust Company and regulated by the NYDFS. It undergoes monthly attestations to ensure full USD backing.",
+      icon: Icons.policy,
+      iconColor: Colors.deepPurple,
+    ),
+    QAItem(
+      question: "Is PYUSD available on multiple blockchains?",
+      answer:
+          "Currently, PYUSD is an ERC-20 token on Ethereum. Future expansion to other networks depends on adoption and regulatory considerations.",
+      icon: Icons.code,
+      iconColor: Colors.brown,
+    ),
+    QAItem(
+      question: "Can PYUSD be used for everyday payments?",
+      answer:
+          "Yes, PayPal supports PYUSD for payments, enabling transactions with merchants and individuals. However, acceptance depends on merchant adoption.",
+      icon: Icons.payment,
+      iconColor: Colors.cyan,
+    ),
+    QAItem(
+      question: "What risks are associated with using PYUSD?",
+      answer:
+          "Risks include regulatory changes, Ethereum network congestion affecting transaction costs, and smart contract vulnerabilities. However, PYUSD is fully backed and regulated.",
+      icon: Icons.warning,
+      iconColor: Colors.redAccent,
     ),
   ];
 

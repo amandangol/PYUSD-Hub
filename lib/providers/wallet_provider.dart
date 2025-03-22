@@ -23,17 +23,20 @@ class WalletProvider extends ChangeNotifier {
 
   // State
   bool _isBalanceRefreshing = false;
+  bool _isInitialLoad = true;
   String? _error;
   bool _isDisposed = false;
 
   // Timer for auto-refresh
   Timer? _refreshTimer;
+  Timer? _debounceTimer;
 
   // Getters
   double get ethBalance => _balances[_networkProvider.currentNetwork] ?? 0.0;
   double get tokenBalance =>
       _tokenBalances[_networkProvider.currentNetwork] ?? 0.0;
   bool get isBalanceRefreshing => _isBalanceRefreshing;
+  bool get isInitialLoad => _isInitialLoad;
   String? get error => _error;
   bool? get hasError => false;
   NetworkType get currentNetwork => _networkProvider.currentNetwork;
@@ -86,7 +89,7 @@ class WalletProvider extends ChangeNotifier {
     return 'https://sepolia-faucet.pk910.de/?address=$address';
   }
 
-  // Refresh balances
+  // Refresh balances with debouncing
   Future<void> refreshBalances({bool forceRefresh = false}) async {
     if (!_authProvider.hasWallet) return;
 
@@ -95,12 +98,29 @@ class WalletProvider extends ChangeNotifier {
 
     final currentNetwork = _networkProvider.currentNetwork;
 
-    // Check if we really need to refresh
-    if (!forceRefresh && _isCacheValid(currentNetwork)) {
-      // Use cached data
+    // Cancel any pending debounce timer
+    _debounceTimer?.cancel();
+
+    // If already refreshing and not force refresh, return
+    if (_isBalanceRefreshing && !forceRefresh) return;
+
+    // If force refresh or cache invalid, execute immediately
+    if (forceRefresh || !_isCacheValid(currentNetwork)) {
+      await _executeRefresh(address, currentNetwork);
       return;
     }
 
+    // For non-force refreshes, debounce the call
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      if (!_isCacheValid(currentNetwork)) {
+        await _executeRefresh(address, currentNetwork);
+      }
+    });
+  }
+
+  // Execute the actual refresh operation
+  Future<void> _executeRefresh(
+      String address, NetworkType currentNetwork) async {
     // Only set loading state if we're actually going to refresh
     _isBalanceRefreshing = true;
     notifyListeners();
@@ -119,6 +139,7 @@ class WalletProvider extends ChangeNotifier {
     } finally {
       if (!_isDisposed) {
         _isBalanceRefreshing = false;
+        _isInitialLoad = false;
         notifyListeners();
       }
     }
@@ -177,6 +198,7 @@ class WalletProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _refreshTimer?.cancel();
+    _debounceTimer?.cancel();
     _networkProvider.removeListener(_onNetworkChanged);
     super.dispose();
   }

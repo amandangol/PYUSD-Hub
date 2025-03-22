@@ -36,7 +36,8 @@ class TransactionDetailScreen extends StatefulWidget {
       _TransactionDetailScreenState();
 }
 
-class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
+class _TransactionDetailScreenState extends State<TransactionDetailScreen>
+    with SingleTickerProviderStateMixin {
   TransactionDetailModel? _detailedTransaction;
   bool _isRefreshing = false;
   bool _isInitializing = true;
@@ -47,9 +48,15 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   Map<String, dynamic>? _traceData;
   List<Map<String, dynamic>>? _internalTransactions;
 
+  // TabController for the tabbed interface
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    // Initialize TabController with 3 tabs
+    _tabController = TabController(length: 3, vsync: this);
+
     // Get provider reference once
     _transactionDetailProvider =
         Provider.of<TransactionDetailProvider>(context, listen: false);
@@ -61,6 +68,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   @override
   void dispose() {
+    // Dispose the TabController
+    _tabController.dispose();
+
     // Return the latest transaction details when navigating back
     if (widget.transaction is TransactionDetailModel &&
         widget.transaction != _detailedTransaction) {
@@ -348,14 +358,12 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
     return Stack(
       children: [
-        SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Transaction status and type card
-              StatusCardWidget(
+        Column(
+          children: [
+            // Scrollable section for the Status Card
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: StatusCardWidget(
                 transaction: _detailedTransaction!,
                 isIncoming: isIncoming,
                 statusColor: statusColor,
@@ -363,73 +371,102 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 textColor: textColor,
                 subtitleColor: subtitleColor,
               ),
-              const SizedBox(height: 16),
+            ),
 
-              // Market Analysis Card
-              MarketAnalysisWidget(
-                transaction: _detailedTransaction!,
-                marketPrices: _marketPrices,
-                isLoadingMarketData: _isLoadingMarketData,
-                cardColor: cardColor,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-                primaryColor: primaryColor,
+            // TabBar section
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: TabBar(
+                controller: _tabController,
+                labelColor: primaryColor,
+                unselectedLabelColor: subtitleColor,
+                indicatorColor: primaryColor,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                tabs: const [
+                  Tab(text: "Details", icon: Icon(Icons.info_outline)),
+                  Tab(text: "Gas", icon: Icon(Icons.local_gas_station)),
+                  Tab(text: "Market", icon: Icon(Icons.show_chart)),
+                ],
               ),
-              const SizedBox(height: 16),
+            ),
 
-              // Transaction details card
-              TransactionDetailsWidget(
-                transaction: _detailedTransaction!,
-                currentAddress: widget.currentAddress,
-                cardColor: cardColor,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-                primaryColor: primaryColor,
-                onShowErrorDetails: _showErrorDetails,
+            // Tab content - takes remaining space
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Transaction Details Tab
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        TransactionDetailsWidget(
+                          transaction: _detailedTransaction!,
+                          currentAddress: widget.currentAddress,
+                          cardColor: cardColor,
+                          textColor: textColor,
+                          subtitleColor: subtitleColor,
+                          primaryColor: primaryColor,
+                          onShowErrorDetails: _showErrorDetails,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Internal transactions card (if available)
+                        if (_internalTransactions != null &&
+                            _internalTransactions!.isNotEmpty)
+                          InternalTransactionWidget(
+                            internalTransactions: _internalTransactions!,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            subtitleColor: subtitleColor,
+                            primaryColor: primaryColor,
+                          ),
+
+                        // Transaction trace card (if available)
+                        if (_traceData != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: TransactionTraceWidget(
+                              traceData: _traceData!,
+                              cardColor: cardColor,
+                              textColor: textColor,
+                              subtitleColor: subtitleColor,
+                              primaryColor: primaryColor,
+                              onShowRawTraceData: _showRawTraceData,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Gas Details Tab
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: GasDetailsWidget(
+                      transaction: _detailedTransaction!,
+                      isDarkMode: widget.isDarkMode,
+                      cardColor: cardColor,
+                      textColor: textColor,
+                      subtitleColor: subtitleColor,
+                    ),
+                  ),
+                  // Market Analysis Tab
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: MarketAnalysisWidget(
+                      transaction: _detailedTransaction!,
+                      marketPrices: _marketPrices,
+                      isLoadingMarketData: _isLoadingMarketData,
+                      cardColor: cardColor,
+                      textColor: textColor,
+                      subtitleColor: subtitleColor,
+                      primaryColor: primaryColor,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-
-              // Gas details card
-              GasDetailsWidget(
-                transaction: _detailedTransaction!,
-                isDarkMode: widget.isDarkMode,
-                cardColor: cardColor,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-              const SizedBox(height: 16),
-
-              // Internal transactions card
-              if (_internalTransactions != null &&
-                  _internalTransactions!.isNotEmpty)
-                InternalTransactionWidget(
-                  internalTransactions: _internalTransactions!,
-                  cardColor: cardColor,
-                  textColor: textColor,
-                  subtitleColor: subtitleColor,
-                  primaryColor: primaryColor,
-                ),
-              if (_internalTransactions != null &&
-                  _internalTransactions!.isNotEmpty)
-                const SizedBox(height: 16),
-
-              // Transaction trace card
-              // Transaction trace card
-              if (_traceData != null)
-                TransactionTraceWidget(
-                  traceData: _traceData!,
-                  cardColor: cardColor,
-                  textColor: textColor,
-                  subtitleColor: subtitleColor,
-                  primaryColor: primaryColor,
-                  onShowRawTraceData: _showRawTraceData,
-                ),
-              if (_traceData != null) const SizedBox(height: 16),
-
-              // Extra space at bottom for better scrolling experience
-              const SizedBox(height: 40),
-            ],
-          ),
+            ),
+          ],
         ),
 
         // Loading indicator overlay when refreshing

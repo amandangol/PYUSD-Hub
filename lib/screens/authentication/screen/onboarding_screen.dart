@@ -66,107 +66,150 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Wallet Setup'),
-        centerTitle: true,
-      ),
       body: _isLoading
-          ? _buildLoadingScreen(primaryColor)
-          : _buildOnboardingContent(theme, primaryColor),
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+              ),
+            )
+          : _buildOnboardingContent(theme),
     );
   }
 
-  Widget _buildLoadingScreen(Color primaryColor) {
-    return Center(
-      child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-      ),
-    );
-  }
-
-  // Add this to your OnboardingScreen widget
   Widget _buildLoginOption() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final theme = Theme.of(context);
 
     // Only show this if a wallet exists but we're in forceOnboarding mode
     if (widget.forceOnboarding && authProvider.wallet != null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        padding: const EdgeInsets.only(top: 24.0),
         child: TextButton(
           onPressed: () {
             Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const LoginScreen()));
           },
-          child: const Text('Try to log in with existing wallet'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          ),
+          child: Text(
+            'Log in with existing wallet',
+            style: TextStyle(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       );
     }
 
-    return const SizedBox.shrink(); // Return empty widget if condition not met
+    return const SizedBox.shrink();
   }
 
-  Widget _buildOnboardingContent(ThemeData theme, Color primaryColor) {
+  Widget _buildOnboardingContent(ThemeData theme) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo
-            Image.asset(
-              "assets/images/pyusdlogo.png",
-              height: 80,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom,
             ),
-            const SizedBox(height: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 48),
 
-            // Title
-            Text(
-              'PYUSD Wallet',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Description
-            Text(
-              'Secure, non-custodial wallet for managing your digital assets',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 50),
-
-            // Create Wallet Button
-            ElevatedButton(
-              onPressed: _navigateToCreateWallet,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                // Logo
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      "assets/images/pyusdlogo.png",
+                      height: 80,
+                    ),
+                  ),
                 ),
-              ),
-              child: const Text('Create New Wallet'),
-            ),
-            const SizedBox(height: 16),
+                const SizedBox(height: 32),
 
-            // Import Wallet Button
-            OutlinedButton(
-              onPressed: _navigateToImportWallet,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                // Title
+                Text(
+                  'PYUSD Hub',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
                 ),
-              ),
-              child: const Text('Import Existing Wallet'),
+                const SizedBox(height: 16),
+
+                // Description
+                Text(
+                  'Secure, non-custodial wallet for managing your digital assets',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 48),
+
+                // Create Wallet Button
+                ElevatedButton(
+                  onPressed: _navigateToCreateWallet,
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    backgroundColor: theme.colorScheme.primary,
+                    minimumSize: const Size.fromHeight(56),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Create New Wallet',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Import Wallet Button
+                OutlinedButton(
+                  onPressed: _navigateToImportWallet,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                    side: BorderSide(color: theme.colorScheme.outline),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    'Import Existing Wallet',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                _buildLoginOption(),
+
+                const SizedBox(height: 24),
+              ],
             ),
-            _buildLoginOption()
-          ],
+          ),
         ),
       ),
     );

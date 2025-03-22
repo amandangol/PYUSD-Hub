@@ -141,6 +141,8 @@ class TransactionDetailModel extends TransactionModel {
   final Map<String, dynamic>? traceData;
   final List<Map<String, dynamic>>? internalTransactions;
   final bool traceDataUnavailable;
+  final Map<String, dynamic>? transactionAnalysis;
+  final Map<String, dynamic>? transactionTrace;
 
   TransactionDetailModel({
     required super.hash,
@@ -167,5 +169,66 @@ class TransactionDetailModel extends TransactionModel {
     super.tokenContractAddress,
     super.data,
     this.traceDataUnavailable = false,
+    this.transactionAnalysis,
+    this.transactionTrace,
   });
+
+  // Clone with updated values
+  TransactionDetailModel copyWith({
+    String? hash,
+    DateTime? timestamp,
+    String? from,
+    String? to,
+    double? amount,
+    double? gasUsed,
+    double? gasPrice,
+    TransactionStatus? status,
+    TransactionDirection? direction,
+    int? confirmations,
+    String? tokenSymbol,
+    String? tokenName,
+    int? tokenDecimals,
+    String? tokenContractAddress,
+    String? data,
+    NetworkType? network,
+    String? blockNumber,
+    int? nonce,
+    String? blockHash,
+    bool? isError,
+    String? errorMessage,
+    Map<String, dynamic>? traceData,
+    List<Map<String, dynamic>>? internalTransactions,
+    bool? traceDataUnavailable,
+    Map<String, dynamic>? transactionAnalysis,
+    Map<String, dynamic>? transactionTrace,
+  }) {
+    return TransactionDetailModel(
+      hash: hash ?? this.hash,
+      timestamp: timestamp ?? this.timestamp,
+      from: from ?? this.from,
+      to: to ?? this.to,
+      amount: amount ?? this.amount,
+      gasUsed: gasUsed ?? this.gasUsed,
+      gasPrice: gasPrice ?? this.gasPrice,
+      status: status ?? this.status,
+      direction: direction ?? this.direction,
+      confirmations: confirmations ?? this.confirmations,
+      tokenSymbol: tokenSymbol ?? this.tokenSymbol,
+      tokenName: tokenName ?? this.tokenName,
+      tokenDecimals: tokenDecimals ?? this.tokenDecimals,
+      tokenContractAddress: tokenContractAddress ?? this.tokenContractAddress,
+      data: data ?? this.data,
+      network: network ?? this.network,
+      blockNumber: blockNumber ?? this.blockNumber,
+      nonce: nonce ?? this.nonce,
+      blockHash: blockHash ?? this.blockHash,
+      isError: isError ?? this.isError,
+      errorMessage: errorMessage ?? this.errorMessage,
+      traceData: traceData ?? this.traceData,
+      internalTransactions: internalTransactions ?? this.internalTransactions,
+      traceDataUnavailable: traceDataUnavailable ?? this.traceDataUnavailable,
+      transactionAnalysis: transactionAnalysis ?? this.transactionAnalysis,
+      transactionTrace: transactionTrace ?? this.transactionTrace,
+    );
+  }
 }

@@ -398,14 +398,14 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
       ]);
 
-      print(
-          'Attempting to fetch PYUSD logs from blocks $fromBlockHex to $toBlockHex');
+      // print(
+      //     'Attempting to fetch PYUSD logs from blocks $fromBlockHex to $toBlockHex');
 
       if (logsResponse == null || logsResponse is! List) {
         print('Invalid logs response: $logsResponse');
         return;
       }
-      print('Received logs response with ${logsResponse?.length ?? 0} entries');
+      print('Received logs response with ${logsResponse.length ?? 0} entries');
 
       // Update total PYUSD transaction count
       _congestionData = _congestionData.copyWith(

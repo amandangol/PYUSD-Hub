@@ -33,40 +33,76 @@ class StatusCardWidget extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Status icon
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _getStatusIcon(transaction.status),
-                color: statusColor,
-                size: 32,
-              ),
+            // Top row with status icon and date
+            Row(
+              children: [
+                // Status Icon with container
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _getStatusIcon(transaction.status),
+                    color: statusColor,
+                    size: 24,
+                  ),
+                ),
+                const Spacer(),
+                // Date and time
+                Text(
+                  DateTimeUtils.formatDateTime(transaction.timestamp),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subtitleColor,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
-            // Transaction type and status
-            Text(
-              isIncoming ? 'Received' : 'Sent',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Status with confirmations
+            // Transaction direction and amount
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Icon(
+                  isIncoming ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: isIncoming ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isIncoming ? 'Received' : 'Sent',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Amount in large font
+            Text(
+              _formatAmount(transaction),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: isIncoming ? Colors.green : Colors.red,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Status badge and fee
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Status badge
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(30),
@@ -80,36 +116,16 @@ class StatusCardWidget extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // Fee information
+                Text(
+                  'Fee: ${transaction.fee.toStringAsFixed(6)} ETH',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subtitleColor,
+                  ),
+                ),
               ],
-            ),
-            const SizedBox(height: 24),
-
-            // Amount
-            Text(
-              _formatAmount(transaction),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isIncoming ? Colors.green : Colors.red,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Fee and date
-            Text(
-              'Fee: ${transaction.fee.toStringAsFixed(10)} ETH',
-              style: TextStyle(
-                fontSize: 14,
-                color: subtitleColor,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              DateTimeUtils.formatDateTime(transaction.timestamp),
-              style: TextStyle(
-                fontSize: 14,
-                color: subtitleColor,
-              ),
             ),
           ],
         ),
@@ -133,7 +149,7 @@ class StatusCardWidget extends StatelessWidget {
       case TransactionStatus.pending:
         return 'Pending';
       case TransactionStatus.confirmed:
-        return 'Confirmed (${transaction.confirmations} confirmations)';
+        return 'Confirmed (${transaction.confirmations})';
       case TransactionStatus.failed:
         return 'Failed';
     }
@@ -141,7 +157,7 @@ class StatusCardWidget extends StatelessWidget {
 
   String _formatAmount(TransactionDetailModel tx) {
     if (tx.tokenSymbol != null) {
-      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
+      return '${tx.amount.toStringAsFixed(4)} ${tx.tokenSymbol}';
     } else {
       return '${tx.amount.toStringAsFixed(6)} ETH';
     }

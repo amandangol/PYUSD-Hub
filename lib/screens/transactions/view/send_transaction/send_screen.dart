@@ -307,9 +307,12 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
-      // Navigate back to the main screen
+      // Navigate back to the main screen and refresh data
       if (_mounted && context.mounted) {
-        // Navigate back to the main screen instead of just popping the dialog
+        // First refresh the transaction data
+        await transactionProvider.fetchTransactions(forceRefresh: true);
+
+        // Then navigate back to main screen
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/main', (route) => false);
       }
@@ -375,6 +378,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
     final networkProvider = Provider.of<NetworkProvider>(context);
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     // Determine available balance based on selected asset
     final availableBalance = _selectedAsset == 'PYUSD'
@@ -391,6 +396,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       appBar: AppBar(
         title: Text('Send $_selectedAsset'),
         elevation: 0,
+        backgroundColor: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
       ),
       body: SafeArea(
         child: Form(
@@ -422,6 +429,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                 tokenBalance: walletProvider.tokenBalance,
               ),
 
+              const SizedBox(height: 16),
+
               // Balance Display
               BalanceDisplayCard(
                 selectedAsset: _selectedAsset,
@@ -431,6 +440,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                 networkName: networkProvider.currentNetworkName,
               ),
 
+              const SizedBox(height: 16),
+
               // Recipient Address Input
               RecipientCard(
                 addressController: _addressController,
@@ -438,6 +449,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                 onAddressChanged: _validateAddress,
                 onScanQRCode: _scanQRCode,
               ),
+
+              const SizedBox(height: 16),
 
               // Amount Input
               AmountCard(
@@ -469,19 +482,37 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                 isLoading: _isLoading,
                 isEstimatingGas: _isEstimatingGas,
                 estimatedGasFee: _estimatedGasFee,
-                // ethBalance: walletProvider.ethBalance,
                 onPressed: _sendTransaction,
               ),
 
               // Note about gas fees
               const SizedBox(height: 16),
-              Text(
-                'Note: Transaction requires ETH for gas fees regardless of which asset you send.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey,
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color:
+                      isDarkMode ? const Color(0xFF252543) : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                      size: 20,
                     ),
-                textAlign: TextAlign.center,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Transaction requires ETH for gas fees regardless of which asset you send.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

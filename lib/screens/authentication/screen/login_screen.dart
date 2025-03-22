@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import '../provider/auth_provider.dart';
 import '../../../main.dart';
 import '../widget/pin_input_widget.dart.dart';
-import 'onboarding_screen.dart'; // Make sure this import is correct
+import 'onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Use post-frame callback to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBiometrics();
     });
@@ -37,16 +37,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _isBiometricsAvailable = biometricsAvailable && biometricsEnabled;
       });
 
-      // Automatically prompt for biometric auth if available
       if (_isBiometricsAvailable) {
         _authenticateWithBiometrics();
       }
     }
   }
 
-// In login_screen.dart - Update the _authenticateWithPIN method
   Future<void> _authenticateWithPIN() async {
-    // Change this line
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (_pinController.text.isEmpty) {
@@ -65,10 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       bool success =
           await authProvider.authenticateWithPIN(_pinController.text);
       if (success) {
-        // Save authentication state
         await authProvider.saveAuthState();
-
-        // Navigate to main app
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/main');
         }
@@ -97,10 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       bool success = await authProvider.authenticateWithBiometrics();
       if (success) {
-        // Save authentication state
         await authProvider.saveAuthState();
-
-        // Navigate to main app
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/main');
         }
@@ -118,17 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _navigateToMainApp() {
-    Navigator.of(context)
-        .pushReplacement(MaterialPageRoute(builder: (_) => const MainApp()));
-  }
-
-  // Modified method to reset wallet access
   void _showResetWalletDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         title: const Text('Reset Wallet Access'),
         content: const Text(
           'You will be redirected to the onboarding screen to create a new wallet or import an existing one. Your current wallet data will remain on the device but you will need to import it again.',
@@ -139,11 +127,9 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
-              // Close the dialog first
               Navigator.of(dialogContext).pop();
-              // Then navigate to onboarding
               _navigateToOnboarding();
             },
             child: const Text('Continue'),
@@ -154,19 +140,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _navigateToOnboarding() {
-    // Get the auth provider without listening to changes
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Complete the logout operation and then navigate
     authProvider.logout().then((_) {
-      // Use a post-frame callback for clean navigation
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Navigate with forceOnboarding flag set to true
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
               builder: (context) =>
                   const OnboardingScreen(forceOnboarding: true)),
-          (route) => false, // Remove all previous routes
+          (route) => false,
         );
       });
     });
@@ -184,114 +166,202 @@ class _LoginScreenState extends State<LoginScreen> {
     final walletAddress =
         Provider.of<AuthProvider>(context).wallet?.address ?? '';
     final shortenedAddress = walletAddress.isNotEmpty
-        ? '${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}'
+        ? '${walletAddress.substring(0, 7)}...${walletAddress.substring(walletAddress.length - 4)}'
         : '';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Unlock Wallet'),
-        centerTitle: true,
-        elevation: 0,
-      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Wallet icon
-              Icon(
-                Icons.lock_outline,
-                size: 64,
-                color: theme.colorScheme.primary,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    MediaQuery.of(context).padding.bottom,
               ),
-              const SizedBox(height: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 48),
 
-              // Wallet address display
-              if (walletAddress.isNotEmpty) ...[
-                Text(
-                  'Wallet',
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: theme.dividerColor),
-                  ),
-                  child: Text(
-                    shortenedAddress,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-                const SizedBox(height: 32),
-              ],
-
-              // PIN Input
-              PinInput(
-                controller: _pinController,
-                onCompleted: (_) => _authenticateWithPIN(),
-              ),
-              const SizedBox(height: 16),
-
-              // Error message
-              if (_errorMessage != null) ...[
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Login button
-              ElevatedButton(
-                onPressed: _isLoading ? null : _authenticateWithPIN,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Unlock'),
-              ),
-
-              // Biometrics button
-              if (_isBiometricsAvailable) ...[
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _authenticateWithBiometrics,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  // App logo or brand identity
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Image.asset(
+                      "assets/images/pyusdlogo.png",
+                      height: 64,
                     ),
                   ),
-                  icon: const Icon(Icons.fingerprint),
-                  label: const Text('Use Biometrics'),
-                ),
-              ],
+                  const SizedBox(height: 24),
 
-              // Forgot PIN / Reset access section
-              const SizedBox(height: 24),
-              TextButton(
-                onPressed: _isLoading ? null : _showResetWalletDialog,
-                child: Text(
-                  'Forgot PIN? Reset Access',
-                  style: TextStyle(
-                    color: theme.colorScheme.primary,
+                  // Title
+                  Text(
+                    'Welcome Back',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+
+                  // Subtitle
+                  Text(
+                    'Enter your PIN to unlock your wallet',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Wallet address display with copy button
+                  if (walletAddress.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            shortenedAddress,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontFamily: 'Monospace',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            iconSize: 18,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              // Copy to clipboard functionality
+                              SnackbarUtil.showSnackbar(
+                                  context: context,
+                                  message: 'Address copied to clipboard');
+                            },
+                            icon: const Icon(Icons.copy_outlined),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+
+                  // PIN Input
+                  PinInput(
+                    controller: _pinController,
+                    onCompleted: (_) => _authenticateWithPIN(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Error message
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color:
+                            theme.colorScheme.errorContainer.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: theme.colorScheme.error,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Login button
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _authenticateWithPIN,
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      backgroundColor: theme.colorScheme.primary,
+                      minimumSize: const Size.fromHeight(56),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Unlock Wallet',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+
+                  // Biometrics button
+                  if (_isBiometricsAvailable) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed:
+                          _isLoading ? null : _authenticateWithBiometrics,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        side: BorderSide(color: theme.colorScheme.outline),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: Icon(Icons.fingerprint,
+                          color: theme.colorScheme.primary),
+                      label: Text('Use Biometrics',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: theme.colorScheme.primary,
+                          )),
+                    ),
+                  ],
+
+                  // Forgot PIN / Reset access section
+                  const SizedBox(height: 32),
+                  TextButton(
+                    onPressed: _isLoading ? null : _showResetWalletDialog,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                    ),
+                    child: Text(
+                      'Forgot PIN? Reset Wallet Access',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
