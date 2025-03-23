@@ -16,6 +16,7 @@ import 'screens/pyusd_insights.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
+import 'screens/network_activity/provider/network_activity_provider.dart';
 
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
@@ -106,6 +107,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (context) => NetworkCongestionProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => NetworkActivityProvider(),
         ),
         ChangeNotifierProvider(
           create: (context) => PyusdDashboardProvider(),

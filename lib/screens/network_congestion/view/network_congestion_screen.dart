@@ -5,6 +5,7 @@ import 'tabs/blocks_tab.dart';
 import 'tabs/gas_tab.dart';
 import 'tabs/overview_tab.dart';
 import 'tabs/transactions_tab.dart';
+import '../../network_activity/view/network_activity_screen.dart';
 
 class NetworkDashboardScreen extends StatefulWidget {
   const NetworkDashboardScreen({super.key});
@@ -55,6 +56,18 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.timeline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NetworkActivityScreen(),
+                ),
+              );
+            },
+            tooltip: 'View Network Activity Visualization',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {

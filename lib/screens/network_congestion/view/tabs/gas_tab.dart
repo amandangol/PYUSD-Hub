@@ -34,6 +34,17 @@ class GasTab extends StatelessWidget {
     );
   }
 
+  Color _getGasPriceColor(double current, double average) {
+    if (average == 0) return Colors.grey; // Prevent division by zero
+
+    final diff = current - average;
+    final diffPercentage = (diff / average * 100);
+
+    if (diffPercentage <= -5) return Colors.green; // Lower than average → good
+    if (diffPercentage < 10) return Colors.orange; // Slightly higher → warning
+    return Colors.red; // Much higher → alert
+  }
+
   // Gas Overview Card
   Widget _buildGasOverviewCard() {
     return Card(
@@ -57,19 +68,19 @@ class GasTab extends StatelessWidget {
               children: [
                 _buildPriorityGasCard(
                   'Low Priority',
-                  (congestionData.currentGasPrice * 0.8).toStringAsFixed(2),
+                  (congestionData.currentGasPrice * 0.8).toStringAsFixed(3),
                   'Slower',
                   Colors.green,
                 ),
                 _buildPriorityGasCard(
                   'Medium Priority',
-                  congestionData.currentGasPrice.toStringAsFixed(2),
+                  congestionData.currentGasPrice.toStringAsFixed(3),
                   'Standard',
                   Colors.blue,
                 ),
                 _buildPriorityGasCard(
                   'High Priority',
-                  (congestionData.currentGasPrice * 1.2).toStringAsFixed(2),
+                  (congestionData.currentGasPrice * 1.2).toStringAsFixed(3),
                   'Faster',
                   Colors.orange,
                 ),
@@ -123,6 +134,11 @@ class GasTab extends StatelessWidget {
 
   // Gas Price Section
   Widget _buildGasPriceSection() {
+    final priceDiff =
+        congestionData.currentGasPrice - congestionData.averageGasPrice;
+    final priceDiffPercentage =
+        (priceDiff / congestionData.averageGasPrice * 100).abs();
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -159,26 +175,46 @@ class GasTab extends StatelessWidget {
               children: [
                 _buildGasInfoItem(
                   'Current',
-                  '${congestionData.currentGasPrice.toStringAsFixed(2)} Gwei',
-                  congestionData.currentGasPrice >
-                          congestionData.averageGasPrice
-                      ? Colors.orange
-                      : Colors.green,
+                  '${congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
+                  _getGasPriceColor(priceDiffPercentage, priceDiff),
                 ),
                 _buildGasInfoItem(
                   'Average (24h)',
-                  '${congestionData.averageGasPrice.toStringAsFixed(2)} Gwei',
+                  '${congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
                   Colors.blue,
                 ),
                 _buildGasInfoItem(
                   'Change',
-                  '${((congestionData.currentGasPrice / congestionData.averageGasPrice) * 100 - 100).toStringAsFixed(1)}%',
-                  congestionData.currentGasPrice >
-                          congestionData.averageGasPrice
-                      ? Colors.red
-                      : Colors.green,
+                  '${(priceDiff >= 0 ? "+" : "")}${priceDiffPercentage.toStringAsFixed(1)}%',
+                  _getGasPriceColor(priceDiffPercentage, priceDiff),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _getGasPriceColor(priceDiffPercentage, priceDiff)
+                    .withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    priceDiff >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                    color: _getGasPriceColor(priceDiffPercentage, priceDiff),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${priceDiffPercentage.toStringAsFixed(1)}% ${priceDiff >= 0 ? 'higher' : 'lower'} than average',
+                    style: TextStyle(
+                      color: _getGasPriceColor(priceDiffPercentage, priceDiff),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -192,9 +228,9 @@ class GasFeeEstimator extends StatefulWidget {
   final double currentGasPrice;
 
   const GasFeeEstimator({
-    Key? key,
+    super.key,
     required this.currentGasPrice,
-  }) : super(key: key);
+  });
 
   @override
   State<GasFeeEstimator> createState() => _GasFeeEstimatorState();
@@ -274,14 +310,22 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Transaction Fee Estimator',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Transaction Fee Estimator',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                // IconButton(
+                //   icon: const Icon(Icons.refresh),
+                //   onPressed: _fetchEthPrice,
+                // ),
+              ],
             ),
-            const SizedBox(height: 8),
             const Text(
               'Estimated costs for a standard ETH transfer',
               style: TextStyle(
@@ -370,17 +414,6 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
                     const Text('<1 min'),
                     Text('\$${highCostUsd.toStringAsFixed(4)}'),
                   ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 20),
-                  onPressed: _fetchEthPrice,
-                  tooltip: 'Refresh ETH price',
                 ),
               ],
             ),

@@ -37,7 +37,6 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
-  // Network Status Section (modified for cleaner look)
   Widget _buildNetworkStatusSection() {
     return Card(
       elevation: 3,
@@ -98,7 +97,6 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
-  // Network Queue Section (with improved layout)
   Widget _buildNetworkQueueSection() {
     return Card(
       elevation: 3,

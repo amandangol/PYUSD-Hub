@@ -119,9 +119,9 @@ class StatusCardWidget extends StatelessWidget {
 
                 // Fee information
                 Text(
-                  'Fee: ${transaction.fee.toStringAsFixed(6)} ETH',
+                  'Fee: ${transaction.fee.toStringAsFixed(8)} ETH',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 11,
                     color: subtitleColor,
                   ),
                 ),

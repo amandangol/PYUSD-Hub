@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../config/rpc_endpoints.dart';
 import '../model/networkcongestion_model.dart';
@@ -170,7 +171,8 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<void> _fetchLatestBlocksUpdate() async {
     try {
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
-      final latestBlockNumber = _parseHexSafely(latestBlockResponse);
+      final latestBlockNumber =
+          FormatterUtils.parseHexSafely(latestBlockResponse);
 
       if (latestBlockNumber == null) {
         print('Could not get latest block number');
@@ -184,7 +186,7 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       int? newestBlockInCache = _recentBlocks.isEmpty
           ? null
-          : _parseHexSafely(_recentBlocks[0]['number']);
+          : FormatterUtils.parseHexSafely(_recentBlocks[0]['number']);
 
       // Only fetch new blocks if latest block is newer than the one we have
       if (_recentBlocks.isEmpty ||
@@ -198,10 +200,10 @@ class NetworkCongestionProvider with ChangeNotifier {
           oldestBlockToFetch = newestBlockInCache + 1;
         }
 
-        // Don't fetch more than 5 blocks at once to avoid overloading
+        // Don't fetch more than 10 blocks at once to avoid overloading
         int blocksAvailable = latestBlockNumber - oldestBlockToFetch + 1;
         int numBlocksToFetch =
-            blocksAvailable > 0 ? min(5, blocksAvailable) : 0;
+            blocksAvailable > 0 ? min(100, blocksAvailable) : 0;
 
         if (numBlocksToFetch > 0) {
           // Create a list of futures to fetch blocks in parallel
@@ -229,7 +231,7 @@ class NetworkCongestionProvider with ChangeNotifier {
               _recentBlocks.insert(0, blockResponse);
 
               // Keep only the 10 most recent blocks
-              if (_recentBlocks.length > 10) {
+              if (_recentBlocks.length > 15) {
                 _recentBlocks.removeLast();
               }
 
@@ -244,9 +246,9 @@ class NetworkCongestionProvider with ChangeNotifier {
           // Update block time if possible
           if (_recentBlocks.length >= 2) {
             final currentTimestamp =
-                _parseHexSafely(_recentBlocks[0]['timestamp']);
+                FormatterUtils.parseHexSafely(_recentBlocks[0]['timestamp']);
             final previousTimestamp =
-                _parseHexSafely(_recentBlocks[1]['timestamp']);
+                FormatterUtils.parseHexSafely(_recentBlocks[1]['timestamp']);
 
             if (currentTimestamp != null && previousTimestamp != null) {
               final blockTime = currentTimestamp - previousTimestamp;
@@ -323,14 +325,16 @@ class NetworkCongestionProvider with ChangeNotifier {
       // Get latest gas limit
       if (_recentBlocks.isNotEmpty &&
           _recentBlocks[0].containsKey('gasLimit')) {
-        latestGasLimit = _parseHexSafely(_recentBlocks[0]['gasLimit']) ?? 0;
+        latestGasLimit =
+            FormatterUtils.parseHexSafely(_recentBlocks[0]['gasLimit']) ?? 0;
       }
 
       // Calculate average block time and transaction count
       for (int i = 0; i < _recentBlocks.length - 1; i++) {
-        final currentTimestamp = _parseHexSafely(_recentBlocks[i]['timestamp']);
+        final currentTimestamp =
+            FormatterUtils.parseHexSafely(_recentBlocks[i]['timestamp']);
         final previousTimestamp =
-            _parseHexSafely(_recentBlocks[i + 1]['timestamp']);
+            FormatterUtils.parseHexSafely(_recentBlocks[i + 1]['timestamp']);
 
         if (currentTimestamp != null && previousTimestamp != null) {
           totalBlockTime += (currentTimestamp - previousTimestamp);
@@ -370,7 +374,8 @@ class NetworkCongestionProvider with ChangeNotifier {
     try {
       // First, get the latest block number
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
-      final latestBlockNumber = _parseHexSafely(latestBlockResponse);
+      final latestBlockNumber =
+          FormatterUtils.parseHexSafely(latestBlockResponse);
 
       if (latestBlockNumber == null) {
         print('Could not get latest block number');
@@ -378,7 +383,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       }
 
       // We'll search for PYUSD transactions in the last 50,000 blocks
-      const int blocksToSearch = 50000;
+      const int blocksToSearch = 10000;
 
       // Calculate start block
       int startBlock = latestBlockNumber - blocksToSearch;
@@ -429,8 +434,10 @@ class NetworkCongestionProvider with ChangeNotifier {
     try {
       // Sort logs by block number (descending) to get the most recent first
       logs.sort((a, b) {
-        final blockNumberA = _parseHexSafely(a['blockNumber']) ?? 0;
-        final blockNumberB = _parseHexSafely(b['blockNumber']) ?? 0;
+        final blockNumberA =
+            FormatterUtils.parseHexSafely(a['blockNumber']) ?? 0;
+        final blockNumberB =
+            FormatterUtils.parseHexSafely(b['blockNumber']) ?? 0;
         return blockNumberB.compareTo(blockNumberA);
       });
 
@@ -567,7 +574,8 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<void> _fetchInitialBlocks() async {
     try {
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
-      final latestBlockNumber = _parseHexSafely(latestBlockResponse);
+      final latestBlockNumber =
+          FormatterUtils.parseHexSafely(latestBlockResponse);
 
       if (latestBlockNumber == null) {
         print('Could not get latest block number');
@@ -630,9 +638,10 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       // Calculate block time if possible
       if (_recentBlocks.length >= 2) {
-        final currentTimestamp = _parseHexSafely(_recentBlocks[0]['timestamp']);
+        final currentTimestamp =
+            FormatterUtils.parseHexSafely(_recentBlocks[0]['timestamp']);
         final previousTimestamp =
-            _parseHexSafely(_recentBlocks[1]['timestamp']);
+            FormatterUtils.parseHexSafely(_recentBlocks[1]['timestamp']);
 
         if (currentTimestamp != null && previousTimestamp != null) {
           final blockTime = currentTimestamp - previousTimestamp;
@@ -722,7 +731,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       _checkIfPyusdTransaction(result['hash']);
     } else if (result.containsKey('number')) {
       // This is a new block
-      final blockNumber = _parseHexSafely(result['number']);
+      final blockNumber = FormatterUtils.parseHexSafely(result['number']);
       if (blockNumber != null) {
         // Update last block number
         _congestionData = _congestionData.copyWith(
@@ -795,7 +804,7 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<void> _fetchGasPrice() async {
     try {
       final gasPriceResponse = await _makeRpcCall('eth_gasPrice', []);
-      final gasPrice = _parseHexSafely(gasPriceResponse);
+      final gasPrice = FormatterUtils.parseHexSafely(gasPriceResponse);
 
       if (gasPrice != null) {
         final gasPriceGwei = gasPrice / 1e9;
@@ -829,7 +838,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       if (txpoolStatusResponse != null &&
           txpoolStatusResponse.containsKey('pending')) {
         final pendingHex = txpoolStatusResponse['pending'];
-        final pendingTxCount = _parseHexSafely(pendingHex);
+        final pendingTxCount = FormatterUtils.parseHexSafely(pendingHex);
 
         if (pendingTxCount != null) {
           _congestionData =
@@ -856,8 +865,10 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       if (latestBlockResponse != null) {
         // Gas limit and gas used
-        final gasLimit = _parseHexSafely(latestBlockResponse['gasLimit']);
-        final gasUsed = _parseHexSafely(latestBlockResponse['gasUsed']);
+        final gasLimit =
+            FormatterUtils.parseHexSafely(latestBlockResponse['gasLimit']);
+        final gasUsed =
+            FormatterUtils.parseHexSafely(latestBlockResponse['gasUsed']);
 
         if (gasLimit != null && gasUsed != null) {
           final gasUsagePercentage = (gasUsed / gasLimit) * 100;
@@ -866,7 +877,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
 
         // Extract timestamp from latest block
-        final timestamp = _parseHexSafely(latestBlockResponse['timestamp']);
+        final timestamp =
+            FormatterUtils.parseHexSafely(latestBlockResponse['timestamp']);
         if (timestamp != null) {
           _congestionData = _congestionData.copyWith(
             lastBlockTimestamp: timestamp,
@@ -874,7 +886,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
 
         // Extract block number
-        final blockNumber = _parseHexSafely(latestBlockResponse['number']);
+        final blockNumber =
+            FormatterUtils.parseHexSafely(latestBlockResponse['number']);
         if (blockNumber != null) {
           _congestionData = _congestionData.copyWith(
             lastBlockNumber: blockNumber,
@@ -902,9 +915,9 @@ class NetworkCongestionProvider with ChangeNotifier {
         // Calculate block time
         if (_recentBlocks.length >= 2) {
           final currentTimestamp =
-              _parseHexSafely(_recentBlocks[0]['timestamp']);
+              FormatterUtils.parseHexSafely(_recentBlocks[0]['timestamp']);
           final previousTimestamp =
-              _parseHexSafely(_recentBlocks[1]['timestamp']);
+              FormatterUtils.parseHexSafely(_recentBlocks[1]['timestamp']);
 
           if (currentTimestamp != null && previousTimestamp != null) {
             final blockTime = currentTimestamp - previousTimestamp;
@@ -992,19 +1005,4 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   int min(int a, int b) => a < b ? a : b;
-
-  int? _parseHexSafely(dynamic hexValue) {
-    try {
-      if (hexValue == null ||
-          hexValue is! String ||
-          !hexValue.startsWith('0x')) {
-        print('Invalid hex value: $hexValue');
-        return null;
-      }
-      return int.tryParse(hexValue.substring(2), radix: 16);
-    } catch (e) {
-      print('Error parsing hex value: $hexValue, error: $e');
-      return null;
-    }
-  }
 }

@@ -27,7 +27,8 @@ class GasPriceChart extends StatelessWidget {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: true,
-          horizontalInterval: maxY / 5,
+          horizontalInterval:
+              (maxY - minY) / 5, // Adjusted interval calculation
           verticalInterval: 1,
           getDrawingHorizontalLine: (value) {
             return FlLine(
@@ -83,17 +84,35 @@ class GasPriceChart extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: maxY / 5,
+              reservedSize: 40,
+              interval: (maxY - minY) / 5, // Adjusted interval calculation
               getTitlesWidget: (value, meta) {
-                return Text(
-                  value.toStringAsFixed(0),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
+                // Don't display titles outside the min/max range
+                if (value < minY || value > maxY) {
+                  return const SizedBox();
+                }
+
+                // Format with appropriate decimal places for better readability
+                String formattedValue;
+                if (value >= 100) {
+                  formattedValue = value.toStringAsFixed(0);
+                } else if (value >= 10) {
+                  formattedValue = value.toStringAsFixed(1);
+                } else {
+                  formattedValue = value.toStringAsFixed(2);
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Text(
+                    formattedValue,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                    ),
                   ),
                 );
               },
-              reservedSize: 40,
             ),
           ),
         ),
@@ -113,7 +132,7 @@ class GasPriceChart extends StatelessWidget {
             isCurved: true,
             gradient: LinearGradient(
               colors: [
-                Theme.of(context).primaryColor.withOpacity(0.8),
+                Theme.of(context).primaryColor.withOpacity(0.6),
                 Theme.of(context).primaryColor,
               ],
             ),
