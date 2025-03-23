@@ -35,8 +35,8 @@ class BalanceDisplayCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             selectedAsset == 'ETH'
-                ? '${availableBalance.toStringAsFixed(6)} ETH'
-                : '${availableBalance.toStringAsFixed(6)} PYUSD',
+                ? '${availableBalance.toStringAsFixed(4)} ETH'
+                : '${availableBalance.toStringAsFixed(2)} PYUSD',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: colorScheme.primary,

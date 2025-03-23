@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../provider/network_congestion_provider.dart';
 import '../widgets/stats_card.dart';
@@ -52,13 +53,14 @@ class _TransactionsTabState extends State<TransactionsTab> {
       for (var tx in transactions) {
         // Check if transaction has timestamp
         if (tx.containsKey('timestamp')) {
-          final int? timestamp = _parseHexValue(tx['timestamp']);
+          final int? timestamp = FormatterUtils.parseHexSafely(tx['timestamp']);
           if (timestamp != null) {
             final DateTime txTime =
                 DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
             if (txTime.isAfter(yesterday)) {
               // Add value to total volume if transaction is within last 24 hours
-              final double? value = _parseHexValue(tx['value'])?.toDouble();
+              final double? value =
+                  FormatterUtils.parseHexSafely(tx['value'])?.toDouble();
               if (value != null) {
                 totalVolume24h += value / 1e18; // Convert from wei to ETH
               }
@@ -145,14 +147,6 @@ class _TransactionsTabState extends State<TransactionsTab> {
     );
   }
 
-// Helper method to parse hex values
-  int? _parseHexValue(dynamic hexValue) {
-    if (hexValue == null || hexValue is! String || !hexValue.startsWith('0x')) {
-      return null;
-    }
-    return int.tryParse(hexValue.substring(2), radix: 16);
-  }
-
 // Helper method to calculate unique addresses involved in transactions
   int _calculateUniqueAddresses(List<Map<String, dynamic>> transactions) {
     final Set<String> uniqueAddresses = {};
@@ -174,7 +168,8 @@ class _TransactionsTabState extends State<TransactionsTab> {
     final transactions = widget.provider.recentPyusdTransactions;
     final latestBlockNumber = widget.provider.congestionData.lastBlockNumber;
     final oldestBlockNumber = widget.provider.recentBlocks.isNotEmpty
-        ? _parseHexValue(widget.provider.recentBlocks.last['number'])
+        ? FormatterUtils.parseHexSafely(
+            widget.provider.recentBlocks.last['number'])
         : null;
 
     return Card(

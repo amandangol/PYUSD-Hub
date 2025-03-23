@@ -134,9 +134,9 @@ class TransactionProvider extends ChangeNotifier
     final Map<String, TransactionModel> processedTransactions = {};
     final Set<String> processedHashes = {};
 
-    print('\n=== Processing Transactions ===');
-    print('ETH Transactions: ${ethTxs.length}');
-    print('Token Transactions: ${tokenTxs.length}');
+    // print('\n=== Processing Transactions ===');
+    // print('ETH Transactions: ${ethTxs.length}');
+    // print('Token Transactions: ${tokenTxs.length}');
 
     // Process ETH transactions
     for (final tx in ethTxs) {
@@ -252,8 +252,8 @@ class TransactionProvider extends ChangeNotifier
     final result = processedTransactions.values.toList();
     result.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    print('Final processed transactions: ${result.length}');
-    print('=== End Processing Transactions ===\n');
+    // print('Final processed transactions: ${result.length}');
+    // print('=== End Processing Transactions ===\n');
 
     return result;
   }
@@ -263,10 +263,10 @@ class TransactionProvider extends ChangeNotifier
   }) async {
     if (disposed) return;
 
-    print('\n=== Starting Fetch Transactions ===');
-    print('Force Refresh: $forceRefresh');
-    print(
-        'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
+    // print('\n=== Starting Fetch Transactions ===');
+    // print('Force Refresh: $forceRefresh');
+    // print(
+    //     'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
 
     final address = _authProvider.getCurrentAddress();
     if (address == null || address.isEmpty || _isFetchingTransactions) return;
@@ -292,14 +292,14 @@ class TransactionProvider extends ChangeNotifier
         _currentPage = 1;
         _hasMoreTransactions = true;
         _transactionsByNetwork[currentNetwork] = [];
-        print('Reset transaction data for force refresh');
+        // print('Reset transaction data for force refresh');
       }
 
       // Skip if we already loaded all transactions
       if (!_hasMoreTransactions && !forceRefresh) {
         _isFetchingTransactions = false;
         safeNotifyListeners(this);
-        print('No more transactions to load');
+        // print('No more transactions to load');
         return;
       }
 
@@ -319,14 +319,14 @@ class TransactionProvider extends ChangeNotifier
         page: _currentPage,
         perPage: _perPage,
       );
-      print('Fetched ${tokenTxs.length} token transactions');
+      // print('Fetched ${tokenTxs.length} token transactions');
 
       if (disposed) return;
 
       // Process transactions
       final newTransactions =
           _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
-      print('Processed ${newTransactions.length} total transactions');
+      // print('Processed ${newTransactions.length} total transactions');
 
       // Determine if we have more transactions
       _hasMoreTransactions = newTransactions.length >= _perPage;
@@ -339,7 +339,7 @@ class TransactionProvider extends ChangeNotifier
 
       if (forceRefresh) {
         _transactionsByNetwork[currentNetwork] = newTransactions;
-        print('Replaced transactions list with new transactions');
+        // print('Replaced transactions list with new transactions');
       } else {
         _transactionsByNetwork[currentNetwork]!.addAll(newTransactions);
         print('Added new transactions to existing list');
@@ -452,9 +452,9 @@ class TransactionProvider extends ChangeNotifier
   Future<void> _refreshAfterTransaction() async {
     if (disposed) return;
 
-    print('\n=== Starting Transaction Refresh ===');
-    print(
-        'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
+    // print('\n=== Starting Transaction Refresh ===');
+    // print(
+    //     'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
 
     // Add a small delay to allow the transaction to be mined
     await Future.delayed(const Duration(seconds: 2));
@@ -471,9 +471,9 @@ class TransactionProvider extends ChangeNotifier
       }
     }
 
-    print(
-        'Final Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-    print('=== End Transaction Refresh ===\n');
+    // print(
+    //     'Final Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
+    // print('=== End Transaction Refresh ===\n');
   }
 
   // Estimate gas for ETH transfer

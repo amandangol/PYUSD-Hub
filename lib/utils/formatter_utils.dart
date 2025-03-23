@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 import 'package:web3dart/web3dart.dart';
+import 'dart:math';
 
 class FormatterUtils {
   static final _numberFormat = NumberFormat('#,##0.####');
@@ -19,13 +20,15 @@ class FormatterUtils {
 
   /// Parses a hex string safely into an integer (returns null on failure)
   static int? parseHexSafely(String? hexString) {
-    if (hexString == null || hexString.isEmpty || !hexString.startsWith('0x')) {
-      return null;
-    }
+    if (hexString == null) return null;
     try {
-      return int.parse(hexString.substring(2), radix: 16);
+      // Remove '0x' prefix if present
+      final cleanHex = hexString.toLowerCase().startsWith('0x')
+          ? hexString.substring(2)
+          : hexString;
+      return int.parse(cleanHex, radix: 16);
     } catch (e) {
-      print('Error parsing hex: $hexString - $e');
+      print('Error parsing hex string: $hexString');
       return null;
     }
   }

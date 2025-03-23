@@ -104,7 +104,9 @@ class AssetSelectionCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  balance.toStringAsFixed(4),
+                  assetName == 'PYUSD'
+                      ? balance.toStringAsFixed(2)
+                      : balance.toStringAsFixed(4),
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: isSelected

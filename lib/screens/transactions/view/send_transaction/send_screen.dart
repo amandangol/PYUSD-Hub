@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
 import '../../../../utils/snackbar_utils.dart';
@@ -395,6 +396,21 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     });
   }
 
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (_mounted) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Could not launch faucet URL',
+          isError: true,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletProvider>(context);
@@ -540,6 +556,112 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                       ],
                     ),
                   ),
+
+                  // Faucet Section - Only show on Sepolia testnet
+
+                  const SizedBox(height: 8),
+                  if (networkProvider.currentNetwork.name
+                      .toLowerCase()
+                      .contains('sepolia'))
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDarkMode
+                            ? const Color(0xFF252543)
+                            : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.water_drop,
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Need tokens? Get them from the faucet:',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (walletProvider.ethBalance < _estimatedGasFee ||
+                              _selectedAsset == 'PYUSD')
+                            InkWell(
+                              onTap: () => _launchURL(
+                                  'https://cloud.google.com/application/web3/faucet/ethereum/sepolia'),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.link,
+                                      color: isDarkMode
+                                          ? Colors.blue[300]
+                                          : Colors.blue,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Sepolia ETH Faucet',
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: isDarkMode
+                                            ? Colors.blue[300]
+                                            : Colors.blue,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (_selectedAsset == 'PYUSD')
+                            InkWell(
+                              onTap: () =>
+                                  _launchURL('https://faucet.paxos.com/'),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.link,
+                                      color: isDarkMode
+                                          ? Colors.blue[300]
+                                          : Colors.blue,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'PYUSD Faucet',
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: isDarkMode
+                                            ? Colors.blue[300]
+                                            : Colors.blue,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

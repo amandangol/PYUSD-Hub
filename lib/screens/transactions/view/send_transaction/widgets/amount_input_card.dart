@@ -100,7 +100,7 @@ class AmountCard extends StatelessWidget {
             )
           else
             Text(
-              'Balance: ${availableBalance.toStringAsFixed(6)} $selectedAsset',
+              'Balance: ${availableBalance.toStringAsFixed(4)} $selectedAsset',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
