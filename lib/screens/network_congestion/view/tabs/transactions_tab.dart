@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../provider/network_congestion_provider.dart';
 import '../widgets/stats_card.dart';
 import '../widgets/transaction_listitem.dart';
@@ -171,6 +172,10 @@ class _TransactionsTabState extends State<TransactionsTab> {
   // PYUSD Activity Section
   Widget _buildPyusdActivitySection({bool expandedView = false}) {
     final transactions = widget.provider.recentPyusdTransactions;
+    final latestBlockNumber = widget.provider.congestionData.lastBlockNumber;
+    final oldestBlockNumber = widget.provider.recentBlocks.isNotEmpty
+        ? _parseHexValue(widget.provider.recentBlocks.last['number'])
+        : null;
 
     return Card(
       elevation: 3,
@@ -200,6 +205,34 @@ class _TransactionsTabState extends State<TransactionsTab> {
                   ),
               ],
             ),
+            if (latestBlockNumber != null && oldestBlockNumber != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.info_outline,
+                        size: 16, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Showing transactions from blocks ${oldestBlockNumber} to ${latestBlockNumber}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             transactions.isEmpty
                 ? const Center(
@@ -237,6 +270,25 @@ class _TransactionsTabState extends State<TransactionsTab> {
                         itemBuilder: (context, index) {
                           final transaction = transactions[index];
                           return TransactionListItem(
+                            onTap: () async {
+                              final String txHash = transaction['hash'] ?? '';
+
+                              if (txHash.isEmpty) return;
+
+                              final url =
+                                  Uri.parse('https://etherscan.io/tx/$txHash');
+                              try {
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url);
+                                }
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not launch explorer'),
+                                  ),
+                                );
+                              }
+                            },
                             transaction: transaction,
                           );
                         },
