@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../screens/authentication/provider/auth_provider.dart';
 import '../services/ethereum_rpc_service.dart';
 import 'network_provider.dart';
+import 'package:flutter/foundation.dart';
 
-class WalletProvider extends ChangeNotifier {
+class WalletProvider with ChangeNotifier {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();

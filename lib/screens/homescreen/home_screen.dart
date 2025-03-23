@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../common/widgets/pyusd_components.dart';
 import '../authentication/provider/auth_provider.dart';
-import '../../common/pyusd_appbar.dart';
 import '../../providers/network_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/snackbar_utils.dart';

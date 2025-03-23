@@ -54,7 +54,7 @@ class GasDetailsWidget extends StatelessWidget {
             const SizedBox(height: 16),
             _buildDetailRow(
               title: 'Gas Limit',
-              value: '${transaction.gasUsed.toStringAsFixed(0)} units',
+              value: '${transaction.gasLimit.toStringAsFixed(0)} units',
               textColor: textColor,
               subtitleColor: subtitleColor,
             ),
@@ -151,22 +151,14 @@ class GasDetailsWidget extends StatelessWidget {
   }
 
   String _calculateGasEfficiency() {
-    // Check if gasPrice is not zero to avoid division by zero
-    if (transaction.gasPrice <= 0) {
+    // Check if gasLimit is not zero to avoid division by zero
+    if (transaction.gasLimit <= 0) {
       return 'N/A';
     }
 
     // Calculate what percentage of the gas limit was actually used
-    final double gasLimit =
-        transaction.gasUsed; // Assuming gasUsed here is actually gas limit
-    final double gasUsed = transaction.gasUsed;
-
-    // If we have both values, calculate efficiency
-    if (gasLimit > 0 && gasUsed > 0) {
-      final double efficiency = (gasUsed / gasLimit) * 100;
-      return '${efficiency.toStringAsFixed(1)}%';
-    }
-
-    return 'N/A';
+    final double efficiency =
+        (transaction.gasUsed / transaction.gasLimit) * 100;
+    return '${efficiency.toStringAsFixed(1)}%';
   }
 }

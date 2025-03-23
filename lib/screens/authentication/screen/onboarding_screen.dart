@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../common/widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import 'create_wallet_screen.dart';
 import 'import_wallet_screen.dart';
@@ -163,45 +164,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 48),
 
                 // Create Wallet Button
-                ElevatedButton(
+                PyusdButton(
                   onPressed: _navigateToCreateWallet,
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    backgroundColor: theme.colorScheme.primary,
-                    minimumSize: const Size.fromHeight(56),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'Create New Wallet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  text: 'Create New Wallet',
                 ),
                 const SizedBox(height: 16),
 
                 // Import Wallet Button
-                OutlinedButton(
+                PyusdButton(
                   onPressed: _navigateToImportWallet,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    side: BorderSide(color: theme.colorScheme.outline),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    'Import Existing Wallet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  text: 'Import Existing Wallet',
+                  isOutlined: true,
                 ),
 
                 _buildLoginOption(),

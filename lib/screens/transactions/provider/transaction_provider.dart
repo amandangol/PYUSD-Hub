@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../services/ethereum_rpc_service.dart';
 import '../../../providers/network_provider.dart';
@@ -174,6 +171,7 @@ class TransactionProvider extends ChangeNotifier
       // Safe parsing of numeric values
       final value = tx['value'] ?? '0';
       final gasUsed = tx['gasUsed'] ?? '0';
+      final gasLimit = tx['gasLimit'] ?? '0';
       final gasPrice = tx['gasPrice'] ?? '0';
       final confirmations = tx['confirmations'] ?? '0';
 
@@ -184,6 +182,7 @@ class TransactionProvider extends ChangeNotifier
         to: tx['to'] ?? '',
         amount: double.parse(value) / 1e18,
         gasUsed: double.parse(gasUsed),
+        gasLimit: double.parse(gasLimit),
         gasPrice: double.parse(gasPrice) / 1e9,
         status: status,
         direction: direction,
@@ -236,6 +235,7 @@ class TransactionProvider extends ChangeNotifier
         to: tx['to'] ?? '',
         amount: tokenAmount,
         gasUsed: double.tryParse(tx['gasUsed'] ?? '0') ?? 0.0,
+        gasLimit: double.tryParse(tx['gasLimit'] ?? '0') ?? 0.0,
         gasPrice: double.tryParse(tx['gasPrice'] ?? '0') ?? 0.0 / 1e9,
         status: status,
         direction: direction,

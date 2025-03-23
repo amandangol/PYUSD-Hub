@@ -29,7 +29,7 @@ class AssetSelectionCard extends StatelessWidget {
               ? colorScheme.primaryContainer
               : theme.brightness == Brightness.light
                   ? colorScheme.surface
-                  : colorScheme.surfaceVariant,
+                  : colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? colorScheme.primary : colorScheme.outline,
@@ -58,13 +58,13 @@ class AssetSelectionCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? colorScheme.onSurface
-                            : colorScheme.surfaceVariant,
+                            : colorScheme.surfaceContainerHighest,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         assetName == 'PYUSD'
                             ? Icons.attach_money
-                            : Icons.currency_bitcoin,
+                            : Icons.currency_exchange,
                         color: isSelected
                             ? colorScheme.primary
                             : colorScheme.onSurfaceVariant,

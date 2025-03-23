@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
-import 'package:pyusd_hub/common/pyusd_appbar.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
+import '../../common/widgets/pyusd_components.dart';
 import '../authentication/provider/auth_provider.dart';
 import '../authentication/provider/security_setting_provider.dart';
 import '../authentication/provider/session_provider.dart';
@@ -176,17 +176,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
 
     if (securityProvider.pinChangeStep == PinChangeStep.none) {
-      return ElevatedButton.icon(
+      return PyusdButton(
         onPressed: () {
           securityProvider.startPinChange();
         },
+        text: 'Change PIN',
         icon: const Icon(Icons.lock_outline),
-        label: const Text('Change PIN'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        ),
       );
     } else if (securityProvider.pinChangeStep == PinChangeStep.enterCurrent) {
       // Step 1: Enter current PIN
@@ -309,9 +304,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 ),
               ),
               IconButton(
-                onPressed: () {
-                  // Toggle visibility would be implemented here in a real app
-                },
+                onPressed: () {},
                 icon: const Icon(Icons.visibility),
                 color: primaryColor,
               ),

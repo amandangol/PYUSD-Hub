@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../common/pyusd_appbar.dart';
+import '../../../common/widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import 'mnemonic_screen.dart';
 import '../widget/pin_input_widget.dart.dart';
@@ -128,21 +128,11 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
               ],
 
               // Create wallet button
-              ElevatedButton(
+              PyusdButton(
                 onPressed: _isLoading ? null : _createWallet,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Create Wallet'),
+                text: 'Create Wallet',
+                isLoading: _isLoading,
+                borderRadius: 12,
               ),
               const SizedBox(height: 16),
 

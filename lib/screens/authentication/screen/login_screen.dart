@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
+import '../../../common/widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
-import '../../../main.dart';
 import '../widget/pin_input_widget.dart.dart';
 import 'onboarding_screen.dart';
 
@@ -113,28 +113,16 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text('Reset Wallet Access'),
-        content: const Text(
-          'You will be redirected to the onboarding screen to create a new wallet or import an existing one. Your current wallet data will remain on the device but you will need to import it again.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _navigateToOnboarding();
-            },
-            child: const Text('Continue'),
-          ),
-        ],
+      builder: (BuildContext dialogContext) => PyusdDialog(
+        title: 'Reset Wallet Access',
+        content:
+            'You will be redirected to the onboarding screen to create a new wallet or import an existing one. Your current wallet data will remain on the device but you will need to import it again.',
+        confirmText: 'Continue',
+        cancelText: 'Cancel',
+        onConfirm: () {
+          Navigator.of(dialogContext).pop();
+          _navigateToOnboarding();
+        },
       ),
     );
   }
@@ -265,80 +253,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Error message
                   if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.errorContainer.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: theme.colorScheme.error,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(
-                                color: theme.colorScheme.error,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    PyusdErrorMessage(
+                      message: _errorMessage!,
+                      borderRadius: 8,
                     ),
                     const SizedBox(height: 16),
                   ],
 
                   // Login button
-                  ElevatedButton(
+                  PyusdButton(
                     onPressed: _isLoading ? null : _authenticateWithPIN,
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      backgroundColor: theme.colorScheme.primary,
-                      minimumSize: const Size.fromHeight(56),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Unlock Wallet',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
+                    text: 'Unlock Wallet',
+                    isLoading: _isLoading,
                   ),
 
                   // Biometrics button
                   if (_isBiometricsAvailable) ...[
                     const SizedBox(height: 16),
-                    OutlinedButton.icon(
+                    PyusdButton(
                       onPressed:
                           _isLoading ? null : _authenticateWithBiometrics,
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56),
-                        side: BorderSide(color: theme.colorScheme.outline),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
+                      text: 'Use Biometrics',
+                      isOutlined: true,
                       icon: Icon(Icons.fingerprint,
                           color: theme.colorScheme.primary),
-                      label: Text('Use Biometrics',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: theme.colorScheme.primary,
-                          )),
                     ),
                   ],
 

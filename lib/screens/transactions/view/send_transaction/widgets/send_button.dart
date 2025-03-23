@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../../../../../common/widgets/pyusd_components.dart';
 import '../../../../../providers/wallet_provider.dart';
 
 class SendButton extends StatelessWidget {
@@ -10,7 +10,7 @@ class SendButton extends StatelessWidget {
   final bool isLoading;
   final bool isEstimatingGas;
   final double estimatedGasFee;
-  final Function onPressed;
+  final VoidCallback onPressed;
 
   const SendButton({
     super.key,
@@ -40,60 +40,21 @@ class SendButton extends StatelessWidget {
             double.parse(amountController.text) + estimatedGasFee >
                 walletProvider.ethBalance);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+    return SizedBox(
       width: double.infinity,
       height: 56,
-      child: ElevatedButton(
+      child: PyusdButton(
         onPressed: canSend ? () => onPressed() : null,
-        style: ElevatedButton.styleFrom(
-          elevation: canSend ? 4 : 0,
-          backgroundColor: colorScheme.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: colorScheme.surfaceContainerHighest,
-          disabledForegroundColor: colorScheme.onSurfaceVariant,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: EdgeInsets.zero,
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: canSend
-                ? LinearGradient(
-                    colors: [
-                      colorScheme.primary,
-                      colorScheme.primary
-                          .withBlue(colorScheme.primary.blue + 20)
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-          ),
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.send_rounded,
-                  color: canSend ? Colors.white : colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Send $selectedAsset',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color:
-                        canSend ? Colors.white : colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        text: 'Send $selectedAsset',
+        isLoading: isLoading,
+        icon: const Icon(Icons.send_rounded),
+        backgroundColor:
+            canSend ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+        foregroundColor: canSend ? Colors.white : colorScheme.onSurfaceVariant,
+        elevation: canSend ? 4 : 0,
+        borderRadius: 16,
+        height: 56,
+        isFullWidth: true,
       ),
     );
   }

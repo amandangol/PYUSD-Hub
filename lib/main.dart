@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Import all providers
 import 'providers/network_provider.dart';
-import 'pyusd_analytics/mainapp_test.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/authentication/screen/splash_screen.dart';

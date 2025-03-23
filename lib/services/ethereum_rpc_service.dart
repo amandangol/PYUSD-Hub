@@ -393,6 +393,9 @@ class EthereumRpcService {
           gasUsed: txData['gas'] != null
               ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
               : 0.0,
+          gasLimit: txData['gas'] != null
+              ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
+              : 0.0,
           gasPrice: txData['gasPrice'] != null
               ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
               : 0.0,
@@ -433,6 +436,9 @@ class EthereumRpcService {
               : 0.0,
           gasUsed: receiptData['gasUsed'] != null
               ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
+              : 0.0,
+          gasLimit: txData['gas'] != null
+              ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
               : 0.0,
           gasPrice: txData['gasPrice'] != null
               ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
@@ -534,6 +540,9 @@ class EthereumRpcService {
         amount: amount,
         gasUsed: receiptData['gasUsed'] != null
             ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
+            : 0.0,
+        gasLimit: txData['gas'] != null
+            ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
             : 0.0,
         gasPrice: txData['gasPrice'] != null
             ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../common/widgets/pyusd_components.dart';
 import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
 import '../../provider/network_congestion_provider.dart';
@@ -1098,28 +1099,19 @@ class BlocksTab extends StatelessWidget {
                                     Padding(
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 12.0),
-                                      child: ElevatedButton.icon(
-                                        icon:
-                                            const Icon(Icons.list_alt_rounded),
-                                        label: Text(
-                                            'View all ${transactions.length} transactions'),
-                                        style: ElevatedButton.styleFrom(
-                                          foregroundColor: Colors.white,
-                                          backgroundColor: accentColor,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 20, vertical: 12),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          elevation: 0,
-                                        ),
+                                      child: PyusdButton(
                                         onPressed: () {
                                           // Close current sheet and show all transactions
                                           Navigator.pop(context);
                                           _showAllTransactionsDialog(context,
                                               transactions, blockNumber);
                                         },
+                                        text:
+                                            'View all ${transactions.length} transactions',
+                                        icon:
+                                            const Icon(Icons.list_alt_rounded),
+                                        backgroundColor: accentColor,
+                                        foregroundColor: Colors.white,
                                       ),
                                     ),
                                 ],

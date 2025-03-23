@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
+import '../../../../../common/widgets/pyusd_components.dart';
 import '../../../../../utils/formatter_utils.dart';
 import '../../../model/transaction_model.dart';
 
@@ -161,13 +162,9 @@ class TransactionDetailsWidget extends StatelessWidget {
               context: context,
             ),
             if (transaction.isError && transaction.errorMessage != null)
-              _buildDetailRow(
-                title: 'Error',
-                value: transaction.errorMessage!,
-                valueColor: Colors.red,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-                context: context,
+              PyusdErrorMessage(
+                message: transaction.errorMessage!,
+                borderRadius: 12,
               ),
             if (transaction.data != null && transaction.data!.length > 2)
               _buildDetailRow(
@@ -183,19 +180,12 @@ class TransactionDetailsWidget extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Center(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.error_outline),
-                    label: const Text('View Error Details'),
+                  child: PyusdButton(
                     onPressed: onShowErrorDetails,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    text: 'View Error Details',
+                    icon: const Icon(Icons.error_outline),
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ),

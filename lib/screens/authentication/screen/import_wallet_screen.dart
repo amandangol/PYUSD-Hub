@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
-import '../../../common/pyusd_appbar.dart';
+import '../../../common/widgets/pyusd_components.dart';
 import '../../../main.dart';
 import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';
@@ -177,19 +177,10 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: PyusdButton(
                 onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode
-                      ? theme.colorScheme.primary
-                      : const Color(0xFF3D56F0),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Got it'),
+                text: 'Got it',
+                borderRadius: 12,
               ),
             ),
           ],
@@ -411,32 +402,12 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
                   const SizedBox(height: 32),
 
                   // Import button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _importWallet,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDarkMode
-                            ? theme.colorScheme.primary
-                            : const Color(0xFF3D56F0),
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shadowColor: isDarkMode
-                            ? theme.colorScheme.primary.withOpacity(0.4)
-                            : const Color(0xFF3D56F0).withOpacity(0.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Import Wallet'),
-                    ),
+                  PyusdButton(
+                    onPressed: _isLoading ? null : _importWallet,
+                    text: 'Import Wallet',
+                    isLoading: _isLoading,
+                    borderRadius: 12,
+                    elevation: 2,
                   ),
 
                   const SizedBox(height: 16),

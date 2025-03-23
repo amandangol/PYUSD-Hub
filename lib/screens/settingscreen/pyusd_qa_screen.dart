@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../common/pyusd_appbar.dart';
+import '../../common/widgets/pyusd_components.dart';
 
 class PyusdQAScreen extends StatefulWidget {
   const PyusdQAScreen({super.key});

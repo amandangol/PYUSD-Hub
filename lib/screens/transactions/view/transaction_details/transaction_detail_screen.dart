@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../common/widgets/pyusd_components.dart';
 import '../../../../providers/network_provider.dart';
 import '../../model/transaction_model.dart';
 import '../../provider/transactiondetail_provider.dart';
@@ -326,18 +327,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
+              PyusdButton(
                 onPressed: _fetchTransactionDetails,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Retry'),
+                text: 'Retry',
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
               ),
             ],
           ),

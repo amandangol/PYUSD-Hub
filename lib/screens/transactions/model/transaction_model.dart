@@ -13,6 +13,7 @@ class TransactionModel {
   final String to;
   final double amount;
   final double gasUsed;
+  final double gasLimit;
   final double gasPrice;
   final TransactionStatus status;
   final TransactionDirection direction;
@@ -31,6 +32,7 @@ class TransactionModel {
     required this.to,
     required this.amount,
     required this.gasUsed,
+    required this.gasLimit,
     required this.gasPrice,
     required this.status,
     required this.direction,
@@ -58,6 +60,7 @@ class TransactionModel {
     String? to,
     double? amount,
     double? gasUsed,
+    double? gasLimit,
     double? gasPrice,
     TransactionStatus? status,
     TransactionDirection? direction,
@@ -76,6 +79,7 @@ class TransactionModel {
       to: to ?? this.to,
       amount: amount ?? this.amount,
       gasUsed: gasUsed ?? this.gasUsed,
+      gasLimit: gasLimit ?? this.gasLimit,
       gasPrice: gasPrice ?? this.gasPrice,
       status: status ?? this.status,
       direction: direction ?? this.direction,
@@ -97,6 +101,7 @@ class TransactionModel {
       'to': to,
       'amount': amount,
       'gasUsed': gasUsed,
+      'gasLimit': gasLimit,
       'gasPrice': gasPrice,
       'status': status.index,
       'direction': direction.index,
@@ -118,6 +123,7 @@ class TransactionModel {
       to: json['to'],
       amount: json['amount'],
       gasUsed: json['gasUsed'],
+      gasLimit: json['gasLimit'],
       gasPrice: json['gasPrice'],
       status: TransactionStatus.values[json['status']],
       direction: TransactionDirection.values[json['direction']],
@@ -151,6 +157,7 @@ class TransactionDetailModel extends TransactionModel {
     required super.to,
     required super.amount,
     required super.gasUsed,
+    required super.gasLimit,
     required super.gasPrice,
     required super.status,
     required super.direction,
@@ -181,6 +188,7 @@ class TransactionDetailModel extends TransactionModel {
     String? to,
     double? amount,
     double? gasUsed,
+    double? gasLimit,
     double? gasPrice,
     TransactionStatus? status,
     TransactionDirection? direction,
@@ -209,6 +217,7 @@ class TransactionDetailModel extends TransactionModel {
       to: to ?? this.to,
       amount: amount ?? this.amount,
       gasUsed: gasUsed ?? this.gasUsed,
+      gasLimit: gasLimit ?? this.gasLimit,
       gasPrice: gasPrice ?? this.gasPrice,
       status: status ?? this.status,
       direction: direction ?? this.direction,

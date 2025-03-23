@@ -4,6 +4,7 @@ import 'package:web3dart/web3dart.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
 import '../../../../utils/snackbar_utils.dart';
+import '../../../../common/widgets/pyusd_components.dart';
 import '../../provider/transaction_provider.dart';
 import 'widgets/amount_input_card.dart';
 import 'widgets/balance_display_card.dart';
@@ -25,7 +26,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
   bool _isValidAddress = false;
   double _estimatedGasFee = 0.0;
-  double _gasPrice = 0.0;
+  double _gasPrice = 2.0;
   int _estimatedGas = 0;
   bool _isLoading = false;
   bool _isEstimatingGas = false;
@@ -178,27 +179,77 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Transaction'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Recipient: $address'),
-            Text('Amount: $amount $_selectedAsset'),
-            const SizedBox(height: 8),
-            const Text('Gas Details:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('Estimated Gas Units: $_estimatedGas'),
-            Text('Gas Price: ${_gasPrice.toStringAsFixed(2)} Gwei'),
-            Text('Total Gas Fee: ${_estimatedGasFee.toStringAsFixed(6)} ETH'),
-            if (_selectedAsset == 'ETH')
-              Text(
-                  'Total Amount (with gas): ${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH'),
-            const SizedBox(height: 8),
-            const SizedBox(height: 12),
-            const Text('Please confirm this transaction details.',
-                style:
-                    TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Recipient:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(address,
+                  style: const TextStyle(fontSize: 13),
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 8),
+              const Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Amount:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('$amount $_selectedAsset'),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text('Gas Details:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Estimated Gas Units:'),
+                  Text('$_estimatedGas'),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Gas Price:'),
+                  Text('${_gasPrice.toStringAsFixed(2)} Gwei'),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total Gas Fee:'),
+                  Text('${_estimatedGasFee.toStringAsFixed(6)} ETH'),
+                ],
+              ),
+              if (_selectedAsset == 'ETH') ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total (with gas):',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      '${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 12),
+              const Text(
+                'Please verify all transaction details before confirming.',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -335,36 +386,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
   }
 
-  Future<void> _startTransactionInBackground(
-      String address, double amount) async {
-    final transactionProvider =
-        Provider.of<TransactionProvider>(context, listen: false);
-
-    try {
-      // Execute the transaction without blocking the UI
-      if (_selectedAsset == 'PYUSD') {
-        transactionProvider.sendPYUSD(
-          address,
-          amount,
-          gasPrice: _gasPrice,
-          gasLimit: _estimatedGas,
-        );
-      } else if (_selectedAsset == 'ETH') {
-        transactionProvider.sendETH(
-          address,
-          amount,
-          gasPrice: _gasPrice,
-          gasLimit: _estimatedGas,
-        );
-      }
-      // Note: We're not awaiting the result here, as we want to return to the main screen
-      // immediately. The transaction will be processed in the background.
-    } catch (e) {
-      // We'll handle errors in the transaction provider
-      print('Error initiating transaction: $e');
-    }
-  }
-
   Future<void> _scanQRCode() async {
     // This would normally use a QR code scanner plugin
     // For this example, we'll just simulate it by setting a value
@@ -402,119 +423,126 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // Asset Selection and Transaction Fee
-              TransactionFeeCard(
-                selectedAsset: _selectedAsset,
-                onAssetSelected: (asset) {
-                  setState(() {
-                    _selectedAsset = asset;
-                    _estimateGasFee();
-                  });
-                },
-                estimatedGasFee: _estimatedGasFee,
-                gasPrice: _gasPrice,
-                onGasPriceChanged: (value) {
-                  setState(() {
-                    _gasPrice = value;
-                    if (_estimatedGas > 0) {
-                      _estimatedGasFee = _estimatedGas * _gasPrice * 1e-9;
-                    }
-                  });
-                },
-                isEstimatingGas: _isEstimatingGas,
-                ethBalance: walletProvider.ethBalance,
-                tokenBalance: walletProvider.tokenBalance,
-              ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Asset Selection and Transaction Fee
+                  TransactionFeeCard(
+                    selectedAsset: _selectedAsset,
+                    onAssetSelected: (asset) {
+                      setState(() {
+                        _selectedAsset = asset;
+                        _estimateGasFee();
+                      });
+                    },
+                    estimatedGasFee: _estimatedGasFee,
+                    gasPrice: _gasPrice,
+                    onGasPriceChanged: (value) {
+                      setState(() {
+                        _gasPrice = value;
+                        if (_estimatedGas > 0) {
+                          _estimatedGasFee = _estimatedGas * _gasPrice * 1e-9;
+                        }
+                      });
+                    },
+                    isEstimatingGas: _isEstimatingGas,
+                    ethBalance: walletProvider.ethBalance,
+                    tokenBalance: walletProvider.tokenBalance,
+                  ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // Balance Display
-              BalanceDisplayCard(
-                selectedAsset: _selectedAsset,
-                availableBalance: availableBalance,
-                maxSendableEth: maxSendableEth,
-                estimatedGasFee: _estimatedGasFee,
-                networkName: networkProvider.currentNetworkName,
-              ),
+                  // Balance Display
+                  BalanceDisplayCard(
+                    selectedAsset: _selectedAsset,
+                    availableBalance: availableBalance,
+                    maxSendableEth: maxSendableEth,
+                    estimatedGasFee: _estimatedGasFee,
+                    networkName: networkProvider.currentNetwork.name,
+                  ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // Recipient Address Input
-              RecipientCard(
-                addressController: _addressController,
-                isValidAddress: _isValidAddress,
-                onAddressChanged: _validateAddress,
-                onScanQRCode: _scanQRCode,
-              ),
+                  // Recipient Address Input
+                  RecipientCard(
+                    addressController: _addressController,
+                    isValidAddress: _isValidAddress,
+                    onAddressChanged: _validateAddress,
+                    onScanQRCode: _scanQRCode,
+                  ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // Amount Input
-              AmountCard(
-                amountController: _amountController,
-                selectedAsset: _selectedAsset,
-                availableBalance: availableBalance,
-                maxSendableEth: maxSendableEth,
-                onAmountChanged: (_) => _estimateGasFee(),
-                onMaxPressed: () {
-                  setState(() {
-                    if (_selectedAsset == 'ETH' && _estimatedGasFee > 0) {
-                      _amountController.text = maxSendableEth.toString();
-                    } else {
-                      _amountController.text = availableBalance.toString();
-                    }
-                  });
-                  _estimateGasFee();
-                },
-                estimatedGasFee: _estimatedGasFee,
-              ),
+                  // Amount Input
+                  AmountCard(
+                    amountController: _amountController,
+                    selectedAsset: _selectedAsset,
+                    availableBalance: availableBalance,
+                    maxSendableEth: maxSendableEth,
+                    onAmountChanged: (_) => _estimateGasFee(),
+                    onMaxPressed: () {
+                      setState(() {
+                        if (_selectedAsset == 'ETH' && _estimatedGasFee > 0) {
+                          _amountController.text = maxSendableEth.toString();
+                        } else {
+                          _amountController.text = availableBalance.toString();
+                        }
+                      });
+                      _estimateGasFee();
+                    },
+                    estimatedGasFee: _estimatedGasFee,
+                  ),
 
-              const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-              // Send Button
-              SendButton(
-                selectedAsset: _selectedAsset,
-                isValidAddress: _isValidAddress,
-                amountController: _amountController,
-                isLoading: _isLoading,
-                isEstimatingGas: _isEstimatingGas,
-                estimatedGasFee: _estimatedGasFee,
-                onPressed: _sendTransaction,
-              ),
+                  // Send Button
+                  SendButton(
+                    selectedAsset: _selectedAsset,
+                    isValidAddress: _isValidAddress,
+                    amountController: _amountController,
+                    isLoading: _isLoading,
+                    isEstimatingGas: _isEstimatingGas,
+                    estimatedGasFee: _estimatedGasFee,
+                    onPressed: _sendTransaction,
+                  ),
 
-              // Note about gas fees
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color:
-                      isDarkMode ? const Color(0xFF252543) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
-                      size: 20,
+                  // Note about gas fees
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? const Color(0xFF252543)
+                          : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Transaction requires ETH for gas fees regardless of which asset you send.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
                           color: isDarkMode ? Colors.white70 : Colors.black54,
+                          size: 20,
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Transaction requires ETH for gas fees regardless of which asset you send.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

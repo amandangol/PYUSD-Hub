@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../../common/widgets/pyusd_components.dart';
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -28,22 +29,17 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return PyusdTextField(
       controller: controller,
-      decoration: InputDecoration(
-        labelText: labelText,
-        hintText: hintText,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        suffixIcon: suffixIcon,
-        prefixIcon: prefixIcon,
-        suffixText: suffixText,
-      ),
+      labelText: labelText,
+      hintText: hintText,
       validator: validator,
       onChanged: onChanged,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
+      suffixIcon: suffixIcon,
+      prefixIcon: prefixIcon,
+      suffixText: suffixText,
     );
   }
 }
@@ -64,16 +60,16 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        minimumSize: Size(width ?? double.infinity, 50),
-        backgroundColor: color ?? Theme.of(context).primaryColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+    return SizedBox(
+      width: width ?? double.infinity,
+      height: 50,
+      child: PyusdButton(
+        onPressed: onPressed,
+        text: child is Text ? (child as Text).data ?? '' : '',
+        backgroundColor: color,
+        borderRadius: 10,
+        icon: child is Row ? (child as Row).children.first : null,
       ),
-      child: child,
     );
   }
 }
