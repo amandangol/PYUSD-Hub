@@ -240,4 +240,66 @@ class TransactionDetailModel extends TransactionModel {
       transactionTrace: transactionTrace ?? this.transactionTrace,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'hash': hash,
+      'timestamp': timestamp.toIso8601String(),
+      'from': from,
+      'to': to,
+      'amount': amount,
+      'gasUsed': gasUsed,
+      'gasLimit': gasLimit,
+      'gasPrice': gasPrice,
+      'status': status.toString(),
+      'direction': direction.toString(),
+      'confirmations': confirmations,
+      'network': network.toString(),
+      'blockNumber': blockNumber,
+      'nonce': nonce,
+      'blockHash': blockHash,
+      'isError': isError,
+      'errorMessage': errorMessage,
+      'tokenSymbol': tokenSymbol,
+      'tokenName': tokenName,
+      'tokenDecimals': tokenDecimals,
+      'tokenContractAddress': tokenContractAddress,
+      'data': data,
+      'traceData': traceData,
+    };
+  }
+
+  factory TransactionDetailModel.fromJson(Map<String, dynamic> json) {
+    return TransactionDetailModel(
+      hash: json['hash'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      from: json['from'] as String,
+      to: json['to'] as String,
+      amount: json['amount'] as double,
+      gasUsed: json['gasUsed'] as double,
+      gasLimit: json['gasLimit'] as double,
+      gasPrice: json['gasPrice'] as double,
+      status: TransactionStatus.values.firstWhere(
+        (e) => e.toString() == json['status'],
+      ),
+      direction: TransactionDirection.values.firstWhere(
+        (e) => e.toString() == json['direction'],
+      ),
+      confirmations: json['confirmations'] as int,
+      network: NetworkType.values.firstWhere(
+        (e) => e.toString() == json['network'],
+      ),
+      blockNumber: json['blockNumber'] as String,
+      nonce: json['nonce'] as int,
+      blockHash: json['blockHash'] as String,
+      isError: json['isError'] as bool,
+      errorMessage: json['errorMessage'] as String?,
+      tokenSymbol: json['tokenSymbol'] as String?,
+      tokenName: json['tokenName'] as String?,
+      tokenDecimals: json['tokenDecimals'] as int?,
+      tokenContractAddress: json['tokenContractAddress'] as String?,
+      data: json['data'] as String?,
+      traceData: json['traceData'] as Map<String, dynamic>?,
+    );
+  }
 }

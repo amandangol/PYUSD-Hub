@@ -5,29 +5,45 @@ import 'tabs/blocks_tab.dart';
 import 'tabs/gas_tab.dart';
 import 'tabs/overview_tab.dart';
 import 'tabs/transactions_tab.dart';
-import '../../network_activity/view/network_activity_screen.dart';
 
-class NetworkDashboardScreen extends StatefulWidget {
-  const NetworkDashboardScreen({super.key});
+class NetworkCongestionScreen extends StatefulWidget {
+  const NetworkCongestionScreen({super.key});
 
   @override
-  State<NetworkDashboardScreen> createState() => _NetworkDashboardScreenState();
+  State<NetworkCongestionScreen> createState() =>
+      _NetworkCongestionScreenState();
 }
 
-class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
+class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final List<bool> _loadedTabs = [false, false, false, false];
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Initialize tab controller with 4 tabs
     _tabController = TabController(length: 4, vsync: this);
 
-    // Fetch data when screen is first loaded
-    Future.microtask(() =>
-        Provider.of<NetworkCongestionProvider>(context, listen: false)
-            .initialize());
+    // Initialize provider and load first tab
+    Future.microtask(() async {
+      final provider =
+          Provider.of<NetworkCongestionProvider>(context, listen: false);
+      await provider.initialize();
+      setState(() => _isInitialLoading = false);
+      _loadTab(0);
+    });
+
+    // Listen for tab changes
+    _tabController.addListener(() {
+      _loadTab(_tabController.index);
+    });
+  }
+
+  void _loadTab(int index) {
+    if (!_loadedTabs[index]) {
+      setState(() => _loadedTabs[index] = true);
+    }
   }
 
   @override
@@ -49,33 +65,10 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
                 return const Icon(Icons.paid, size: 24);
               },
             ),
-            const SizedBox(
-              width: 8,
-            ),
-            const Text('PYUSD Network Activity'),
+            const SizedBox(width: 8),
+            const Text('ETH/PYUSD Network Activity'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.timeline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NetworkActivityScreen(),
-                ),
-              );
-            },
-            tooltip: 'View Network Activity Visualization',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              Provider.of<NetworkCongestionProvider>(context, listen: false)
-                  .refresh();
-            },
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -90,9 +83,16 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
       ),
       body: Consumer<NetworkCongestionProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
+          if (_isInitialLoading) {
             return const Center(
-              child: CircularProgressIndicator(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading network data...'),
+                ],
+              ),
             );
           }
 
@@ -104,19 +104,27 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen>
               controller: _tabController,
               children: [
                 // Overview Tab
-                OverviewTab(congestionData: provider.congestionData),
+                _loadedTabs[0]
+                    ? OverviewTab(congestionData: provider.congestionData)
+                    : const Center(child: CircularProgressIndicator()),
 
                 // Gas Tab
-                GasTab(congestionData: provider.congestionData),
+                _loadedTabs[1]
+                    ? GasTab(congestionData: provider.congestionData)
+                    : const Center(child: CircularProgressIndicator()),
 
                 // Blocks Tab
-                BlocksTab(provider: provider),
+                _loadedTabs[2]
+                    ? BlocksTab(provider: provider)
+                    : const Center(child: CircularProgressIndicator()),
 
                 // Transactions Tab
-                TransactionsTab(
-                  provider: provider,
-                  tabController: _tabController,
-                ),
+                _loadedTabs[3]
+                    ? TransactionsTab(
+                        provider: provider,
+                        tabController: _tabController,
+                      )
+                    : const Center(child: CircularProgressIndicator()),
               ],
             ),
           );

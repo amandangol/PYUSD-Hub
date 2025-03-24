@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../common/widgets/pyusd_components.dart';
+import '../../../../widgets/pyusd_components.dart';
 import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
+import '../../../../widgets/common/info_dialog.dart';
 import '../../provider/network_congestion_provider.dart';
 
 class BlocksTab extends StatelessWidget {
@@ -20,7 +21,7 @@ class BlocksTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Block Information Overview
-          _buildBlockInfoOverview(),
+          _buildBlockInfoOverview(context),
 
           const SizedBox(height: 16),
 
@@ -32,7 +33,7 @@ class BlocksTab extends StatelessWidget {
   }
 
   // Block Information Overview Card
-  Widget _buildBlockInfoOverview() {
+  Widget _buildBlockInfoOverview(BuildContext context) {
     // Get the latest block if available
     final latestBlock =
         provider.recentBlocks.isNotEmpty ? provider.recentBlocks[0] : null;
@@ -48,7 +49,9 @@ class BlocksTab extends StatelessWidget {
 
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -57,12 +60,25 @@ class BlocksTab extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Block Information',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Block Information',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.info_outline),
+                      onPressed: () => InfoDialog.show(
+                        context,
+                        title: 'Block Information',
+                        message:
+                            'Overview of the latest block on the Ethereum network, including block number, time, size, and gas usage statistics.',
+                      ),
+                    ),
+                  ],
                 ),
                 if (blockNumber > 0)
                   Container(
@@ -94,36 +110,44 @@ class BlocksTab extends StatelessWidget {
               mainAxisSpacing: 16,
               children: [
                 _buildBlockStatCard(
+                  context,
                   'Avg Block Time',
                   provider.congestionData.averageBlockTime > 0
                       ? '${provider.congestionData.averageBlockTime.toStringAsFixed(1)} sec'
                       : 'Loading...',
                   Icons.timer,
                   Colors.blue,
+                  'Average time between new blocks being added to the blockchain. Target is around 12-15 seconds.',
                 ),
                 _buildBlockStatCard(
+                  context,
                   'Blocks/Hour',
                   provider.congestionData.blocksPerHour > 0
                       ? '~${provider.congestionData.blocksPerHour}'
                       : 'Loading...',
                   Icons.av_timer,
                   Colors.green,
+                  'Estimated number of blocks being mined per hour on the Ethereum network.',
                 ),
                 _buildBlockStatCard(
+                  context,
                   'Avg Tx/Block',
                   provider.congestionData.averageTxPerBlock > 0
                       ? '${provider.congestionData.averageTxPerBlock}'
                       : 'Loading...',
                   Icons.sync_alt,
                   Colors.purple,
+                  'Average number of transactions included in each block. Higher numbers indicate increased network activity.',
                 ),
                 _buildBlockStatCard(
+                  context,
                   'Gas Limit',
                   provider.congestionData.gasLimit > 0
                       ? '${(provider.congestionData.gasLimit / 1000000).toStringAsFixed(1)}M'
                       : 'Loading...',
                   Icons.local_gas_station,
                   Colors.orange,
+                  'Maximum amount of gas that can be used in a single block. This is a network parameter that can be adjusted.',
                 ),
               ],
             ),
@@ -135,51 +159,70 @@ class BlocksTab extends StatelessWidget {
 
   // Block Statistics Card
   Widget _buildBlockStatCard(
+    BuildContext context,
     String title,
     String value,
     IconData icon,
     Color color,
+    String infoMessage,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: () => InfoDialog.show(
+        context,
+        title: title,
+        message: infoMessage,
       ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: color,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: color,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.info_outline,
+                        size: 12,
+                        color: Colors.grey,
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -188,7 +231,9 @@ class BlocksTab extends StatelessWidget {
   Widget _buildRecentBlocksSection({bool expandedView = false}) {
     return Card(
       elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

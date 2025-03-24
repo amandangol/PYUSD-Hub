@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../common/widgets/pyusd_components.dart';
+import '../../widgets/pyusd_components.dart';
 import '../authentication/provider/auth_provider.dart';
 import '../../providers/network_provider.dart';
 import '../../providers/wallet_provider.dart';
@@ -299,5 +299,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       message: "Swap Feature coming soon",
     );
+  }
+
+  String _formatAmount(TransactionModel tx) {
+    if (tx.tokenSymbol != null) {
+      // PYUSD has 6 decimals, display the amount as is since it's already converted
+      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
+    } else {
+      // ETH has 4 decimal places
+      return '${tx.amount.toStringAsFixed(4)} ETH';
+    }
   }
 }

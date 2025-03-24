@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
-import '../../../common/widgets/pyusd_components.dart';
+import '../../../widgets/pyusd_components.dart';
 import '../../../main.dart';
 import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';

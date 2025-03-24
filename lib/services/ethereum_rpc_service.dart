@@ -5,6 +5,7 @@ import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../providers/network_provider.dart';
 import '../screens/transactions/model/transaction_model.dart';
+import 'debug_trace_service.dart';
 
 class EthereumRpcService {
   static const String erc20TransferAbi =
@@ -23,6 +24,8 @@ class EthereumRpcService {
 
   // API key for Etherscan
   static const String _etherscanApiKey = 'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
+
+  final DebugTraceService _debugTraceService = DebugTraceService();
 
   // Get or create a cached Web3Client
   Web3Client? _getClient(String rpcUrl) {
@@ -350,12 +353,16 @@ class EthereumRpcService {
     String userAddress,
   ) async {
     try {
-      // First get basic transaction information
-      final txResponse = await _makeRpcCall(
-        rpcUrl,
-        'eth_getTransactionByHash',
-        [txHash],
-      );
+      // Make parallel RPC calls for transaction, receipt, and current block number
+      final futures = await Future.wait([
+        _makeRpcCall(rpcUrl, 'eth_getTransactionByHash', [txHash]),
+        _makeRpcCall(rpcUrl, 'eth_getTransactionReceipt', [txHash]),
+        _makeRpcCall(rpcUrl, 'eth_blockNumber', []),
+      ]);
+
+      final txResponse = futures[0];
+      final receiptResponse = futures[1];
+      final currentBlockResponse = futures[2];
 
       // Check if txResponse or txResponse['result'] is null
       if (txResponse['result'] == null) {
@@ -368,13 +375,6 @@ class EthereumRpcService {
         print('Transaction data is null or empty: $txHash');
         return null;
       }
-
-      // Get transaction receipt for status and gas used
-      final receiptResponse = await _makeRpcCall(
-        rpcUrl,
-        'eth_getTransactionReceipt',
-        [txHash],
-      );
 
       final receiptData = receiptResponse['result'] != null
           ? receiptResponse['result'] as Map<String, dynamic>?
@@ -412,61 +412,16 @@ class EthereumRpcService {
           blockHash: 'Pending',
           isError: false,
           data: txData['input'],
+          tokenSymbol: null,
+          traceDataUnavailable: true,
         );
       }
 
-      // Get block for timestamp
-      final blockResponse = await _makeRpcCall(
-        rpcUrl,
-        'eth_getBlockByHash',
-        [receiptData['blockHash'], false],
-      );
+      // Get block data in parallel with token details if needed
+      final blockFuture = _makeRpcCall(
+          rpcUrl, 'eth_getBlockByHash', [receiptData['blockHash'], false]);
 
-      // Check if blockResponse or blockResponse['result] is null
-      if (blockResponse['result'] == null) {
-        print('Block data not found: ${receiptData['blockHash']}');
-        // Return transaction with estimated timestamp since we couldn't get the block
-        return TransactionDetailModel(
-          hash: txHash,
-          timestamp: DateTime.now(), // Use current time as fallback
-          from: txData['from'] ?? '',
-          to: txData['to'] ?? '',
-          amount: txData['value'] != null
-              ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
-              : 0.0,
-          gasUsed: receiptData['gasUsed'] != null
-              ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
-              : 0.0,
-          gasLimit: txData['gas'] != null
-              ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
-              : 0.0,
-          gasPrice: txData['gasPrice'] != null
-              ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
-              : 0.0,
-          status: receiptData['status'] == '0x1'
-              ? TransactionStatus.confirmed
-              : TransactionStatus.failed,
-          direction: _compareAddresses(txData['from'], userAddress)
-              ? TransactionDirection.outgoing
-              : TransactionDirection.incoming,
-          confirmations: 0, // Can't calculate without block data
-          network: networkType,
-          blockNumber: receiptData['blockNumber'] != null
-              ? FormatterUtils.parseBigInt(receiptData['blockNumber'])
-                  .toString()
-              : '0',
-          nonce: txData['nonce'] != null
-              ? int.parse(txData['nonce'].substring(2), radix: 16)
-              : 0,
-          blockHash: receiptData['blockHash'] ?? '',
-          isError: receiptData['status'] != '0x1',
-          data: txData['input'],
-        );
-      }
-
-      final blockData = blockResponse['result'] as Map<String, dynamic>;
-
-      // Check if it's a token transfer
+      // Check if it's a token transfer early to optimize parallel fetching
       bool isTokenTransfer = txData['input'] != null &&
           txData['input'].toString().startsWith('0xa9059cbb');
 
@@ -477,11 +432,28 @@ class EthereumRpcService {
       int? tokenDecimals;
       String? tokenContractAddress;
 
+      // Start token details fetch in parallel if needed
+      Future<Map<String, dynamic>>? tokenDetailsFuture;
       if (isTokenTransfer) {
-        // Get token details
+        tokenContractAddress = toAddress;
+        tokenDetailsFuture = getTokenDetails(rpcUrl, toAddress);
+      }
+
+      // Wait for block data
+      final blockResponse = await blockFuture;
+      final blockData = blockResponse['result'] as Map<String, dynamic>?;
+
+      // Calculate confirmations
+      final currentBlock =
+          FormatterUtils.parseBigInt(currentBlockResponse['result']);
+      final txBlockNumber =
+          FormatterUtils.parseBigInt(receiptData['blockNumber']);
+      final confirmations = (currentBlock - txBlockNumber).toInt();
+
+      // Get token details if needed
+      if (isTokenTransfer && tokenDetailsFuture != null) {
         try {
-          tokenContractAddress = toAddress;
-          final tokenDetails = await getTokenDetails(rpcUrl, toAddress);
+          final tokenDetails = await tokenDetailsFuture;
           tokenName = tokenDetails['name'];
           tokenSymbol = tokenDetails['symbol'];
           tokenDecimals = tokenDetails['decimals'];
@@ -495,7 +467,7 @@ class EthereumRpcService {
         } catch (e) {
           print('Error getting token details: $e');
         }
-      } else {
+      } else if (!isTokenTransfer) {
         // Regular ETH transfer
         amount = txData['value'] != null
             ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
@@ -506,12 +478,6 @@ class EthereumRpcService {
       final status = receiptData['status'] == '0x1'
           ? TransactionStatus.confirmed
           : TransactionStatus.failed;
-
-      // Calculate confirmations
-      final txBlockNumber =
-          FormatterUtils.parseBigInt(receiptData['blockNumber']);
-      final confirmations =
-          await _calculateConfirmations(rpcUrl, txBlockNumber);
 
       // Determine basic error status for failed transactions
       String? errorMessage;
@@ -531,10 +497,22 @@ class EthereumRpcService {
         }
       }
 
+      // Try to get trace data, but don't fail if unavailable
+      Map<String, dynamic>? traceData;
+      try {
+        traceData = await _debugTraceService.traceTransaction(rpcUrl, txHash);
+      } catch (e) {
+        print('Trace data unavailable: $e');
+        // Continue without trace data
+      }
+
       return TransactionDetailModel(
         hash: txHash,
-        timestamp: DateTime.fromMillisecondsSinceEpoch(
-            int.parse(blockData['timestamp'].substring(2), radix: 16) * 1000),
+        timestamp: blockData != null
+            ? DateTime.fromMillisecondsSinceEpoch(
+                int.parse(blockData['timestamp'].substring(2), radix: 16) *
+                    1000)
+            : DateTime.now(),
         from: txData['from'] ?? '',
         to: toAddress,
         amount: amount,
@@ -552,7 +530,7 @@ class EthereumRpcService {
             ? TransactionDirection.outgoing
             : TransactionDirection.incoming,
         confirmations: confirmations,
-        tokenSymbol: tokenSymbol,
+        tokenSymbol: isTokenTransfer ? tokenSymbol : null,
         tokenName: tokenName,
         tokenDecimals: tokenDecimals,
         tokenContractAddress: tokenContractAddress,
@@ -567,10 +545,11 @@ class EthereumRpcService {
         isError: status == TransactionStatus.failed,
         errorMessage: errorMessage,
         data: txData['input'],
+        traceData: traceData,
+        traceDataUnavailable: traceData == null,
       );
     } catch (e) {
       print('Exception in getTransactionDetails: $e');
-      // Return null instead of throwing an exception
       return null;
     }
   }

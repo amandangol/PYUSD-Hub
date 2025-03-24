@@ -1,14 +1,22 @@
+class GasPricePoint {
+  final double price;
+  final int timestamp;
+
+  GasPricePoint({
+    required this.price,
+    required this.timestamp,
+  });
+}
+
 class NetworkCongestionData {
+  // General Network Metrics
   final double currentGasPrice;
   final double averageGasPrice;
   final int pendingTransactions;
   final double gasUsagePercentage;
   final List<double> historicalGasPrices;
-  final int pyusdTransactionCount;
   final double networkLatency;
   final double blockTime;
-  final int confirmedPyusdTxCount;
-  final int pendingPyusdTxCount;
   final int lastBlockNumber;
   final int lastBlockTimestamp;
   final int pendingQueueSize;
@@ -19,26 +27,51 @@ class NetworkCongestionData {
   final int averageTxPerBlock;
   final int gasLimit;
 
+  // PYUSD-Specific Metrics
+  final int pyusdTransactionCount;
+  final int confirmedPyusdTxCount;
+  final int pendingPyusdTxCount;
+  final int pyusdPendingQueueSize;
+  final double averagePyusdBlockSize;
+  final double pyusdGasUsagePercentage;
+  final double averagePyusdTransactionFee;
+  final double averagePyusdConfirmationTime;
+  final List<double> pyusdHistoricalGasPrices;
+
+  final List<GasPricePoint> gasPriceHistory;
+  final double currentGasPriceUSD;
+
   NetworkCongestionData({
-    required this.currentGasPrice,
-    required this.averageGasPrice,
-    required this.pendingTransactions,
-    required this.gasUsagePercentage,
-    required this.historicalGasPrices,
-    required this.pyusdTransactionCount,
-    required this.networkLatency,
-    required this.blockTime,
-    required this.confirmedPyusdTxCount,
-    required this.pendingPyusdTxCount,
-    required this.lastBlockNumber,
-    required this.lastBlockTimestamp,
-    required this.pendingQueueSize,
-    required this.averageBlockSize,
+    // General Network Metrics
+    this.currentGasPrice = 0,
+    this.averageGasPrice = 0,
+    this.pendingTransactions = 0,
+    this.gasUsagePercentage = 0,
+    this.historicalGasPrices = const [],
+    this.networkLatency = 0,
+    this.blockTime = 0,
+    this.lastBlockNumber = 0,
+    this.lastBlockTimestamp = 0,
+    this.pendingQueueSize = 0,
+    this.averageBlockSize = 0,
     required this.lastRefreshed,
-    required this.averageBlockTime,
-    required this.blocksPerHour,
-    required this.averageTxPerBlock,
-    required this.gasLimit,
+    this.averageBlockTime = 0,
+    this.blocksPerHour = 0,
+    this.averageTxPerBlock = 0,
+    this.gasLimit = 0,
+
+    // PYUSD-Specific Metrics
+    this.pyusdTransactionCount = 0,
+    this.confirmedPyusdTxCount = 0,
+    this.pendingPyusdTxCount = 0,
+    this.pyusdPendingQueueSize = 0,
+    this.averagePyusdBlockSize = 0,
+    this.pyusdGasUsagePercentage = 0,
+    this.averagePyusdTransactionFee = 0,
+    this.averagePyusdConfirmationTime = 0,
+    this.pyusdHistoricalGasPrices = const [],
+    this.gasPriceHistory = const [],
+    this.currentGasPriceUSD = 0.0,
   });
 
   NetworkCongestionData copyWith({
@@ -47,11 +80,8 @@ class NetworkCongestionData {
     int? pendingTransactions,
     double? gasUsagePercentage,
     List<double>? historicalGasPrices,
-    int? pyusdTransactionCount,
     double? networkLatency,
     double? blockTime,
-    int? confirmedPyusdTxCount,
-    int? pendingPyusdTxCount,
     int? lastBlockNumber,
     int? lastBlockTimestamp,
     int? pendingQueueSize,
@@ -61,6 +91,17 @@ class NetworkCongestionData {
     int? blocksPerHour,
     int? averageTxPerBlock,
     int? gasLimit,
+    int? pyusdTransactionCount,
+    int? confirmedPyusdTxCount,
+    int? pendingPyusdTxCount,
+    int? pyusdPendingQueueSize,
+    double? averagePyusdBlockSize,
+    double? pyusdGasUsagePercentage,
+    double? averagePyusdTransactionFee,
+    double? averagePyusdConfirmationTime,
+    List<double>? pyusdHistoricalGasPrices,
+    List<GasPricePoint>? gasPriceHistory,
+    double? currentGasPriceUSD,
   }) {
     return NetworkCongestionData(
       currentGasPrice: currentGasPrice ?? this.currentGasPrice,
@@ -68,13 +109,8 @@ class NetworkCongestionData {
       pendingTransactions: pendingTransactions ?? this.pendingTransactions,
       gasUsagePercentage: gasUsagePercentage ?? this.gasUsagePercentage,
       historicalGasPrices: historicalGasPrices ?? this.historicalGasPrices,
-      pyusdTransactionCount:
-          pyusdTransactionCount ?? this.pyusdTransactionCount,
       networkLatency: networkLatency ?? this.networkLatency,
       blockTime: blockTime ?? this.blockTime,
-      confirmedPyusdTxCount:
-          confirmedPyusdTxCount ?? this.confirmedPyusdTxCount,
-      pendingPyusdTxCount: pendingPyusdTxCount ?? this.pendingPyusdTxCount,
       lastBlockNumber: lastBlockNumber ?? this.lastBlockNumber,
       lastBlockTimestamp: lastBlockTimestamp ?? this.lastBlockTimestamp,
       pendingQueueSize: pendingQueueSize ?? this.pendingQueueSize,
@@ -84,6 +120,25 @@ class NetworkCongestionData {
       blocksPerHour: blocksPerHour ?? this.blocksPerHour,
       averageTxPerBlock: averageTxPerBlock ?? this.averageTxPerBlock,
       gasLimit: gasLimit ?? this.gasLimit,
+      pyusdTransactionCount:
+          pyusdTransactionCount ?? this.pyusdTransactionCount,
+      confirmedPyusdTxCount:
+          confirmedPyusdTxCount ?? this.confirmedPyusdTxCount,
+      pendingPyusdTxCount: pendingPyusdTxCount ?? this.pendingPyusdTxCount,
+      pyusdPendingQueueSize:
+          pyusdPendingQueueSize ?? this.pyusdPendingQueueSize,
+      averagePyusdBlockSize:
+          averagePyusdBlockSize ?? this.averagePyusdBlockSize,
+      pyusdGasUsagePercentage:
+          pyusdGasUsagePercentage ?? this.pyusdGasUsagePercentage,
+      averagePyusdTransactionFee:
+          averagePyusdTransactionFee ?? this.averagePyusdTransactionFee,
+      averagePyusdConfirmationTime:
+          averagePyusdConfirmationTime ?? this.averagePyusdConfirmationTime,
+      pyusdHistoricalGasPrices:
+          pyusdHistoricalGasPrices ?? this.pyusdHistoricalGasPrices,
+      gasPriceHistory: gasPriceHistory ?? this.gasPriceHistory,
+      currentGasPriceUSD: currentGasPriceUSD ?? this.currentGasPriceUSD,
     );
   }
 

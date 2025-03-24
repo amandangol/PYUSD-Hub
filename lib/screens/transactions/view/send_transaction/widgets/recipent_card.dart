@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import 'package:web3dart/web3dart.dart';
-import '../../../../../common/widgets/pyusd_components.dart';
 import 'custom_textfield.dart';
 
 class RecipientCard extends StatelessWidget {

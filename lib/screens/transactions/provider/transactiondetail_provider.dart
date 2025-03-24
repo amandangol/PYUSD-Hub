@@ -15,6 +15,12 @@ class TransactionDetailProvider
   // Cache expiration time (10 minutes)
   static const Duration _cacheExpiration = Duration(minutes: 10);
 
+  // Cache for ongoing operations to prevent duplicate requests
+  final Map<String, Future<TransactionDetailModel?>> _ongoingOperations = {};
+
+  // Batch size for parallel processing
+  static const int _batchSize = 5;
+
   // Get transaction details (from cache or fetch new)
   Future<TransactionDetailModel?> getTransactionDetails({
     required String txHash,
@@ -25,6 +31,11 @@ class TransactionDetailProvider
   }) async {
     if (disposed) return null;
 
+    // Check if there's an ongoing operation for this transaction
+    if (_ongoingOperations.containsKey(txHash)) {
+      return _ongoingOperations[txHash];
+    }
+
     // Check cache first if not forcing refresh
     if (!forceRefresh) {
       final cachedTransaction =
@@ -32,12 +43,7 @@ class TransactionDetailProvider
       if (cachedTransaction != null) return cachedTransaction;
     }
 
-    // If there's already an ongoing fetch for this transaction, return that instead of starting a new one
-    if (isOperationOngoing(txHash)) {
-      return getOngoingOperation(txHash);
-    }
-
-    // Create the future and store it in ongoing fetches
+    // Create the future and store it in ongoing operations
     final fetchFuture = _fetchTransactionDetails(
       txHash: txHash,
       rpcUrl: rpcUrl,
@@ -45,13 +51,17 @@ class TransactionDetailProvider
       currentAddress: currentAddress,
     );
 
-    addOngoingOperation(txHash, fetchFuture);
+    _ongoingOperations[txHash] = fetchFuture;
 
     try {
-      return await fetchFuture;
+      final result = await fetchFuture;
+      if (result != null && !disposed) {
+        cacheItem(txHash, result);
+      }
+      return result;
     } finally {
       if (!disposed) {
-        removeOngoingOperation(txHash);
+        _ongoingOperations.remove(txHash);
       }
     }
   }
@@ -75,11 +85,6 @@ class TransactionDetailProvider
         networkType,
         currentAddress,
       );
-
-      // Cache the result if successful
-      if (details != null && !disposed) {
-        cacheItem(txHash, details);
-      }
 
       return details;
     } catch (e) {
@@ -118,9 +123,9 @@ class TransactionDetailProvider
         }
       }
 
-      if (isOperationOngoing(hash)) {
-        // Add to hashes to wait for from ongoing fetches
-        final future = getOngoingOperation(hash)!;
+      if (_ongoingOperations.containsKey(hash)) {
+        // Add to results if the operation completes successfully
+        final future = _ongoingOperations[hash]!;
         future.then((result) {
           if (result != null && !disposed) results.add(result);
         });
@@ -130,78 +135,57 @@ class TransactionDetailProvider
     }
 
     // If nothing to fetch, return immediately
-    if (hashesToFetch.isEmpty && !isOperationOngoing(hashesToFetch.first)) {
+    if (hashesToFetch.isEmpty) {
       return results;
     }
 
     setLoadingState(this, true);
 
     try {
-      if (hashesToFetch.isNotEmpty) {
-        // Create batch futures in smaller chunks to avoid overloading the network
-        const batchSize = 10;
-        for (int i = 0; i < hashesToFetch.length; i += batchSize) {
-          if (disposed) break;
+      // Process hashes in smaller batches to avoid overloading the network
+      for (int i = 0; i < hashesToFetch.length; i += _batchSize) {
+        if (disposed) break;
 
-          final end = (i + batchSize < hashesToFetch.length)
-              ? i + batchSize
-              : hashesToFetch.length;
-          final batch = hashesToFetch.sublist(i, end);
+        final end = (i + _batchSize < hashesToFetch.length)
+            ? i + _batchSize
+            : hashesToFetch.length;
+        final batch = hashesToFetch.sublist(i, end);
 
-          // Process batch
-          final futures = batch.map((hash) {
-            final future = _rpcService
-                .getTransactionDetails(
-                    rpcUrl, hash, networkType, currentAddress)
-                .then((details) {
-              if (details != null && !disposed) {
-                cacheItem(hash, details);
-                return details;
-              }
-              return null;
-            }).catchError((e) {
-              print('Error fetching transaction $hash: $e');
-              return null;
-            });
-
-            addOngoingOperation(hash, future);
-            return future;
-          }).toList();
-
-          // Wait for this batch to complete
-          final batchResults = await Future.wait(futures);
-
-          if (disposed) break;
-
-          // Clean up ongoing fetches and add results
-          for (int j = 0; j < batch.length; j++) {
-            removeOngoingOperation(batch[j]);
-            if (batchResults[j] != null) {
-              results.add(batchResults[j]!);
+        // Process batch
+        final futures = batch.map((hash) {
+          final future = _rpcService
+              .getTransactionDetails(rpcUrl, hash, networkType, currentAddress)
+              .then((details) {
+            if (details != null && !disposed) {
+              cacheItem(hash, details);
+              return details;
             }
+            return null;
+          }).catchError((e) {
+            print('Error fetching transaction $hash: $e');
+            return null;
+          });
+
+          _ongoingOperations[hash] = future;
+          return future;
+        }).toList();
+
+        // Wait for this batch to complete
+        final batchResults = await Future.wait(futures);
+
+        if (disposed) break;
+
+        // Clean up ongoing operations and add results
+        for (int j = 0; j < batch.length; j++) {
+          _ongoingOperations.remove(batch[j]);
+          if (batchResults[j] != null) {
+            results.add(batchResults[j]!);
           }
         }
-      }
 
-      if (disposed) return results;
-
-      // Wait for any remaining ongoing fetches that we added to our tracking
-      final remainingFutures = <Future<TransactionDetailModel?>>[];
-      for (final hash in hashesToFetch) {
-        if (isOperationOngoing(hash)) {
-          final future = getOngoingOperation(hash);
-          if (future != null) {
-            remainingFutures.add(future);
-          }
-        }
-      }
-
-      if (remainingFutures.isNotEmpty) {
-        final remainingResults = await Future.wait(remainingFutures);
-        for (final result in remainingResults) {
-          if (result != null) {
-            results.add(result);
-          }
+        // Add a small delay between batches to avoid rate limiting
+        if (i + _batchSize < hashesToFetch.length) {
+          await Future.delayed(const Duration(milliseconds: 100));
         }
       }
 

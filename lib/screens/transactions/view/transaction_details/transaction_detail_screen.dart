@@ -1,8 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../common/widgets/pyusd_components.dart';
+import '../../../../widgets/pyusd_components.dart';
 import '../../../../providers/network_provider.dart';
 import '../../model/transaction_model.dart';
 import '../../provider/transactiondetail_provider.dart';
@@ -10,7 +12,7 @@ import '../../../../services/market_service.dart';
 import 'widgets/gasdetails_widget.dart';
 import 'widgets/interrnal_transaction_widget.dart';
 import 'widgets/marketanalysis_widget.dart';
-import 'widgets/statuscard_wudget.dart';
+import 'widgets/statuscard_widget.dart';
 import 'widgets/transaction_details_widget.dart';
 import 'widgets/transaction_trace_widget.dart';
 
@@ -91,16 +93,23 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       // First check if the data is already in the cache
       if (_transactionDetailProvider
           .isTransactionCached(widget.transaction.hash)) {
-        await _fetchTransactionDetails();
-      } else {
-        // If not cached, fetch it
-        await _fetchTransactionDetails();
+        final cachedData = _transactionDetailProvider
+            .getCachedTransactionDetails(widget.transaction.hash);
+        if (cachedData != null) {
+          setState(() {
+            _detailedTransaction = cachedData;
+            _isInitializing = false;
+          });
+        }
       }
 
-      // After fetching transaction details, fetch trace data and internal transactions
-      if (_detailedTransaction != null) {
-        await _fetchMarketData();
-      }
+      // Start fetching fresh data in the background
+      _fetchTransactionDetails().then((_) {
+        // After fetching transaction details, fetch market data if needed
+        if (_detailedTransaction != null && mounted) {
+          _fetchMarketData();
+        }
+      });
     } catch (e) {
       if (!mounted) return;
 
@@ -129,10 +138,16 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       }
 
       // Fetch current market prices
-      _marketPrices = await _marketService.getCurrentPrices(tokensToFetch);
+      final prices = await _marketService.getCurrentPrices(tokensToFetch);
+
+      if (mounted) {
+        setState(() {
+          _marketPrices = prices;
+          _isLoadingMarketData = false;
+        });
+      }
     } catch (e) {
       print('Error fetching market data: $e');
-    } finally {
       if (mounted) {
         setState(() {
           _isLoadingMarketData = false;
@@ -155,6 +170,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
       setState(() {
         _detailedTransaction = details;
+        _traceData = details?.traceData;
         _isInitializing = false;
         _isRefreshing = false;
       });
@@ -418,16 +434,100 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                           ),
 
                         // Transaction trace card (if available)
-                        if (_traceData != null)
+                        if (_detailedTransaction?.traceData != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
                             child: TransactionTraceWidget(
-                              traceData: _traceData!,
+                              transaction: _detailedTransaction!,
+                              isDarkMode: widget.isDarkMode,
                               cardColor: cardColor,
                               textColor: textColor,
                               subtitleColor: subtitleColor,
                               primaryColor: primaryColor,
-                              onShowRawTraceData: _showRawTraceData,
+                              onShowRawTraceData: (traceData) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Raw Trace Data'),
+                                    content: SingleChildScrollView(
+                                      child: SelectableText(
+                                        JsonEncoder.withIndent('  ')
+                                            .convert(traceData),
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(
+                                              text: JsonEncoder.withIndent('  ')
+                                                  .convert(traceData),
+                                            ),
+                                          );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content:
+                                                  Text('Copied to clipboard'),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Copy'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                        child: const Text('Close'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        else if (_detailedTransaction?.traceDataUnavailable ==
+                            true)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Card(
+                              color: cardColor,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          color: subtitleColor,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Transaction Trace',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                color: textColor,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Trace data is not available for this transaction. This is normal for older transactions.',
+                                      style: TextStyle(
+                                        color: textColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                       ],
@@ -476,39 +576,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
             ),
           ),
       ],
-    );
-  }
-
-  void _showRawTraceData() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Raw Trace Data'),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            _traceData.toString(),
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 12,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: _traceData.toString()));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Copied to clipboard')),
-              );
-            },
-            child: const Text('Copy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
     );
   }
 

@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
 import '../../../../utils/snackbar_utils.dart';
-import '../../../../common/widgets/pyusd_components.dart';
 import '../../provider/transaction_provider.dart';
 import 'widgets/amount_input_card.dart';
 import 'widgets/balance_display_card.dart';
@@ -17,6 +16,7 @@ class SendTransactionScreen extends StatefulWidget {
   const SendTransactionScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _SendTransactionScreenState createState() => _SendTransactionScreenState();
 }
 
@@ -280,52 +280,40 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     final address = _addressController.text.trim();
     final amount = double.parse(_amountController.text);
 
-    // Check balance before proceeding
-    if (_selectedAsset == 'PYUSD' && amount > walletProvider.tokenBalance) {
-      SnackbarUtil.showSnackbar(
-        context: context,
-        message: 'Insufficient PYUSD balance',
-        isError: true,
-      );
-      return;
-    } else if (_selectedAsset == 'ETH' && amount > walletProvider.ethBalance) {
-      SnackbarUtil.showSnackbar(
-        context: context,
-        message: 'Insufficient ETH balance',
-        isError: true,
-      );
-      return;
-    }
-
-    // For ETH transactions, make sure they have enough to cover amount + gas
-    if (_selectedAsset == 'ETH' &&
-        (amount + _estimatedGasFee) > walletProvider.ethBalance) {
-      SnackbarUtil.showSnackbar(
-        context: context,
-        message:
-            'Insufficient ETH to cover both transaction amount and gas fees',
-        isError: true,
-      );
-      return;
-    }
-
-    // Check if there's enough ETH for gas when sending PYUSD
-    if (_selectedAsset == 'PYUSD' &&
-        _estimatedGasFee > walletProvider.ethBalance) {
-      SnackbarUtil.showSnackbar(
-        context: context,
-        message: 'Insufficient ETH for gas fees',
-        isError: true,
-      );
-      return;
+    // Balance checks
+    if (_selectedAsset == 'PYUSD') {
+      if (amount > walletProvider.tokenBalance) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Insufficient PYUSD balance',
+          isError: true,
+        );
+        return;
+      }
+      // Check if there's enough ETH for gas
+      if (walletProvider.ethBalance < _estimatedGasFee) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Insufficient ETH for gas fees',
+          isError: true,
+        );
+        return;
+      }
+    } else if (_selectedAsset == 'ETH') {
+      if (amount + _estimatedGasFee > walletProvider.ethBalance) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Insufficient ETH balance (including gas fees)',
+          isError: true,
+        );
+        return;
+      }
     }
 
     // Confirm transaction details
     final confirmed = await _showConfirmationDialog(context, address, amount);
-
     if (confirmed != true || !_mounted) return;
 
-    // Show loading indicator
     _safeSetState(() {
       _isLoading = true;
     });
@@ -333,7 +321,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     try {
       String txHash;
 
-      // Execute the transaction and get the hash
+      // Execute the transaction
       if (_selectedAsset == 'PYUSD') {
         txHash = await transactionProvider.sendPYUSD(
           address,
@@ -350,35 +338,28 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
-      // Show a success message
       if (_mounted && context.mounted) {
         SnackbarUtil.showSnackbar(
           context: context,
           message: 'Transaction submitted: ${txHash.substring(0, 10)}...',
           isError: false,
         );
-      }
 
-      // Navigate back to the main screen and refresh data
-      if (_mounted && context.mounted) {
-        // First refresh the transaction data
-        await transactionProvider.fetchTransactions(forceRefresh: true);
-
-        // Then navigate back to main screen
+        // Navigate back after successful transaction
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/main', (route) => false);
       }
     } catch (e) {
-      // Show error message
       if (_mounted && context.mounted) {
+        String errorMsg = e.toString();
         SnackbarUtil.showSnackbar(
           context: context,
-          message: 'Transaction failed: ${e.toString().substring(0, 50)}',
+          message:
+              'Transaction failed: ${errorMsg.length > 50 ? '${errorMsg.substring(0, 50)}...' : errorMsg}',
           isError: true,
         );
       }
     } finally {
-      // Reset loading state
       if (_mounted) {
         _safeSetState(() {
           _isLoading = false;

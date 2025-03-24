@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../common/widgets/pyusd_components.dart';
+import '../../../widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import 'create_wallet_screen.dart';
 import 'import_wallet_screen.dart';

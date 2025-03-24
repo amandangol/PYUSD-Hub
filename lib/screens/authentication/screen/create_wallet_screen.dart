@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../common/widgets/pyusd_components.dart';
+import '../../../widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import 'mnemonic_screen.dart';
 import '../widget/pin_input_widget.dart.dart';

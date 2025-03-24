@@ -11,12 +11,9 @@ import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/authentication/screen/splash_screen.dart';
 import 'screens/authentication/service/wallet_service.dart';
 import 'screens/authentication/widget/activity_aware_widget.dart';
-import 'screens/pyusd_data_provider.dart';
-import 'screens/pyusd_insights.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
-import 'screens/network_activity/provider/network_activity_provider.dart';
 
 // Import all screens
 import 'screens/homescreen/home_screen.dart';
@@ -24,6 +21,7 @@ import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
 import 'screens/transactions/provider/transactiondetail_provider.dart';
+import 'services/market_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -105,14 +103,11 @@ class MyApp extends StatelessWidget {
             detailProvider: context.read<TransactionDetailProvider>(),
           ),
         ),
-        ChangeNotifierProvider(
+        Provider<MarketService>(
+          create: (_) => MarketService(),
+        ),
+        ChangeNotifierProvider<NetworkCongestionProvider>(
           create: (context) => NetworkCongestionProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => NetworkActivityProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => PyusdDashboardProvider(),
         ),
         Provider<WalletService>(
           create: (_) => WalletService(),
@@ -164,8 +159,8 @@ class _MainAppState extends State<MainApp> {
     // Define all screens
     final List<Widget> screens = [
       const HomeScreen(),
-      const NetworkDashboardScreen(),
-      const PyusdDashboard(),
+      const NetworkCongestionScreen(),
+      const NetworkCongestionScreen(),
       const SettingsScreen(),
     ];
 

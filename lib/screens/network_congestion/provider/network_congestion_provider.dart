@@ -125,22 +125,19 @@ class NetworkCongestionProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Fetch critical data in parallel
+      // First fetch only critical data for initial display
       await Future.wait([
-        _fetchNetworkStats(),
-        _fetchInitialBlocks(),
-        _fetchPyusdTransactionActivity(),
-        _fetchPendingQueueDetails(),
+        _fetchGasPrice(), // Only gas price for initial display
+        _fetchLatestBlock(), // Latest block info
+        _fetchPendingTransactions(), // Pending transactions count
       ]);
 
       // Connect WebSocket after initial data is loaded
       _connectWebSocket();
 
-      // Setup periodic updates at a more reasonable interval (30 seconds)
-      _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      // Setup periodic updates with longer intervals
+      _updateTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
         await _fetchNetworkStats();
-
-        // Add automatic block refresh here
         await _fetchLatestBlocksUpdate();
 
         // Update last refreshed timestamp
@@ -148,17 +145,22 @@ class NetworkCongestionProvider with ChangeNotifier {
           lastRefreshed: DateTime.now(),
         );
 
-        // Fetch pending queue details every 60s
-        if (timer.tick % 2 == 0) {
+        // Fetch pending queue details every 45s
+        if (timer.tick % 3 == 0) {
           await _fetchPendingQueueDetails();
         }
 
         // Periodically update PYUSD transaction data
         if (timer.tick % 4 == 0) {
-          // Every 2 minutes (30s * 4)
+          // Every minute (15s * 4)
           await _fetchPyusdTransactionActivity();
         }
       });
+
+      // Start fetching additional data in the background
+      _fetchInitialBlocks();
+      _fetchPyusdTransactionActivity();
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -200,10 +202,10 @@ class NetworkCongestionProvider with ChangeNotifier {
           oldestBlockToFetch = newestBlockInCache + 1;
         }
 
-        // Don't fetch more than 10 blocks at once to avoid overloading
+        // Don't fetch more than 100 blocks at once to avoid overloading
         int blocksAvailable = latestBlockNumber - oldestBlockToFetch + 1;
         int numBlocksToFetch =
-            blocksAvailable > 0 ? min(100, blocksAvailable) : 0;
+            blocksAvailable > 0 ? min(30, blocksAvailable) : 0;
 
         if (numBlocksToFetch > 0) {
           // Create a list of futures to fetch blocks in parallel
@@ -246,8 +248,8 @@ class NetworkCongestionProvider with ChangeNotifier {
             // Insert at the beginning to maintain newest-first order
             _recentBlocks.insert(0, block);
 
-            // Keep only the 10 most recent blocks
-            if (_recentBlocks.length > 15) {
+            // Keep only the 30 most recent blocks
+            if (_recentBlocks.length > 30) {
               _recentBlocks.removeLast();
             }
 
@@ -287,37 +289,65 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   Future<void> _fetchPendingQueueDetails() async {
     try {
-      // Get txpool content for more detailed analysis
       final txpoolContentResponse = await _makeRpcCall('txpool_content', []);
 
       if (txpoolContentResponse != null) {
-        // Calculate total pending queue size (includes both pending and queued transactions)
         int pendingCount = 0;
+        int pyusdPendingCount = 0;
+        double totalPyusdGasPrice = 0;
+        int pyusdTxCount = 0;
+
         if (txpoolContentResponse.containsKey('pending')) {
           final pendingMap =
               txpoolContentResponse['pending'] as Map<String, dynamic>;
           for (final address in pendingMap.keys) {
             final addressTxs = pendingMap[address] as Map<String, dynamic>;
             pendingCount += addressTxs.length;
+
+            // Count PYUSD transactions and calculate gas prices
+            for (var tx in addressTxs.values) {
+              if (tx['to']?.toString().toLowerCase() ==
+                  _pyusdContractAddress.toLowerCase()) {
+                pyusdPendingCount++;
+                if (tx['gasPrice'] != null) {
+                  totalPyusdGasPrice +=
+                      FormatterUtils.parseHexSafely(tx['gasPrice']) ?? 0;
+                  pyusdTxCount++;
+                }
+              }
+            }
           }
         }
 
         int queuedCount = 0;
+        int pyusdQueuedCount = 0;
         if (txpoolContentResponse.containsKey('queued')) {
           final queuedMap =
               txpoolContentResponse['queued'] as Map<String, dynamic>;
           for (final address in queuedMap.keys) {
             final addressTxs = queuedMap[address] as Map<String, dynamic>;
             queuedCount += addressTxs.length;
+
+            // Count PYUSD transactions
+            for (var tx in addressTxs.values) {
+              if (tx['to']?.toString().toLowerCase() ==
+                  _pyusdContractAddress.toLowerCase()) {
+                pyusdQueuedCount++;
+              }
+            }
           }
         }
 
-        // Update pending queue size
+        // Calculate average PYUSD transaction fee
+        double averagePyusdFee =
+            pyusdTxCount > 0 ? totalPyusdGasPrice / pyusdTxCount : 0;
+
+        // Update both total and PYUSD-specific queue sizes
         _congestionData = _congestionData.copyWith(
           pendingQueueSize: pendingCount + queuedCount,
+          pyusdPendingQueueSize: pyusdPendingCount + pyusdQueuedCount,
+          averagePyusdTransactionFee: averagePyusdFee,
         );
-
-        notifyListeners();
       }
     } catch (e) {
       print('Error fetching pending queue details: $e');
@@ -326,59 +356,96 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   Future<void> _calculateBlockStatistics() async {
     try {
-      // We need at least 10 blocks to calculate meaningful statistics
-      if (_recentBlocks.length < 2) {
-        return;
-      }
+      if (_recentBlocks.length < 2) return;
 
-      // Calculate average block time from recent blocks
-      double totalBlockTime = 0;
-      int blockCount = 0;
-      int totalTransactions = 0;
-      int latestGasLimit = 0;
+      // Create a copy of the list to avoid concurrent modification
+      final blocksCopy = List<Map<String, dynamic>>.from(_recentBlocks);
 
-      // Get latest gas limit
-      if (_recentBlocks.isNotEmpty &&
-          _recentBlocks[0].containsKey('gasLimit')) {
-        latestGasLimit =
-            FormatterUtils.parseHexSafely(_recentBlocks[0]['gasLimit']) ?? 0;
-      }
+      int totalSize = 0;
+      int pyusdSize = 0;
+      int totalTxs = 0;
+      int pyusdTxs = 0;
+      double totalPyusdGasUsed = 0;
+      double totalPyusdGasPrice = 0;
+      List<double> pyusdGasPrices = [];
 
-      // Calculate average block time and transaction count
-      for (int i = 0; i < _recentBlocks.length - 1; i++) {
+      // Calculate block times and statistics
+      List<double> blockTimes = [];
+      for (int i = 0; i < blocksCopy.length - 1; i++) {
         final currentTimestamp =
-            FormatterUtils.parseHexSafely(_recentBlocks[i]['timestamp']);
+            FormatterUtils.parseHexSafely(blocksCopy[i]['timestamp']);
         final previousTimestamp =
-            FormatterUtils.parseHexSafely(_recentBlocks[i + 1]['timestamp']);
+            FormatterUtils.parseHexSafely(blocksCopy[i + 1]['timestamp']);
 
         if (currentTimestamp != null && previousTimestamp != null) {
-          totalBlockTime += (currentTimestamp - previousTimestamp);
-          blockCount++;
-        }
-
-        // Count transactions in block
-        if (_recentBlocks[i].containsKey('transactions') &&
-            _recentBlocks[i]['transactions'] is List) {
-          totalTransactions +=
-              (_recentBlocks[i]['transactions'] as List).length;
+          final blockTime = currentTimestamp - previousTimestamp;
+          blockTimes.add(blockTime.toDouble());
         }
       }
 
-      // Calculate the statistics
-      double avgBlockTime = blockCount > 0 ? totalBlockTime / blockCount : 0;
-      int blocksPerHour = avgBlockTime > 0 ? (3600 / avgBlockTime).round() : 0;
-      int avgTxPerBlock =
-          blockCount > 0 ? (totalTransactions / blockCount).round() : 0;
+      // Calculate average block time
+      double averageBlockTime = blockTimes.isNotEmpty
+          ? blockTimes.reduce((a, b) => a + b) / blockTimes.length
+          : 0;
 
-      // Update the congestion data
-      _congestionData = _congestionData.copyWith(
-        averageBlockTime: avgBlockTime,
-        blocksPerHour: blocksPerHour,
-        averageTxPerBlock: avgTxPerBlock,
-        gasLimit: latestGasLimit,
-      );
+      // Calculate blocks per hour
+      double blocksPerHour = averageBlockTime > 0 ? 3600 / averageBlockTime : 0;
 
-      notifyListeners();
+      for (var block in blocksCopy) {
+        if (block.containsKey('transactions') &&
+            block['transactions'] is List) {
+          final txs = block['transactions'] as List;
+          totalTxs += txs.length;
+          totalSize += txs.length * 250; // Approximate size
+
+          // Calculate PYUSD-specific metrics
+          for (var tx in txs) {
+            if (tx['to']?.toString().toLowerCase() ==
+                _pyusdContractAddress.toLowerCase()) {
+              pyusdTxs++;
+              pyusdSize += 250; // Approximate size
+
+              // Get transaction receipt for gas metrics
+              final receipt = await _getTransactionReceipt(tx['hash']);
+              if (receipt != null) {
+                // Calculate gas used and price
+                final gasUsed =
+                    FormatterUtils.parseHexSafely(receipt['gasUsed']) ?? 0;
+                final gasPrice =
+                    FormatterUtils.parseHexSafely(tx['gasPrice']) ?? 0;
+                totalPyusdGasUsed += gasUsed;
+                totalPyusdGasPrice += gasPrice;
+                pyusdGasPrices.add(gasPrice / 1e9); // Convert to Gwei
+              }
+            }
+          }
+        }
+      }
+
+      if (blocksCopy.isNotEmpty) {
+        final avgBlockSize = totalSize / blocksCopy.length;
+        final avgPyusdBlockSize = pyusdSize / blocksCopy.length;
+        final avgPyusdGasUsed = pyusdTxs > 0 ? totalPyusdGasUsed / pyusdTxs : 0;
+        final avgPyusdGasPrice =
+            pyusdTxs > 0 ? totalPyusdGasPrice / pyusdTxs : 0;
+        final avgTxPerBlock = (totalTxs / blocksCopy.length).round();
+
+        // Get gas limit from the latest block
+        final gasLimit =
+            FormatterUtils.parseHexSafely(blocksCopy[0]['gasLimit']) ?? 0;
+
+        _congestionData = _congestionData.copyWith(
+          averageBlockSize: avgBlockSize,
+          averagePyusdBlockSize: avgPyusdBlockSize,
+          pyusdGasUsagePercentage: avgPyusdGasUsed.toDouble(),
+          averagePyusdTransactionFee: avgPyusdGasPrice.toDouble(),
+          pyusdHistoricalGasPrices: pyusdGasPrices,
+          averageBlockTime: averageBlockTime,
+          blocksPerHour: blocksPerHour.round(),
+          averageTxPerBlock: avgTxPerBlock,
+          gasLimit: gasLimit,
+        );
+      }
     } catch (e) {
       print('Error calculating block statistics: $e');
     }
@@ -397,8 +464,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         return;
       }
 
-      // We'll search for PYUSD transactions in the last 50,000 blocks
-      const int blocksToSearch = 50000; // Increased to 50,000 blocks
+      // We'll search for PYUSD transactions in the last 100,000 blocks
+      const int blocksToSearch = 100000;
 
       // Calculate start block
       int startBlock = latestBlockNumber - blocksToSearch;
@@ -422,18 +489,19 @@ class NetworkCongestionProvider with ChangeNotifier {
         print('Invalid logs response: $logsResponse');
         return;
       }
-      print('Received logs response with ${logsResponse.length ?? 0} entries');
 
-      // Update total PYUSD transaction count
+      // Update congestion data with transaction count
       _congestionData = _congestionData.copyWith(
-          pyusdTransactionCount: logsResponse.length,
-          confirmedPyusdTxCount: logsResponse.length);
+        pyusdTransactionCount: logsResponse.length,
+        confirmedPyusdTxCount: logsResponse.length,
+      );
 
       // Process recent logs to extract transactions
       await _processRecentLogs(logsResponse);
 
       notifyListeners();
     } catch (e) {
+      _extractPyusdTransactionsFromRecentBlocks();
       print('Error fetching PYUSD transaction activity: $e');
     }
   }
@@ -452,7 +520,7 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       print('Processing ${logs.length} log entries');
 
-      // Take the 100 most recent logs (increased from 50)
+      // Take the 500 most recent logs (increased from 100)
       final recentLogs = logs.take(100).toList();
 
       // Clear existing transactions list
@@ -473,7 +541,6 @@ class NetworkCongestionProvider with ChangeNotifier {
         final tx = await _getTransactionDetails(txHash);
         if (tx != null) {
           // Add additional transaction details
-          tx['value'] = log['data'];
           tx['blockNumber'] = log['blockNumber'];
           tx['logIndex'] = log['logIndex'];
           tx['transactionIndex'] = log['transactionIndex'];
@@ -487,10 +554,10 @@ class NetworkCongestionProvider with ChangeNotifier {
             }
           }
 
+          // Add the transaction to our list
           _recentPyusdTransactions.add(tx);
 
-          // Limit list size to 50 (increased from 20)
-          if (_recentPyusdTransactions.length >= 50) break;
+          if (_recentPyusdTransactions.length > 30) break;
         }
       }
 
@@ -535,6 +602,19 @@ class NetworkCongestionProvider with ChangeNotifier {
               await _makeRpcCall('eth_getBlockByNumber', [blockNumber, false]);
           if (block != null && block.containsKey('timestamp')) {
             tx['timestamp'] = block['timestamp'];
+          }
+        }
+      }
+
+      // Get the logs for this transaction to get the actual transfer amount
+      final logs = await _makeRpcCall('eth_getTransactionReceipt', [txHash]);
+      if (logs != null && logs['logs'] != null) {
+        for (var log in logs['logs']) {
+          if (log['address']?.toString().toLowerCase() ==
+              _pyusdContractAddress.toLowerCase()) {
+            // Use the data field from the log as it contains the actual transfer amount
+            tx['value'] = log['data'];
+            break;
           }
         }
       }
@@ -610,7 +690,7 @@ class NetworkCongestionProvider with ChangeNotifier {
     }
   }
 
-  // OPTIMIZED: Fetch blocks in batch
+  // OPTIMIZED: Fetch blocks in batch with reduced initial load
   Future<void> _fetchInitialBlocks() async {
     try {
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
@@ -630,7 +710,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       // Create a list of futures to fetch blocks in parallel
       List<Future<Map<String, dynamic>?>> blockFutures = [];
 
-      // Fetch the last 10 blocks
+      // Fetch only the last 10 blocks initially
       for (int i = 0; i < 10; i++) {
         final blockNumber = latestBlockNumber - i;
         final blockHex = '0x${blockNumber.toRadixString(16)}';
@@ -653,8 +733,6 @@ class NetworkCongestionProvider with ChangeNotifier {
           if (blockResponse.containsKey('transactions') &&
               blockResponse['transactions'] is List) {
             final txs = blockResponse['transactions'] as List;
-
-            // Add to total size calculation (rough approximation)
             totalSize +=
                 txs.length * 250; // Assume average tx size of ~250 bytes
 
@@ -679,6 +757,11 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       // Add sorted blocks to the list
       _recentBlocks.addAll(newBlocks);
+
+      // Keep only the 10 most recent blocks initially
+      if (_recentBlocks.length > 10) {
+        _recentBlocks.removeRange(10, _recentBlocks.length);
+      }
 
       // Calculate average block size
       if (_recentBlocks.isNotEmpty) {
@@ -706,7 +789,6 @@ class NetworkCongestionProvider with ChangeNotifier {
           );
         }
       }
-      await _calculateBlockStatistics();
 
       // Update PYUSD transaction counts
       _congestionData =
@@ -810,7 +892,7 @@ class NetworkCongestionProvider with ChangeNotifier {
               _pyusdContractAddress.toLowerCase()) {
         // This is a PYUSD transaction
         _recentPyusdTransactions.insert(0, response);
-        if (_recentPyusdTransactions.length > 20) {
+        if (_recentPyusdTransactions.length > 200) {
           _recentPyusdTransactions.removeLast();
         }
 
@@ -1025,7 +1107,7 @@ class NetworkCongestionProvider with ChangeNotifier {
             // Add to recent transactions if not already there
             if (!_recentPyusdTransactions.any((t) => t['hash'] == tx['hash'])) {
               _recentPyusdTransactions.insert(0, tx);
-              if (_recentPyusdTransactions.length > 20) {
+              if (_recentPyusdTransactions.length > 200) {
                 _recentPyusdTransactions.removeLast();
               }
             }
@@ -1057,110 +1139,4 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   int min(int a, int b) => a < b ? a : b;
-
-  // Add new methods for detailed blockchain data
-  Future<List<Map<String, dynamic>>> getPyusdTransactionDetails(
-      int blockNumber) async {
-    try {
-      // Get block transactions
-      final block = await _makeRpcCall(
-          'eth_getBlockByNumber', ['0x${blockNumber.toRadixString(16)}', true]);
-
-      if (block == null || !block.containsKey('transactions')) {
-        return [];
-      }
-
-      final transactions = block['transactions'] as List;
-      final pyusdTxs = transactions
-          .where((tx) =>
-              tx['to']?.toLowerCase() == _pyusdContractAddress.toLowerCase())
-          .toList();
-
-      // Get detailed info for each PYUSD transaction
-      List<Map<String, dynamic>> detailedTxs = [];
-      for (var tx in pyusdTxs) {
-        final receipt =
-            await _makeRpcCall('eth_getTransactionReceipt', [tx['hash']]);
-        if (receipt != null) {
-          detailedTxs.add({
-            ...tx,
-            'receipt': receipt,
-            'timestamp': block['timestamp'],
-          });
-        }
-      }
-
-      return detailedTxs;
-    } catch (e) {
-      print('Error getting PYUSD transaction details: $e');
-      return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> getNetworkMetrics() async {
-    try {
-      // Get latest block
-      final latestBlock = await _makeRpcCall('eth_blockNumber', []);
-      final blockNumber = FormatterUtils.parseHexSafely(latestBlock);
-
-      if (blockNumber == null) return {};
-
-      // Get last 100 blocks for analysis
-      final blocks = await Future.wait(List.generate(
-          100,
-          (i) => _makeRpcCall('eth_getBlockByNumber',
-              ['0x${(blockNumber - i).toRadixString(16)}', false])));
-
-      // Calculate metrics
-      int totalTxs = 0;
-      int totalGasUsed = 0;
-      List<int> blockTimes = [];
-
-      for (int i = 0; i < blocks.length - 1; i++) {
-        if (blocks[i] == null || blocks[i + 1] == null) continue;
-
-        final currentBlock = blocks[i];
-        final previousBlock = blocks[i + 1];
-
-        // Transaction count
-        if (currentBlock['transactions'] is List) {
-          totalTxs += (currentBlock['transactions'] as List).length;
-        }
-
-        // Gas used
-        final receipt = await _makeRpcCall('eth_getBlockReceipts',
-            ['0x${(blockNumber - i).toRadixString(16)}']);
-        if (receipt != null) {
-          totalGasUsed +=
-              FormatterUtils.parseHexSafely(receipt['gasUsed']) ?? 0;
-        }
-
-        // Block time
-        final currentTime =
-            FormatterUtils.parseHexSafely(currentBlock['timestamp']);
-        final previousTime =
-            FormatterUtils.parseHexSafely(previousBlock['timestamp']);
-        if (currentTime != null && previousTime != null) {
-          blockTimes.add(currentTime - previousTime);
-        }
-      }
-
-      // Calculate averages
-      final avgBlockTime = blockTimes.isEmpty
-          ? 0
-          : blockTimes.reduce((a, b) => a + b) / blockTimes.length;
-      final avgTxPerBlock = blocks.isEmpty ? 0 : totalTxs / blocks.length;
-      final avgGasUsed = blocks.isEmpty ? 0 : totalGasUsed / blocks.length;
-
-      return {
-        'averageBlockTime': avgBlockTime,
-        'averageTxPerBlock': avgTxPerBlock,
-        'averageGasUsed': avgGasUsed,
-        'latestBlockNumber': blockNumber,
-      };
-    } catch (e) {
-      print('Error getting network metrics: $e');
-      return {};
-    }
-  }
 }

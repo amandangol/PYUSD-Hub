@@ -1,246 +1,145 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
-import '../../../../../utils/formatter_utils.dart';
+import '../../../model/transaction_model.dart';
 
 class TransactionTraceWidget extends StatelessWidget {
-  final Map<String, dynamic> traceData;
+  final TransactionDetailModel transaction;
+  final bool isDarkMode;
   final Color cardColor;
   final Color textColor;
   final Color subtitleColor;
   final Color primaryColor;
-  final VoidCallback onShowRawTraceData;
+  final Function(Map<String, dynamic> traceData)? onShowRawTraceData;
 
   const TransactionTraceWidget({
-    super.key,
-    required this.traceData,
+    Key? key,
+    required this.transaction,
+    required this.isDarkMode,
     required this.cardColor,
     required this.textColor,
     required this.subtitleColor,
     required this.primaryColor,
-    required this.onShowRawTraceData,
-  });
+    this.onShowRawTraceData,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    if (transaction.traceData == null) {
+      return const SizedBox.shrink();
+    }
+
     return Card(
       color: cardColor,
-      elevation: 3,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      margin: const EdgeInsets.all(16.0),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.code, size: 18, color: primaryColor),
-                const SizedBox(width: 8),
                 Text(
                   'Transaction Trace',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: textColor,
+                      ),
                 ),
+                if (onShowRawTraceData != null)
+                  IconButton(
+                    icon: Icon(Icons.code, color: primaryColor),
+                    onPressed: () =>
+                        onShowRawTraceData!(transaction.traceData!),
+                    tooltip: 'View Raw Trace Data',
+                  ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Transaction call hierarchy
-            if (traceData.containsKey('calls'))
-              _buildTraceCallHierarchy(
-                  traceData, 0, cardColor, textColor, subtitleColor),
-
-            // Transaction call execution status
-            if (traceData.containsKey('type'))
-              _buildDetailRow(
-                title: 'Type',
-                value: traceData['type'].toString(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-
-            if (traceData.containsKey('from'))
-              _buildDetailRow(
-                title: 'Origin',
-                value: FormatterUtils.formatHash(traceData['from'].toString()),
-                canCopy: true,
-                data: traceData['from'].toString(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-
-            if (traceData.containsKey('to'))
-              _buildDetailRow(
-                title: 'Target',
-                value: FormatterUtils.formatHash(traceData['to'].toString()),
-                canCopy: true,
-                data: traceData['to'].toString(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-
-            if (traceData.containsKey('value'))
-              _buildDetailRow(
-                title: 'Value',
-                value:
-                    '${FormatterUtils.formatEther(traceData['value'].toString())} ETH',
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-                valueColor: primaryColor,
-              ),
-
-            if (traceData.containsKey('gas'))
-              _buildDetailRow(
-                title: 'Gas',
-                value: traceData['gas'].toString(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-
-            if (traceData.containsKey('gasUsed'))
-              _buildDetailRow(
-                title: 'Gas Used',
-                value: traceData['gasUsed'].toString(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-
-            if (traceData.containsKey('error'))
-              _buildDetailRow(
-                title: 'Error',
-                value: traceData['error'].toString(),
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-                valueColor: Colors.red,
-              ),
-
-            // View raw trace data button
-            const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.data_object),
-                label: const Text('View Raw Trace Data'),
-                onPressed: onShowRawTraceData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
+            const SizedBox(height: 16.0),
+            _buildTraceDetails(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTraceCallHierarchy(Map<String, dynamic> data, int depth,
-      Color cardColor, Color textColor, Color subtitleColor) {
-    final padding = EdgeInsets.only(left: depth * 16.0);
-    final calls = data['calls'] as List<dynamic>?;
-
+  Widget _buildTraceDetails() {
+    final traceData = transaction.traceData!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: padding,
-          child: Container(
-            decoration: BoxDecoration(
-              color: cardColor.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: subtitleColor.withOpacity(0.2)),
-            ),
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.call_made,
-                      size: 14,
-                      color: subtitleColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${data['type'] ?? 'CALL'} to ${FormatterUtils.formatHash(data['to'] ?? '')}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Value: ${FormatterUtils.formatEther(data['value'] ?? '0')} ETH',
-                  style: TextStyle(color: subtitleColor),
-                ),
-                if (data['gas'] != null)
-                  Text(
-                    'Gas: ${data['gas']}',
-                    style: TextStyle(color: subtitleColor),
-                  ),
-                if (data['gasUsed'] != null)
-                  Text(
-                    'Gas Used: ${data['gasUsed']}',
-                    style: TextStyle(color: subtitleColor),
-                  ),
-                if (data['error'] != null)
-                  Text(
-                    'Error: ${data['error']}',
-                    style: const TextStyle(color: Colors.red),
-                  ),
-              ],
-            ),
-          ),
+        _buildTraceItem('Type', traceData['type']?.toString() ?? 'N/A'),
+        if (traceData['errorDetails'] != null)
+          _buildErrorDetails(traceData['errorDetails']),
+        _buildTraceItem('From', traceData['from']?.toString() ?? 'N/A'),
+        _buildTraceItem('To', traceData['to']?.toString() ?? 'N/A'),
+        _buildTraceItem(
+          'Value',
+          _formatValue(traceData['value']?.toString() ?? '0x0'),
         ),
-        if (calls != null && calls.isNotEmpty)
-          ...calls.map((call) => _buildTraceCallHierarchy(
-              call as Map<String, dynamic>,
-              depth + 1,
-              cardColor,
-              textColor,
-              subtitleColor)),
+        _buildTraceItem(
+          'Gas Used',
+          _formatGas(traceData['gasUsed']?.toString() ?? '0x0'),
+        ),
+        if (traceData['input'] != null)
+          _buildTraceItem('Input Data', traceData['input'].toString()),
+        if (traceData['output'] != null)
+          _buildTraceItem('Output Data', traceData['output'].toString()),
       ],
     );
   }
 
-  Widget _buildDetailRow({
-    required String title,
-    required String value,
-    bool canCopy = false,
-    String? data,
-    Color? valueColor,
-    required Color textColor,
-    required Color subtitleColor,
-  }) {
+  Widget _buildErrorDetails(Map<String, dynamic> errorDetails) {
+    final errorType = errorDetails['type'] as String;
+    final errorMessage = errorDetails['message'] as String;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.red),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                errorType == 'revert'
+                    ? 'Transaction Reverted'
+                    : 'Execution Error',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            errorMessage,
+            style: TextStyle(color: Colors.red),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTraceItem(String label, String value, {bool isError = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 100,
             child: Text(
-              title,
+              label,
               style: TextStyle(
+                fontWeight: FontWeight.bold,
                 color: subtitleColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -248,33 +147,30 @@ class TransactionTraceWidget extends StatelessWidget {
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? textColor,
+                color: isError ? Colors.red : textColor,
               ),
             ),
           ),
-          if (canCopy && data != null)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: data));
-                  // Note: The actual snackbar is shown from the parent widget
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Icon(
-                    Icons.copy_outlined,
-                    size: 16,
-                    color: subtitleColor,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
+  }
+
+  String _formatValue(String hexValue) {
+    try {
+      final value = BigInt.parse(hexValue.replaceFirst('0x', ''), radix: 16);
+      return '${value.toString()} Wei (${value / BigInt.from(1e18)} ETH)';
+    } catch (e) {
+      return hexValue;
+    }
+  }
+
+  String _formatGas(String hexGas) {
+    try {
+      final gas = BigInt.parse(hexGas.replaceFirst('0x', ''), radix: 16);
+      return gas.toString();
+    } catch (e) {
+      return hexGas;
+    }
   }
 }

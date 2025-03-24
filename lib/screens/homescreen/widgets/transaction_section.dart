@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../transactions/view/all_transactions/all_transaction_screen.dart';
 import '../../transactions/model/transaction_model.dart';
 import 'transaction_item.dart';
+import '../../../utils/empty_state_utils.dart';
 
 class TransactionsSection extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -52,11 +53,8 @@ class _TransactionsSectionState extends State<TransactionsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-    final cardColor = isDarkMode
-        ? const Color(0xFF222447)
-        : theme.colorScheme.primary.withOpacity(0.05);
+    final cardColor =
+        widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50;
 
     // Limit to 3 transactions for the home screen
     final displayTransactions = _filteredTransactions.take(3).toList();
@@ -72,12 +70,13 @@ class _TransactionsSectionState extends State<TransactionsSection> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: widget.isDarkMode ? Colors.white : Colors.black87,
+                color:
+                    widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
               ),
             ),
             // Filter dropdown
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: widget.isDarkMode
                     ? Colors.grey.shade800
@@ -159,15 +158,16 @@ class _TransactionsSectionState extends State<TransactionsSection> {
         child: Column(
           children: [
             Icon(
-              Icons.history,
+              Icons.receipt_long_rounded,
               size: 48,
-              color: widget.isDarkMode ? Colors.white30 : Colors.black12,
+              color: widget.isDarkMode ? Colors.white38 : Colors.black26,
             ),
             const SizedBox(height: 16),
             Text(
-              _getEmptyStateMessage(),
+              EmptyStateUtils.getTransactionEmptyStateMessage(_filter),
               style: TextStyle(
-                color: widget.isDarkMode ? Colors.white60 : Colors.black45,
+                fontSize: 16,
+                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
               ),
             ),
           ],
@@ -236,28 +236,18 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   }
 
   // Helper method to filter transactions based on selected filter
-  // Helper method to filter transactions based on selected filter
   List<TransactionModel> _getFilteredTransactions() {
-    final allTransactions = widget.transactions;
-
     if (_filter == 'All') {
-      return allTransactions;
+      return widget.transactions;
     } else if (_filter == 'PYUSD') {
-      return allTransactions.where((tx) => tx.tokenSymbol == 'PYUSD').toList();
+      return widget.transactions
+          .where((tx) => tx.tokenSymbol == 'PYUSD')
+          .toList();
     } else {
       // ETH
-      return allTransactions.where((tx) => tx.tokenSymbol == 'ETH').toList();
-    }
-  }
-
-  // Helper method to get appropriate empty state message
-  String _getEmptyStateMessage() {
-    if (_filter == 'All') {
-      return 'No transactions yet';
-    } else if (_filter == 'PYUSD') {
-      return 'No PYUSD transactions yet';
-    } else {
-      return 'No ETH transactions yet';
+      return widget.transactions
+          .where((tx) => tx.tokenSymbol == null || tx.tokenSymbol == 'ETH')
+          .toList();
     }
   }
 }

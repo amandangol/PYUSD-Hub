@@ -3,33 +3,83 @@ import '../../../../services/market_service.dart';
 import '../../model/networkcongestion_model.dart';
 import '../widgets/gasprice_chart.dart';
 
-class GasTab extends StatelessWidget {
+class GasTab extends StatefulWidget {
   final NetworkCongestionData congestionData;
 
   const GasTab({super.key, required this.congestionData});
 
   @override
+  State<GasTab> createState() => _GasTabState();
+}
+
+class _GasTabState extends State<GasTab> {
+  late NetworkCongestionData _congestionData;
+  bool _isRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _congestionData = widget.congestionData;
+  }
+
+  @override
+  void didUpdateWidget(GasTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.congestionData != oldWidget.congestionData) {
+      setState(() {
+        _congestionData = widget.congestionData;
+      });
+    }
+  }
+
+  Future<void> _refreshData() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      // Wait for a short delay to show refresh animation
+      await Future.delayed(const Duration(milliseconds: 500));
+      setState(() {
+        _congestionData = widget.congestionData;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Gas Price Overview Card
-          _buildGasOverviewCard(),
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Gas Price Overview Card
+            _buildGasOverviewCard(),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Gas Price Trend Chart
-          _buildGasPriceSection(),
+            // Gas Price Trend Chart
+            _buildGasPriceSection(),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Gas Fee Estimator
-          GasFeeEstimator(
-            currentGasPrice: congestionData.currentGasPrice,
-          ),
-        ],
+            // Gas Fee Estimator
+            GasFeeEstimator(
+              currentGasPrice: _congestionData.currentGasPrice,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -68,19 +118,21 @@ class GasTab extends StatelessWidget {
               children: [
                 _buildPriorityGasCard(
                   'Low Priority',
-                  (congestionData.currentGasPrice * 0.8).toStringAsFixed(3),
+                  (this._congestionData.currentGasPrice * 0.8)
+                      .toStringAsFixed(3),
                   'Slower',
                   Colors.green,
                 ),
                 _buildPriorityGasCard(
                   'Medium Priority',
-                  congestionData.currentGasPrice.toStringAsFixed(3),
+                  this._congestionData.currentGasPrice.toStringAsFixed(3),
                   'Standard',
                   Colors.blue,
                 ),
                 _buildPriorityGasCard(
                   'High Priority',
-                  (congestionData.currentGasPrice * 1.2).toStringAsFixed(3),
+                  (this._congestionData.currentGasPrice * 1.2)
+                      .toStringAsFixed(3),
                   'Faster',
                   Colors.orange,
                 ),
@@ -134,10 +186,10 @@ class GasTab extends StatelessWidget {
 
   // Gas Price Section
   Widget _buildGasPriceSection() {
-    final priceDiff =
-        congestionData.currentGasPrice - congestionData.averageGasPrice;
+    final priceDiff = this._congestionData.currentGasPrice -
+        this._congestionData.averageGasPrice;
     final priceDiffPercentage =
-        (priceDiff / congestionData.averageGasPrice * 100).abs();
+        (priceDiff / this._congestionData.averageGasPrice * 100).abs();
 
     return Card(
       elevation: 3,
@@ -166,7 +218,7 @@ class GasTab extends StatelessWidget {
             SizedBox(
               height: 200,
               child: GasPriceChart(
-                gasPrices: congestionData.historicalGasPrices,
+                gasPrices: this._congestionData.historicalGasPrices,
               ),
             ),
             const SizedBox(height: 16),
@@ -175,12 +227,12 @@ class GasTab extends StatelessWidget {
               children: [
                 _buildGasInfoItem(
                   'Current',
-                  '${congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
+                  '${this._congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
                   _getGasPriceColor(priceDiffPercentage, priceDiff),
                 ),
                 _buildGasInfoItem(
                   'Average (24h)',
-                  '${congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
+                  '${this._congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
                   Colors.blue,
                 ),
                 _buildGasInfoItem(
@@ -243,6 +295,7 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
   // ETH price state
   double _ethPrice = 0.0;
   bool _isLoading = true;
+  bool _mounted = true; // Track if widget is mounted
 
   @override
   void initState() {
@@ -250,16 +303,28 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
     _fetchEthPrice();
   }
 
+  @override
+  void dispose() {
+    _mounted = false;
+    super.dispose();
+  }
+
   // Fetch current ETH price
   Future<void> _fetchEthPrice() async {
+    if (!_mounted) return;
+
     try {
       final prices = await _marketService.getCurrentPrices(['ETH']);
+      if (!_mounted) return;
+
       setState(() {
         _ethPrice = prices['ETH'] ?? 0.0;
         _isLoading = false;
       });
     } catch (e) {
       print('Error fetching ETH price: $e');
+      if (!_mounted) return;
+
       setState(() {
         _isLoading = false;
       });

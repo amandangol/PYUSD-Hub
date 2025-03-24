@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../common/widgets/pyusd_components.dart';
+import '../../../../../widgets/pyusd_components.dart';
 
 class BalanceDisplayCard extends StatelessWidget {
   final String selectedAsset;

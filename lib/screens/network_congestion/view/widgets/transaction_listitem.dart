@@ -16,13 +16,31 @@ class TransactionListItem extends StatelessWidget {
 
   // Helper method to safely parse hex values
   BigInt? _parseHexValue(String? value) {
-    if (value == null || value.isEmpty) return null;
+    if (value == null || value.isEmpty) {
+      return null;
+    }
     try {
-      // Remove '0x' prefix if present
-      final hexValue = value.startsWith('0x') ? value.substring(2) : value;
-      return BigInt.parse(hexValue, radix: 16);
+      // Remove '0x' prefix if present and any whitespace
+      final cleanValue = value.trim().toLowerCase();
+      final hexValue =
+          cleanValue.startsWith('0x') ? cleanValue.substring(2) : cleanValue;
+
+      // Handle special case for "0x0" or "0"
+      if (hexValue == '0' || hexValue.isEmpty) {
+        // print('Zero value detected');
+        return BigInt.zero;
+      }
+
+      // Ensure the hex value is properly formatted
+      final formattedHex =
+          hexValue.padLeft(hexValue.length + (hexValue.length % 2), '0');
+      // print('Formatted hex: $formattedHex');
+
+      final result = BigInt.parse(formattedHex, radix: 16);
+      // print('Parsed result: $result');
+      return result;
     } catch (e) {
-      print('Error parsing hex value: $e');
+      print('Error parsing hex value: $e for input: $value');
       return null;
     }
   }
@@ -33,37 +51,16 @@ class TransactionListItem extends StatelessWidget {
     final String txHash = transaction['hash'] ?? '';
     final String from = transaction['from'] ?? '';
     final String to = transaction['to'] ?? '';
-    final String? value = transaction['value'];
     final String? blockNumber = transaction['blockNumber'];
-    final String? timestamp = transaction['timestamp'];
     final String? gasPrice = transaction['gasPrice'];
-    final String? gasUsed = transaction['gasUsed'];
 
     // Determine if pending or confirmed
     final isPending = blockNumber == null;
-
-    // Format values with proper hex parsing
-    final valueBigInt = _parseHexValue(value);
-    final formattedValue = valueBigInt != null
-        ? '${(valueBigInt / BigInt.from(1e18)).toStringAsFixed(4)} PYUSD'
-        : '0 PYUSD';
 
     final gasPriceBigInt = _parseHexValue(gasPrice);
     final formattedGasPrice = gasPriceBigInt != null
         ? '${(gasPriceBigInt / BigInt.from(1e9)).toStringAsFixed(2)} Gwei'
         : 'N/A';
-
-    final gasUsedBigInt = _parseHexValue(gasUsed);
-    final formattedGasUsed =
-        gasUsedBigInt != null ? gasUsedBigInt.toString() : 'N/A';
-
-    // Format timestamp with proper hex parsing
-    final timestampBigInt = _parseHexValue(timestamp);
-    final formattedTime = timestampBigInt != null
-        ? DateTime.fromMillisecondsSinceEpoch(timestampBigInt.toInt() * 1000)
-            .toString()
-            .substring(0, 16)
-        : 'Pending';
 
     // Format block number with proper hex parsing
     final blockNumberBigInt = _parseHexValue(blockNumber);
@@ -172,26 +169,13 @@ class TransactionListItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
 
-                  // Transaction value and gas info
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        formattedValue,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Gas: $formattedGasPrice',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                  // Gas info
+                  Text(
+                    'Gas: $formattedGasPrice',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ],
               ),
@@ -209,13 +193,6 @@ class TransactionListItem extends StatelessWidget {
                         color: Colors.grey[600],
                       ),
                     ),
-                  Text(
-                    formattedTime,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
                   TextButton.icon(
                     onPressed: () async {
                       final url = Uri.parse('https://etherscan.io/tx/$txHash');

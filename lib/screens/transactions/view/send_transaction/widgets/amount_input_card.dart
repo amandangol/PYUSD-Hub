@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../../common/widgets/pyusd_components.dart';
+import '../../../../../widgets/pyusd_components.dart';
 import 'custom_textfield.dart';
 
 class AmountCard extends StatelessWidget {
@@ -51,8 +51,9 @@ class AmountCard extends StatelessWidget {
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,6}$')),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,' +
+                        (selectedAsset == 'PYUSD' ? '2' : '4') +
+                        r'}$')),
                   ],
                   validator: (value) {
                     if (value == null || value.isEmpty) {

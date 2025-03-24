@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import '../../../common/widgets/pyusd_components.dart';
+import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';
 import 'onboarding_screen.dart';

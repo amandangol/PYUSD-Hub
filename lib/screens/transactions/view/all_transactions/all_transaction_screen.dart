@@ -4,6 +4,7 @@ import '../../model/transaction_model.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../homescreen/widgets/transaction_item.dart';
 import '../../provider/transactiondetail_provider.dart';
+import '../../../../utils/empty_state_utils.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -30,7 +31,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final cardColor =
-        widget.isDarkMode ? const Color(0xFF252543) : Colors.white;
+        widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50;
     final backgroundColor =
         widget.isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
@@ -174,11 +175,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 itemCount: filteredTransactions.length,
                 itemBuilder: (context, index) {
                   final tx = filteredTransactions[index];
-                  return TransactionItem(
-                    transaction: tx,
-                    currentAddress: widget.currentAddress,
-                    isDarkMode: widget.isDarkMode,
-                    cardColor: cardColor,
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: TransactionItem(
+                      transaction: tx,
+                      currentAddress: widget.currentAddress,
+                      isDarkMode: widget.isDarkMode,
+                      cardColor: cardColor,
+                    ),
                   );
                 },
               ),
@@ -203,7 +207,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                _getEmptyStateMessage(),
+                EmptyStateUtils.getTransactionEmptyStateMessage(_filter),
                 style: TextStyle(
                   fontSize: 20,
                   color: widget.isDarkMode ? Colors.white70 : Colors.black54,
@@ -235,19 +239,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     } else {
       // ETH
       return widget.transactions
-          .where((tx) => tx.tokenSymbol == null || tx.tokenSymbol == 'ETH')
+          .where((tx) =>
+              tx.tokenSymbol == null) // ETH transactions have null tokenSymbol
           .toList();
-    }
-  }
-
-  // Helper method to get appropriate empty state message
-  String _getEmptyStateMessage() {
-    if (_filter == 'All') {
-      return 'No transactions yet';
-    } else if (_filter == 'PYUSD') {
-      return 'No PYUSD transactions yet';
-    } else {
-      return 'No ETH transactions yet';
     }
   }
 }

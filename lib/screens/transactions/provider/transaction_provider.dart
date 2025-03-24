@@ -89,7 +89,8 @@ class TransactionProvider extends ChangeNotifier
       // Filter by token symbol if specified
       if (tokenSymbol != null) {
         if (tokenSymbol == 'ETH') {
-          return tx.tokenSymbol == 'ETH'; // ETH transactions have ETH as symbol
+          return tx.tokenSymbol ==
+              null; // ETH transactions have null tokenSymbol
         } else {
           return tx.tokenSymbol == tokenSymbol;
         }
@@ -188,7 +189,7 @@ class TransactionProvider extends ChangeNotifier
         direction: direction,
         confirmations: int.parse(confirmations),
         network: currentNetwork,
-        tokenSymbol: 'ETH',
+        tokenSymbol: null,
       );
     }
 
@@ -407,6 +408,29 @@ class TransactionProvider extends ChangeNotifier
     }
   }
 
+  // Common refresh logic after transactions
+  Future<void> _refreshAfterTransaction() async {
+    if (disposed) return;
+
+    // Initial delay to allow transaction to be submitted
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!disposed) {
+      // First refresh attempt
+      await _walletProvider.refreshBalances(forceRefresh: true);
+      await fetchTransactions(forceRefresh: true);
+
+      // Schedule multiple refresh attempts to catch pending transactions
+      for (int i = 1; i <= 3; i++) {
+        if (disposed) break;
+
+        await Future.delayed(Duration(seconds: 5 * i));
+        await _walletProvider.refreshBalances(forceRefresh: true);
+        await fetchTransactions(forceRefresh: true);
+      }
+    }
+  }
+
   // Send PYUSD token to another address
   Future<String> sendPYUSD(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
@@ -434,7 +458,7 @@ class TransactionProvider extends ChangeNotifier
         gasLimit: gasLimit,
       );
 
-      // Post-transaction operations with disposal check
+      // Wait for transaction to be mined before refreshing
       await _refreshAfterTransaction();
       return txHash;
     } catch (e) {
@@ -446,34 +470,6 @@ class TransactionProvider extends ChangeNotifier
         setLoadingState(this, false);
       }
     }
-  }
-
-  // Common refresh logic after transactions
-  Future<void> _refreshAfterTransaction() async {
-    if (disposed) return;
-
-    // print('\n=== Starting Transaction Refresh ===');
-    // print(
-    //     'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-
-    // Add a small delay to allow the transaction to be mined
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!disposed) {
-      // Refresh balances first
-      await _walletProvider.refreshBalances(forceRefresh: true);
-      print('Balances refreshed');
-
-      if (!disposed) {
-        // Then refresh transactions
-        await fetchTransactions(forceRefresh: true);
-        print('Transactions refreshed');
-      }
-    }
-
-    // print(
-    //     'Final Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-    // print('=== End Transaction Refresh ===\n');
   }
 
   // Estimate gas for ETH transfer

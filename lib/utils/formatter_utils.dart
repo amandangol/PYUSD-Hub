@@ -1,6 +1,5 @@
 import 'package:intl/intl.dart';
 import 'package:web3dart/web3dart.dart';
-import 'dart:math';
 
 class FormatterUtils {
   static final _numberFormat = NumberFormat('#,##0.####');

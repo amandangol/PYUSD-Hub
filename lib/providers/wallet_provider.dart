@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import '../screens/authentication/provider/auth_provider.dart';
 import '../services/ethereum_rpc_service.dart';
 import 'network_provider.dart';
-import 'package:flutter/foundation.dart';
 
-class WalletProvider with ChangeNotifier {
+class WalletProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
@@ -102,20 +101,20 @@ class WalletProvider with ChangeNotifier {
     // Cancel any pending debounce timer
     _debounceTimer?.cancel();
 
-    // If already refreshing and not force refresh, return
-    if (_isBalanceRefreshing && !forceRefresh) return;
-
-    // If force refresh or cache invalid, execute immediately
-    if (forceRefresh || !_isCacheValid(currentNetwork)) {
+    // If force refresh, execute immediately
+    if (forceRefresh) {
       await _executeRefresh(address, currentNetwork);
       return;
     }
 
-    // For non-force refreshes, debounce the call
+    // Debounce refresh calls
     _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
-      if (!_isCacheValid(currentNetwork)) {
-        await _executeRefresh(address, currentNetwork);
+      // Check if we really need to refresh
+      if (!forceRefresh && _isCacheValid(currentNetwork)) {
+        return;
       }
+
+      await _executeRefresh(address, currentNetwork);
     });
   }
 

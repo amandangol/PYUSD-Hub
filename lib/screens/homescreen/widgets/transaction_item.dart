@@ -31,8 +31,10 @@ class _TransactionItemState extends State<TransactionItem> {
   // Helper method to format amount - updated to match the detail screen formatting
   String _formatAmount(TransactionModel tx) {
     if (tx.tokenSymbol != null) {
-      return '${tx.amount.toStringAsFixed(4)} ${tx.tokenSymbol}';
+      // PYUSD has 6 decimals, display the amount as is since it's already converted
+      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
     } else {
+      // ETH has 4 decimal places
       return '${tx.amount.toStringAsFixed(4)} ETH';
     }
   }

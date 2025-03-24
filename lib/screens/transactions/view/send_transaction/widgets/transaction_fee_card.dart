@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../../common/widgets/pyusd_components.dart';
+import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import 'asset_selection_card.dart';
 
 class TransactionFeeCard extends StatelessWidget {

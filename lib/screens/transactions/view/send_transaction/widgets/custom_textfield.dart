@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../../common/widgets/pyusd_components.dart';
+import 'package:pyusd_hub/widgets/pyusd_components.dart';
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;

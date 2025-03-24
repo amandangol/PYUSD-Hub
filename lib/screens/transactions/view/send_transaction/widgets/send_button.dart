@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../../common/widgets/pyusd_components.dart';
+import '../../../../../widgets/pyusd_components.dart';
 import '../../../../../providers/wallet_provider.dart';
 
 class SendButton extends StatelessWidget {
