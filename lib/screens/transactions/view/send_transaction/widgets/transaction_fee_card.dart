@@ -1,235 +1,228 @@
 import 'package:flutter/material.dart';
-import 'package:pyusd_hub/widgets/pyusd_components.dart';
-import 'asset_selection_card.dart';
+import '../../../provider/transaction_provider.dart';
 
 class TransactionFeeCard extends StatelessWidget {
   final String selectedAsset;
   final Function(String) onAssetSelected;
   final double estimatedGasFee;
-  final double gasPrice;
-  final Function(double) onGasPriceChanged;
+  final GasOption? selectedGasOption;
   final bool isEstimatingGas;
   final double ethBalance;
   final double tokenBalance;
+  final VoidCallback onGasOptionsPressed;
+  final bool isLoadingGasPrice;
+  final bool hasInsufficientETH;
 
   const TransactionFeeCard({
     super.key,
     required this.selectedAsset,
     required this.onAssetSelected,
     required this.estimatedGasFee,
-    required this.gasPrice,
-    required this.onGasPriceChanged,
+    required this.selectedGasOption,
     required this.isEstimatingGas,
     required this.ethBalance,
     required this.tokenBalance,
+    required this.onGasOptionsPressed,
+    this.isLoadingGasPrice = false,
+    this.hasInsufficientETH = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDarkMode = theme.brightness == Brightness.dark;
 
-    return PyusdCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 16,
-      elevation: theme.brightness == Brightness.light ? 1 : 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Asset Selection
-          Text(
-            'Select Asset',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: AssetSelectionCard(
-                  assetName: 'PYUSD',
-                  isSelected: selectedAsset == 'PYUSD',
-                  balance: tokenBalance,
-                  onTap: () => onAssetSelected('PYUSD'),
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDarkMode ? Colors.white24 : Colors.black12,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Asset Selection
+            Row(
+              children: [
+                _buildAssetButton(
+                  context,
+                  'PYUSD',
+                  selectedAsset == 'PYUSD',
+                  isDarkMode,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AssetSelectionCard(
-                  assetName: 'ETH',
-                  isSelected: selectedAsset == 'ETH',
-                  balance: ethBalance,
-                  onTap: () => onAssetSelected('ETH'),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Transaction Fee',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              if (isEstimatingGas)
-                SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.0,
-                    color: colorScheme.primary,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Fee estimation card with gradient background
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  colorScheme.primaryContainer,
-                  colorScheme.secondaryContainer,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+                const SizedBox(width: 12),
+                _buildAssetButton(
+                  context,
+                  'ETH',
+                  selectedAsset == 'ETH',
+                  isDarkMode,
                 ),
               ],
             ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+            const SizedBox(height: 16),
+
+            // Gas Price Selection
+            InkWell(
+              onTap: onGasOptionsPressed,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isDarkMode ? Colors.white24 : Colors.black12,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      'Estimated Fee:',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w500,
+                    Icon(
+                      Icons.local_gas_station,
+                      size: 20,
+                      color: theme.primaryColor,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Network Fee',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (isLoadingGasPrice)
+                            const Text(
+                              'Fetching gas price...',
+                              style: TextStyle(fontSize: 13),
+                            )
+                          else if (selectedGasOption != null)
+                            Text(
+                              '${selectedGasOption!.name} · ${selectedGasOption!.price.toStringAsFixed(3)} Gwei',
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                                fontSize: 13,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    Text(
-                      estimatedGasFee > 0
-                          ? '${estimatedGasFee.toStringAsFixed(6)} ETH'
-                          : 'Enter details below',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onPrimaryContainer,
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Estimated Fee and Balance Warning
+            if (!isEstimatingGas) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Estimated Fee:',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                  Text(
+                    '${estimatedGasFee.toStringAsFixed(6)} ETH',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              if (hasInsufficientETH) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.warning_rounded,
+                      color: Colors.orange,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Insufficient ETH for gas fees. Current balance: ${ethBalance.toStringAsFixed(4)} ETH',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Gas price with slider
-          Text(
-            'Gas Price:',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                'Slow',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 8,
+            ] else ...[
+              // Loading state for gas estimation
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: theme.primaryColor,
                     ),
-                    overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 16,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Estimating gas fee...',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
-                    activeTrackColor: colorScheme.primary,
-                    inactiveTrackColor: colorScheme.surfaceContainerHighest,
-                    thumbColor: colorScheme.primary,
-                    overlayColor: colorScheme.primary.withOpacity(0.2),
                   ),
-                  child: Slider(
-                    value: gasPrice.clamp(0.5, 20.0),
-                    min: 0.5,
-                    max: 20.0,
-                    divisions: 39,
-                    label: '${gasPrice.toStringAsFixed(1)} Gwei',
-                    onChanged: onGasPriceChanged,
-                  ),
-                ),
-              ),
-              Text(
-                'Fast',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                ],
               ),
             ],
-          ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // Current gas price display
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 4, bottom: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${gasPrice.toStringAsFixed(1)} Gwei',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.primary,
-                ),
+  Widget _buildAssetButton(
+      BuildContext context, String asset, bool isSelected, bool isDarkMode) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onAssetSelected(asset),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : isDarkMode
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              asset,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : isDarkMode
+                        ? Colors.white
+                        : Colors.black87,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-
-          // Network information
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.info_outline,
-                size: 14,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Gas prices in Gwei (1 ETH = 10^9 Gwei)',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

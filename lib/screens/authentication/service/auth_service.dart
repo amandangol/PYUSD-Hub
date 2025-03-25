@@ -3,10 +3,12 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:uuid/uuid.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class AuthService {
   static const String _pinHashKey = 'pin_hash';
   static const String _pinSaltKey = 'pin_salt';
+  static const String _encryptedPinKey = 'encrypted_pin';
   static const String _biometricSecretKey = 'biometric_secret';
   static const String _biometricEnabledKey = 'biometric_enabled';
 

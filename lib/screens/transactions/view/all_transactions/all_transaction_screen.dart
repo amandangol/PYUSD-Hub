@@ -230,18 +230,33 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   // Helper method to filter transactions based on selected filter
   List<TransactionModel> _getFilteredTransactions() {
+    // First apply type filter
+    List<TransactionModel> filtered;
     if (_filter == 'All') {
-      return widget.transactions;
+      filtered = widget.transactions;
     } else if (_filter == 'PYUSD') {
-      return widget.transactions
-          .where((tx) => tx.tokenSymbol == 'PYUSD')
-          .toList();
+      filtered =
+          widget.transactions.where((tx) => tx.tokenSymbol == 'PYUSD').toList();
     } else {
-      // ETH
-      return widget.transactions
-          .where((tx) =>
-              tx.tokenSymbol == null) // ETH transactions have null tokenSymbol
-          .toList();
+      filtered =
+          widget.transactions.where((tx) => tx.tokenSymbol == null).toList();
     }
+
+    // Sort: Pending transactions first, then by timestamp
+    filtered.sort((a, b) {
+      // If one is pending and the other isn't, pending comes first
+      if (a.status == TransactionStatus.pending &&
+          b.status != TransactionStatus.pending) {
+        return -1;
+      }
+      if (b.status == TransactionStatus.pending &&
+          a.status != TransactionStatus.pending) {
+        return 1;
+      }
+      // Otherwise sort by timestamp (newest first)
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    return filtered;
   }
 }

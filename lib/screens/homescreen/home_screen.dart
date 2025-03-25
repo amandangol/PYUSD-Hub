@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isRefreshing = false;
   bool _hasError = false;
   Timer? _debounceTimer;
+  Timer? _refreshTimer;
 
   // Static duration constants
   static const Duration _debounceDuration = Duration(milliseconds: 300);
@@ -34,10 +35,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-
-    // Use a single post-frame callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeData();
+      // Set up periodic refresh for pending transactions
+      _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {});
     });
   }
 
@@ -52,56 +53,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void dispose() {
     _debounceTimer?.cancel();
     _scrollController.dispose();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _refreshWalletData(
-      {bool forceRefresh = false, bool showLoadingIndicator = true}) async {
-    // Cancel any pending debounce timer
-    _debounceTimer?.cancel();
+  Future<void> _refreshWalletData({
+    bool forceRefresh = false,
+    bool showLoadingIndicator = true,
+  }) async {
+    if (_isRefreshing && !forceRefresh) return;
+    if (!mounted) return;
 
-    // Debounce refresh calls
-    _debounceTimer = Timer(_debounceDuration, () async {
-      // Prevent concurrent refreshes
-      if (_isRefreshing && !forceRefresh) return;
-      if (!mounted) return;
+    setState(() {
+      _isRefreshing = true;
+      _hasError = false;
+    });
 
-      // Update UI state if showing indicator
-      if (showLoadingIndicator && mounted) {
-        setState(() {
-          _isRefreshing = true;
-          _hasError = false; // Reset error state
+    try {
+      final walletProvider =
+          Provider.of<WalletProvider>(context, listen: false);
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
+
+      // Force refresh both balances and transactions
+      await Future.wait([
+        walletProvider.refreshBalances(forceRefresh: true),
+        transactionProvider.fetchTransactions(forceRefresh: true),
+      ]);
+
+      // Schedule a follow-up refresh after a short delay
+      if (mounted) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) {
+            walletProvider.refreshBalances(forceRefresh: true);
+          }
         });
       }
-
-      try {
-        // Get providers only once
-        final walletProvider =
-            Provider.of<WalletProvider>(context, listen: false);
-        final transactionProvider =
-            Provider.of<TransactionProvider>(context, listen: false);
-
-        // Refresh both balance and transactions simultaneously
-        await Future.wait([
-          walletProvider.refreshBalances(forceRefresh: forceRefresh),
-          transactionProvider.fetchTransactions(forceRefresh: forceRefresh),
-        ]);
-      } catch (e) {
-        debugPrint('Error refreshing wallet data: $e');
-        if (mounted) {
-          setState(() {
-            _hasError = true;
-          });
-        }
-      } finally {
-        // Update state if needed
-        if (mounted && showLoadingIndicator) {
-          setState(() {
-            _isRefreshing = false;
-          });
-        }
+    } catch (e) {
+      print('Error refreshing wallet data: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+        });
       }
-    });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
   }
 
   @override
@@ -230,12 +231,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required String walletAddress,
     required String networkName,
   }) {
-    // Use Selector to minimize rebuilds
+    // Use Selector to minimize rebuilds, but ensure fresh data
     final ethBalance = context
-        .select<WalletProvider, double?>((provider) => provider.ethBalance);
+        .select<WalletProvider, double>((provider) => provider.ethBalance);
 
     final tokenBalance = context
-        .select<WalletProvider, double?>((provider) => provider.tokenBalance);
+        .select<WalletProvider, double>((provider) => provider.tokenBalance);
 
     final isRefreshing = context.select<WalletProvider, bool>(
         (provider) => provider.isBalanceRefreshing);
@@ -244,8 +245,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .select<WalletProvider, bool>((provider) => provider.isInitialLoad);
 
     return BalanceCard(
-      ethBalance: ethBalance!,
-      tokenBalance: tokenBalance!,
+      ethBalance: ethBalance,
+      tokenBalance: tokenBalance,
       walletAddress: walletAddress,
       isRefreshing: isRefreshing || isInitialLoad,
       primaryColor: primaryColor,

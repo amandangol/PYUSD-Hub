@@ -11,6 +11,7 @@ import 'widgets/balance_display_card.dart';
 import 'widgets/recipent_card.dart';
 import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';
+import 'widgets/gas_selection_sheet.dart';
 
 class SendTransactionScreen extends StatefulWidget {
   const SendTransactionScreen({super.key});
@@ -33,11 +34,14 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   bool _isEstimatingGas = false;
   String _selectedAsset = 'PYUSD'; // Default to PYUSD
   bool _mounted = true; // Track if the widget is mounted
+  GasOption? _selectedGasOption;
+  Map<String, GasOption> _gasOptions = {};
+  bool _isLoadingGasPrice = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchGasPrice();
+    _loadGasOptions();
   }
 
   @override
@@ -57,34 +61,48 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
   }
 
-  Future<void> _fetchGasPrice() async {
-    if (!_mounted) return;
+  Future<void> _loadGasOptions() async {
+    if (!mounted) return;
 
-    final transactionProvider =
-        Provider.of<TransactionProvider>(context, listen: false);
+    setState(() => _isLoadingGasPrice = true);
 
     try {
-      _safeSetState(() {
-        _isLoading = true;
-      });
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
+      final options = await transactionProvider.getGasOptions();
 
-      // Get current network gas price
-      _gasPrice = await transactionProvider.getCurrentGasPrice();
-
-      // If we have a valid address and amount, estimate gas
-      if (_isValidAddress && _amountController.text.isNotEmpty) {
-        await _estimateGasFee();
+      if (mounted) {
+        setState(() {
+          _gasOptions = options;
+          _selectedGasOption = options['standard']; // Default to standard
+          _gasPrice = _selectedGasOption!.price;
+          _isLoadingGasPrice = false;
+        });
       }
     } catch (e) {
-      // Use default gas price if fetch fails
-      _safeSetState(() {
-        _gasPrice = 20.0; // 20 Gwei default
-      });
-    } finally {
-      _safeSetState(() {
-        _isLoading = false;
-      });
+      print('Error loading gas options: $e');
+      setState(() => _isLoadingGasPrice = false);
     }
+  }
+
+  void _showGasOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => GasSelectionSheet(
+        gasOptions: _gasOptions,
+        selectedOption: _selectedGasOption!,
+        onOptionSelected: (option) {
+          setState(() {
+            _selectedGasOption = option;
+            _gasPrice = option.price;
+            _estimateGasFee();
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
   }
 
   Future<void> _estimateGasFee() async {
@@ -280,40 +298,52 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     final address = _addressController.text.trim();
     final amount = double.parse(_amountController.text);
 
-    // Balance checks
-    if (_selectedAsset == 'PYUSD') {
-      if (amount > walletProvider.tokenBalance) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Insufficient PYUSD balance',
-          isError: true,
-        );
-        return;
-      }
-      // Check if there's enough ETH for gas
-      if (walletProvider.ethBalance < _estimatedGasFee) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Insufficient ETH for gas fees',
-          isError: true,
-        );
-        return;
-      }
-    } else if (_selectedAsset == 'ETH') {
-      if (amount + _estimatedGasFee > walletProvider.ethBalance) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Insufficient ETH balance (including gas fees)',
-          isError: true,
-        );
-        return;
-      }
+    // Check balance before proceeding
+    if (_selectedAsset == 'PYUSD' && amount > walletProvider.tokenBalance) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: 'Insufficient PYUSD balance',
+        isError: true,
+      );
+      return;
+    } else if (_selectedAsset == 'ETH' && amount > walletProvider.ethBalance) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: 'Insufficient ETH balance',
+        isError: true,
+      );
+      return;
+    }
+
+    // For ETH transactions, make sure they have enough to cover amount + gas
+    if (_selectedAsset == 'ETH' &&
+        (amount + _estimatedGasFee) > walletProvider.ethBalance) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message:
+            'Insufficient ETH to cover both transaction amount and gas fees',
+        isError: true,
+      );
+      return;
+    }
+
+    // Check if there's enough ETH for gas when sending PYUSD
+    if (_selectedAsset == 'PYUSD' &&
+        _estimatedGasFee > walletProvider.ethBalance) {
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: 'Insufficient ETH for gas fees',
+        isError: true,
+      );
+      return;
     }
 
     // Confirm transaction details
     final confirmed = await _showConfirmationDialog(context, address, amount);
+
     if (confirmed != true || !_mounted) return;
 
+    // Show loading indicator
     _safeSetState(() {
       _isLoading = true;
     });
@@ -321,7 +351,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     try {
       String txHash;
 
-      // Execute the transaction
+      // Execute the transaction and get the hash
       if (_selectedAsset == 'PYUSD') {
         txHash = await transactionProvider.sendPYUSD(
           address,
@@ -338,28 +368,31 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
+      // Show a success message
       if (_mounted && context.mounted) {
         SnackbarUtil.showSnackbar(
           context: context,
           message: 'Transaction submitted: ${txHash.substring(0, 10)}...',
           isError: false,
         );
+      }
 
-        // Navigate back after successful transaction
+      // Navigate back to the main screen
+      if (_mounted && context.mounted) {
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/main', (route) => false);
       }
     } catch (e) {
+      // Show error message
       if (_mounted && context.mounted) {
-        String errorMsg = e.toString();
         SnackbarUtil.showSnackbar(
           context: context,
-          message:
-              'Transaction failed: ${errorMsg.length > 50 ? '${errorMsg.substring(0, 50)}...' : errorMsg}',
+          message: 'Transaction failed: ${e.toString().substring(0, 50)}',
           isError: true,
         );
       }
     } finally {
+      // Reset loading state
       if (_mounted) {
         _safeSetState(() {
           _isLoading = false;
@@ -436,18 +469,12 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                       });
                     },
                     estimatedGasFee: _estimatedGasFee,
-                    gasPrice: _gasPrice,
-                    onGasPriceChanged: (value) {
-                      setState(() {
-                        _gasPrice = value;
-                        if (_estimatedGas > 0) {
-                          _estimatedGasFee = _estimatedGas * _gasPrice * 1e-9;
-                        }
-                      });
-                    },
+                    selectedGasOption: _selectedGasOption,
                     isEstimatingGas: _isEstimatingGas,
                     ethBalance: walletProvider.ethBalance,
                     tokenBalance: walletProvider.tokenBalance,
+                    onGasOptionsPressed: _showGasOptions,
+                    isLoadingGasPrice: _isLoadingGasPrice,
                   ),
 
                   const SizedBox(height: 16),
@@ -543,7 +570,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                   const SizedBox(height: 8),
                   if (networkProvider.currentNetwork.name
                       .toLowerCase()
-                      .contains('sepolia'))
+                      .contains('testnet'))
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -577,69 +604,62 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          if (walletProvider.ethBalance < _estimatedGasFee ||
-                              _selectedAsset == 'PYUSD')
-                            InkWell(
-                              onTap: () => _launchURL(
-                                  'https://cloud.google.com/application/web3/faucet/ethereum/sepolia'),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.link,
+                          InkWell(
+                            onTap: () => _launchURL(
+                                'https://cloud.google.com/application/web3/faucet/ethereum/sepolia'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.link,
+                                    color: isDarkMode
+                                        ? Colors.blue[300]
+                                        : Colors.blue,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Sepolia ETH Faucet',
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       color: isDarkMode
                                           ? Colors.blue[300]
                                           : Colors.blue,
-                                      size: 16,
+                                      decoration: TextDecoration.underline,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Sepolia ETH Faucet',
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: isDarkMode
-                                            ? Colors.blue[300]
-                                            : Colors.blue,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                          if (_selectedAsset == 'PYUSD')
-                            InkWell(
-                              onTap: () =>
-                                  _launchURL('https://faucet.paxos.com/'),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.link,
+                          ),
+                          InkWell(
+                            onTap: () =>
+                                _launchURL('https://faucet.paxos.com/'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.link,
+                                    color: isDarkMode
+                                        ? Colors.blue[300]
+                                        : Colors.blue,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'PYUSD Faucet',
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       color: isDarkMode
                                           ? Colors.blue[300]
                                           : Colors.blue,
-                                      size: 16,
+                                      decoration: TextDecoration.underline,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'PYUSD Faucet',
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: isDarkMode
-                                            ? Colors.blue[300]
-                                            : Colors.blue,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),

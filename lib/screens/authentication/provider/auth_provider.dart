@@ -65,34 +65,40 @@ class AuthProvider extends ChangeNotifier {
 
         // If we have a saved auth state, attempt to auto-authenticate
         if (savedAuthState) {
-          _isAuthenticated = true;
-
-          // Attempt to load the full wallet data (including private key and mnemonic)
-          // if user has biometrics enabled
+          // Don't set authenticated state until we have the full wallet data
           if (_isBiometricsAvailable &&
               await _authService.isBiometricsEnabled()) {
             try {
-              // Get secret key stored with biometric protection
               String? secretKey = await _authService.getBiometricSecret();
-
               if (secretKey != null) {
-                // Load wallet with the secret key
+                // Load full wallet with the secret key
                 _wallet =
                     await _walletService.decryptAndLoadWalletWithKey(secretKey);
+                if (_wallet?.privateKey.isNotEmpty == true) {
+                  _isAuthenticated = true;
+                } else {
+                  // If wallet loading failed, clear the saved auth state
+                  await prefs.setBool('isAuthenticated', false);
+                }
               }
             } catch (e) {
-              // If biometric loading fails, we'll just keep the metadata-only wallet
               print('Failed to auto-load wallet with biometrics: $e');
+              await prefs.setBool('isAuthenticated', false);
             }
+          } else {
+            // If no biometrics, clear the saved auth state
+            await prefs.setBool('isAuthenticated', false);
           }
         }
       } else {
-        // No authentication set up yet
         _wallet = null;
         _isAuthenticated = false;
       }
     } catch (e) {
       _setError('Failed to initialize wallet: $e');
+      // Clear saved auth state on error
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isAuthenticated', false);
     } finally {
       _setLoading(false);
     }

@@ -5,7 +5,6 @@ import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import '../authentication/model/wallet.dart';
 import '../authentication/provider/auth_provider.dart';
 import '../authentication/widget/pin_input_widget.dart.dart';
-import '../transactions/test/failed_transaction_test_screen.dart';
 import 'pyusd_qa_screen.dart';
 import 'security_setting_screen.dart';
 import '../../providers/theme_provider.dart';
@@ -87,19 +86,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.bug_report),
-                      title: const Text('Failed Transaction Test'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const FailedTransactionTestScreen(),
-                          ),
-                        );
-                      },
-                    ),
                     // Wallet address
                     ListTile(
                       title: const Text('Wallet Address'),

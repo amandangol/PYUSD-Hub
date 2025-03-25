@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,11 +8,9 @@ import '../../model/transaction_model.dart';
 import '../../provider/transactiondetail_provider.dart';
 import '../../../../services/market_service.dart';
 import 'widgets/gasdetails_widget.dart';
-import 'widgets/interrnal_transaction_widget.dart';
 import 'widgets/marketanalysis_widget.dart';
 import 'widgets/statuscard_widget.dart';
 import 'widgets/transaction_details_widget.dart';
-import 'widgets/transaction_trace_widget.dart';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -421,115 +417,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                           onShowErrorDetails: _showErrorDetails,
                         ),
                         const SizedBox(height: 16),
-
-                        // Internal transactions card (if available)
-                        if (_internalTransactions != null &&
-                            _internalTransactions!.isNotEmpty)
-                          InternalTransactionWidget(
-                            internalTransactions: _internalTransactions!,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                            subtitleColor: subtitleColor,
-                            primaryColor: primaryColor,
-                          ),
-
-                        // Transaction trace card (if available)
-                        if (_detailedTransaction?.traceData != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: TransactionTraceWidget(
-                              transaction: _detailedTransaction!,
-                              isDarkMode: widget.isDarkMode,
-                              cardColor: cardColor,
-                              textColor: textColor,
-                              subtitleColor: subtitleColor,
-                              primaryColor: primaryColor,
-                              onShowRawTraceData: (traceData) {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Raw Trace Data'),
-                                    content: SingleChildScrollView(
-                                      child: SelectableText(
-                                        JsonEncoder.withIndent('  ')
-                                            .convert(traceData),
-                                        style: const TextStyle(
-                                          fontFamily: 'monospace',
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Clipboard.setData(
-                                            ClipboardData(
-                                              text: JsonEncoder.withIndent('  ')
-                                                  .convert(traceData),
-                                            ),
-                                          );
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content:
-                                                  Text('Copied to clipboard'),
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Copy'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                        child: const Text('Close'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        else if (_detailedTransaction?.traceDataUnavailable ==
-                            true)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Card(
-                              color: cardColor,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          color: subtitleColor,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Transaction Trace',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge
-                                              ?.copyWith(
-                                                color: textColor,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Trace data is not available for this transaction. This is normal for older transactions.',
-                                      style: TextStyle(
-                                        color: textColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -632,6 +519,15 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         return Colors.orange;
       case TransactionStatus.failed:
         return Colors.red;
+    }
+  }
+
+  String _formatWeiToEth(String weiValue) {
+    try {
+      final wei = BigInt.parse(weiValue);
+      return (wei.toDouble() / 1e18).toStringAsFixed(18);
+    } catch (e) {
+      return '0';
     }
   }
 }

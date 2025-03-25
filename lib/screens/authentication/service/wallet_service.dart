@@ -35,22 +35,33 @@ class WalletService {
 
   // Import wallet using private key
   Future<WalletModel> importWalletFromPrivateKey(String privateKey) async {
-    if (privateKey.startsWith('0x')) {
-      privateKey = privateKey.substring(2);
+    try {
+      // Clean and validate private key format
+      String cleanPrivateKey = privateKey.trim();
+      if (cleanPrivateKey.startsWith('0x')) {
+        cleanPrivateKey = cleanPrivateKey.substring(2);
+      }
+
+      // Ensure private key is valid hex and correct length
+      if (cleanPrivateKey.length != 64) {
+        throw Exception('Invalid private key length');
+      }
+
+      final credentials = EthPrivateKey.fromHex(cleanPrivateKey);
+      final address = await credentials.extractAddress();
+
+      // Store only the address in plaintext
+      await _secureStorage.write(key: _walletAddressKey, value: address.hex);
+
+      return WalletModel(
+        address: address.hex,
+        privateKey: cleanPrivateKey,
+        mnemonic: '',
+        credentials: credentials,
+      );
+    } catch (e) {
+      throw Exception('Failed to import private key: $e');
     }
-
-    final credentials = EthPrivateKey.fromHex(privateKey);
-    final address = await credentials.extractAddress();
-
-    // Store only the address in plaintext
-    await _secureStorage.write(key: _walletAddressKey, value: address.hex);
-
-    return WalletModel(
-      address: address.hex,
-      privateKey: privateKey,
-      mnemonic: '',
-      credentials: credentials,
-    );
   }
 
   // Create wallet from mnemonic
@@ -102,49 +113,58 @@ class WalletService {
   }
 
   // Decrypt and load wallet
-  // Decrypt and load wallet
   Future<WalletModel?> decryptAndLoadWallet(String pin) async {
-    final address = await _secureStorage.read(key: _walletAddressKey);
-    final encryptedPrivateKey =
-        await _secureStorage.read(key: _encryptedPrivateKey);
-    final encryptedMnemonic =
-        await _secureStorage.read(key: _encryptedMnemonic);
-    final ivString = await _secureStorage.read(key: _walletIV);
-
-    if (address == null || encryptedPrivateKey == null || ivString == null) {
-      return null;
-    }
-
-    // Derive key from PIN
-    final key = _deriveKeyFromPin(pin);
-
-    // Parse IV
-    final iv = encrypt.IV.fromBase64(ivString);
-
-    // Create decrypter
-    final decrypter = encrypt.Encrypter(encrypt.AES(key));
-
     try {
-      // Decrypt private key
-      final privateKey = decrypter.decrypt64(encryptedPrivateKey, iv: iv);
+      final address = await _secureStorage.read(key: _walletAddressKey);
+      final encryptedPrivateKey =
+          await _secureStorage.read(key: _encryptedPrivateKey);
+      final encryptedMnemonic =
+          await _secureStorage.read(key: _encryptedMnemonic);
+      final ivString = await _secureStorage.read(key: _walletIV);
 
-      // Decrypt mnemonic if available
-      String mnemonic = '';
-      if (encryptedMnemonic != null) {
-        mnemonic = decrypter.decrypt64(encryptedMnemonic, iv: iv);
+      if (address == null || encryptedPrivateKey == null || ivString == null) {
+        print('Missing wallet data during restoration');
+        return null;
       }
 
-      // Create credentials
-      final credentials = EthPrivateKey.fromHex(privateKey);
+      final key = _deriveKeyFromPin(pin);
+      final iv = encrypt.IV.fromBase64(ivString);
+      final decrypter = encrypt.Encrypter(encrypt.AES(key));
 
-      return WalletModel(
-        address: address,
-        privateKey: privateKey,
-        mnemonic: mnemonic,
-        credentials: credentials,
-      );
+      try {
+        final privateKey = decrypter.decrypt64(encryptedPrivateKey, iv: iv);
+
+        // Validate private key format
+        if (privateKey.length != 64) {
+          throw Exception('Invalid private key length after decryption');
+        }
+
+        final credentials = EthPrivateKey.fromHex(privateKey);
+
+        // Verify the address matches
+        final derivedAddress = (await credentials.extractAddress()).hex;
+        if (derivedAddress.toLowerCase() != address.toLowerCase()) {
+          throw Exception('Address mismatch after wallet restoration');
+        }
+
+        String mnemonic = '';
+        if (encryptedMnemonic != null) {
+          mnemonic = decrypter.decrypt64(encryptedMnemonic, iv: iv);
+        }
+
+        return WalletModel(
+          address: address,
+          privateKey: privateKey,
+          mnemonic: mnemonic,
+          credentials: credentials,
+        );
+      } catch (e) {
+        print('Decryption error: $e');
+        return null;
+      }
     } catch (e) {
-      throw Exception('Failed to decrypt wallet: Invalid PIN');
+      print('Wallet restoration error: $e');
+      return null;
     }
   }
 

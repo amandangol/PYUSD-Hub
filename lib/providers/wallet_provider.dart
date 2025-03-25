@@ -98,34 +98,31 @@ class WalletProvider extends ChangeNotifier {
 
     final currentNetwork = _networkProvider.currentNetwork;
 
-    // Cancel any pending debounce timer
-    _debounceTimer?.cancel();
-
-    // If force refresh, execute immediately
+    // Always refresh if force refresh is true
     if (forceRefresh) {
       await _executeRefresh(address, currentNetwork);
       return;
     }
 
-    // Debounce refresh calls
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
-      // Check if we really need to refresh
-      if (!forceRefresh && _isCacheValid(currentNetwork)) {
-        return;
-      }
+    // Cancel any pending debounce timer
+    _debounceTimer?.cancel();
 
-      await _executeRefresh(address, currentNetwork);
+    // Use shorter debounce for better responsiveness
+    _debounceTimer = Timer(const Duration(milliseconds: 200), () async {
+      if (!_isCacheValid(currentNetwork)) {
+        await _executeRefresh(address, currentNetwork);
+      }
     });
   }
 
   // Execute the actual refresh operation
   Future<void> _executeRefresh(
       String address, NetworkType currentNetwork) async {
-    // Only set loading state if we're actually going to refresh
     _isBalanceRefreshing = true;
     notifyListeners();
 
     try {
+      // Force a fresh fetch of balances
       await _refreshBalances(address);
 
       // Update cache timestamp
@@ -150,19 +147,63 @@ class WalletProvider extends ChangeNotifier {
     final rpcUrl = _networkProvider.currentRpcEndpoint;
     final currentNetwork = _networkProvider.currentNetwork;
 
-    // Fetch ETH balance
-    final ethBalance = await _rpcService.getEthBalance(rpcUrl, address);
-    _balances[currentNetwork] = ethBalance;
+    try {
+      // Debug log before fetching
+      print('\n=== PYUSD Balance Debug ===');
+      print('Current cached PYUSD balance: ${_tokenBalances[currentNetwork]}');
+      print('Fetching new balances for address: $address');
+      print('Network: $currentNetwork');
+      print('RPC URL: $rpcUrl');
 
-    // Fetch token balance if applicable
-    final tokenContractAddress = _tokenContractAddresses[currentNetwork];
-    if (tokenContractAddress != null && tokenContractAddress.isNotEmpty) {
-      final tokenBalance = await _rpcService.getTokenBalance(
+      // Fetch balances in parallel
+      final ethBalance = await _rpcService.getEthBalance(rpcUrl, address);
+      final tokenBalance =
+          await _getTokenBalance(rpcUrl, address, currentNetwork);
+
+      print('New ETH balance: $ethBalance');
+      print('New PYUSD balance: $tokenBalance');
+
+      if (!_isDisposed) {
+        final oldTokenBalance = _tokenBalances[currentNetwork];
+        _balances[currentNetwork] = ethBalance;
+        _tokenBalances[currentNetwork] = tokenBalance;
+
+        // Debug log balance change
+        if (oldTokenBalance != tokenBalance) {
+          print('PYUSD balance changed: $oldTokenBalance -> $tokenBalance');
+        } else {
+          print('PYUSD balance unchanged');
+        }
+      }
+
+      print('=== End Balance Debug ===\n');
+    } catch (e) {
+      print('Error in _refreshBalances: $e');
+      throw e;
+    }
+  }
+
+  // Add helper method for token balance
+  Future<double> _getTokenBalance(
+      String rpcUrl, String address, NetworkType network) async {
+    final tokenContractAddress = _tokenContractAddresses[network];
+    if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
+      print('Debug: No token contract address for network $network');
+      return 0.0;
+    }
+
+    try {
+      final balance = await _rpcService.getTokenBalance(
         rpcUrl,
         tokenContractAddress,
         address,
+        decimals: 6, // PYUSD decimals
       );
-      _tokenBalances[currentNetwork] = tokenBalance;
+      print('Debug: Raw token balance response: $balance');
+      return balance;
+    } catch (e) {
+      print('Debug: Error fetching token balance: $e');
+      rethrow;
     }
   }
 
@@ -201,5 +242,22 @@ class WalletProvider extends ChangeNotifier {
     _debounceTimer?.cancel();
     _networkProvider.removeListener(_onNetworkChanged);
     super.dispose();
+  }
+
+  // Add method to manually check balance
+  Future<void> debugCheckBalance() async {
+    final address = _authProvider.getCurrentAddress();
+    if (address == null || address.isEmpty) {
+      print('Debug: No wallet address available');
+      return;
+    }
+
+    try {
+      print('\n=== Manual Balance Check ===');
+      print('Checking balance for address: $address');
+      await _refreshBalances(address);
+    } catch (e) {
+      print('Debug: Manual balance check failed: $e');
+    }
   }
 }

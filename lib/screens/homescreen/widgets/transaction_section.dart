@@ -48,7 +48,44 @@ class _TransactionsSectionState extends State<TransactionsSection> {
 
   // Helper method to update filtered transactions
   void _updateFilteredTransactions() {
-    _filteredTransactions = _getFilteredTransactions();
+    // Debug print to see all transactions
+    print('All Transactions: ${widget.transactions.length}');
+    print('Transactions Details:');
+    for (var tx in widget.transactions) {
+      // print(
+      //     'Hash: ${tx.hash}, Status: ${tx.status}, Symbol: ${tx.tokenSymbol}');
+    }
+
+    // First get filtered transactions based on type
+    List<TransactionModel> filtered = _getFilteredTransactions();
+
+    // More robust sorting to prioritize pending transactions
+    filtered.sort((a, b) {
+      // Pending transactions are always first
+      if (a.status == TransactionStatus.pending &&
+          b.status != TransactionStatus.pending) {
+        return -1;
+      }
+      if (b.status == TransactionStatus.pending &&
+          a.status != TransactionStatus.pending) {
+        return 1;
+      }
+
+      // If both are pending, sort by most recent first
+      if (a.status == TransactionStatus.pending &&
+          b.status == TransactionStatus.pending) {
+        return b.timestamp.compareTo(a.timestamp);
+      }
+
+      // For non-pending transactions, sort by timestamp (newest first)
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    // Debug print filtered transactions
+    print('Filtered Transactions: ${filtered.length}');
+    for (var tx in filtered) {}
+
+    _filteredTransactions = filtered;
   }
 
   @override

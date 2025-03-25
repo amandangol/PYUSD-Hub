@@ -5,7 +5,6 @@ import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../providers/network_provider.dart';
 import '../screens/transactions/model/transaction_model.dart';
-import 'debug_trace_service.dart';
 
 class EthereumRpcService {
   static const String erc20TransferAbi =
@@ -24,8 +23,6 @@ class EthereumRpcService {
 
   // API key for Etherscan
   static const String _etherscanApiKey = 'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
-
-  final DebugTraceService _debugTraceService = DebugTraceService();
 
   // Get or create a cached Web3Client
   Web3Client? _getClient(String rpcUrl) {
@@ -100,6 +97,12 @@ class EthereumRpcService {
     if (walletAddress.isEmpty || tokenContractAddress.isEmpty) return 0.0;
 
     try {
+      print('\n=== Token Balance RPC Debug ===');
+      print('Fetching balance for:');
+      print('Token: $tokenContractAddress');
+      print('Wallet: $walletAddress');
+      print('Decimals: $decimals');
+
       // ERC20 balanceOf function signature + wallet address (padded)
       final String data =
           '0x70a08231000000000000000000000000${walletAddress.replaceAll('0x', '')}';
@@ -117,10 +120,20 @@ class EthereumRpcService {
       );
 
       final String hexBalance = response['result'];
-      if (hexBalance == '0x') return 0.0;
+      print('Raw hex balance: $hexBalance');
+
+      if (hexBalance == '0x') {
+        print('Zero balance returned');
+        return 0.0;
+      }
 
       final BigInt tokenBalance = FormatterUtils.parseBigInt(hexBalance);
-      return tokenBalance / BigInt.from(10).pow(decimals);
+      final double balance = tokenBalance / BigInt.from(10).pow(decimals);
+
+      print('Parsed balance: $balance PYUSD');
+      print('=== End Token Balance Debug ===\n');
+
+      return balance;
     } catch (e) {
       print('Error fetching token balance: $e');
       return 0.0;
@@ -353,16 +366,14 @@ class EthereumRpcService {
     String userAddress,
   ) async {
     try {
-      // Make parallel RPC calls for transaction, receipt, and current block number
+      // Make parallel RPC calls for transaction and receipt data
       final futures = await Future.wait([
         _makeRpcCall(rpcUrl, 'eth_getTransactionByHash', [txHash]),
         _makeRpcCall(rpcUrl, 'eth_getTransactionReceipt', [txHash]),
-        _makeRpcCall(rpcUrl, 'eth_blockNumber', []),
       ]);
 
       final txResponse = futures[0];
       final receiptResponse = futures[1];
-      final currentBlockResponse = futures[2];
 
       // Check if txResponse or txResponse['result'] is null
       if (txResponse['result'] == null) {
@@ -412,16 +423,68 @@ class EthereumRpcService {
           blockHash: 'Pending',
           isError: false,
           data: txData['input'],
-          tokenSymbol: null,
-          traceDataUnavailable: true,
         );
       }
 
-      // Get block data in parallel with token details if needed
-      final blockFuture = _makeRpcCall(
-          rpcUrl, 'eth_getBlockByHash', [receiptData['blockHash'], false]);
+      // Get block data and current block number in parallel
+      final blockFutures = await Future.wait([
+        _makeRpcCall(
+            rpcUrl, 'eth_getBlockByHash', [receiptData['blockHash'], false]),
+        _makeRpcCall(rpcUrl, 'eth_blockNumber', []),
+      ]);
 
-      // Check if it's a token transfer early to optimize parallel fetching
+      final blockResponse = blockFutures[0];
+      final currentBlockResponse = blockFutures[1];
+
+      // Check if blockResponse or blockResponse['result] is null
+      if (blockResponse['result'] == null) {
+        print('Block data not found: ${receiptData['blockHash']}');
+        return TransactionDetailModel(
+          hash: txHash,
+          timestamp: DateTime.now(),
+          from: txData['from'] ?? '',
+          to: txData['to'] ?? '',
+          amount: txData['value'] != null
+              ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
+              : 0.0,
+          gasUsed: receiptData['gasUsed'] != null
+              ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
+              : 0.0,
+          gasLimit: txData['gas'] != null
+              ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
+              : 0.0,
+          gasPrice: txData['gasPrice'] != null
+              ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
+              : 0.0,
+          status: receiptData['status'] == '0x1'
+              ? TransactionStatus.confirmed
+              : TransactionStatus.failed,
+          direction: _compareAddresses(txData['from'], userAddress)
+              ? TransactionDirection.outgoing
+              : TransactionDirection.incoming,
+          confirmations: 0,
+          network: networkType,
+          blockNumber: receiptData['blockNumber'] != null
+              ? FormatterUtils.parseBigInt(receiptData['blockNumber'])
+                  .toString()
+              : '0',
+          nonce: txData['nonce'] != null
+              ? int.parse(txData['nonce'].substring(2), radix: 16)
+              : 0,
+          blockHash: receiptData['blockHash'] ?? '',
+          isError: receiptData['status'] != '0x1',
+          data: txData['input'],
+        );
+      }
+
+      final blockData = blockResponse['result'] as Map<String, dynamic>;
+      final currentBlock =
+          FormatterUtils.parseBigInt(currentBlockResponse['result']);
+      final txBlockNumber =
+          FormatterUtils.parseBigInt(receiptData['blockNumber']);
+      final confirmations = (currentBlock - txBlockNumber).toInt();
+
+      // Check if it's a token transfer
       bool isTokenTransfer = txData['input'] != null &&
           txData['input'].toString().startsWith('0xa9059cbb');
 
@@ -432,28 +495,11 @@ class EthereumRpcService {
       int? tokenDecimals;
       String? tokenContractAddress;
 
-      // Start token details fetch in parallel if needed
-      Future<Map<String, dynamic>>? tokenDetailsFuture;
       if (isTokenTransfer) {
-        tokenContractAddress = toAddress;
-        tokenDetailsFuture = getTokenDetails(rpcUrl, toAddress);
-      }
-
-      // Wait for block data
-      final blockResponse = await blockFuture;
-      final blockData = blockResponse['result'] as Map<String, dynamic>?;
-
-      // Calculate confirmations
-      final currentBlock =
-          FormatterUtils.parseBigInt(currentBlockResponse['result']);
-      final txBlockNumber =
-          FormatterUtils.parseBigInt(receiptData['blockNumber']);
-      final confirmations = (currentBlock - txBlockNumber).toInt();
-
-      // Get token details if needed
-      if (isTokenTransfer && tokenDetailsFuture != null) {
+        // Get token details in parallel with other operations
         try {
-          final tokenDetails = await tokenDetailsFuture;
+          tokenContractAddress = toAddress;
+          final tokenDetails = await getTokenDetails(rpcUrl, toAddress);
           tokenName = tokenDetails['name'];
           tokenSymbol = tokenDetails['symbol'];
           tokenDecimals = tokenDetails['decimals'];
@@ -467,7 +513,7 @@ class EthereumRpcService {
         } catch (e) {
           print('Error getting token details: $e');
         }
-      } else if (!isTokenTransfer) {
+      } else {
         // Regular ETH transfer
         amount = txData['value'] != null
             ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
@@ -497,22 +543,10 @@ class EthereumRpcService {
         }
       }
 
-      // Try to get trace data, but don't fail if unavailable
-      Map<String, dynamic>? traceData;
-      try {
-        traceData = await _debugTraceService.traceTransaction(rpcUrl, txHash);
-      } catch (e) {
-        print('Trace data unavailable: $e');
-        // Continue without trace data
-      }
-
       return TransactionDetailModel(
         hash: txHash,
-        timestamp: blockData != null
-            ? DateTime.fromMillisecondsSinceEpoch(
-                int.parse(blockData['timestamp'].substring(2), radix: 16) *
-                    1000)
-            : DateTime.now(),
+        timestamp: DateTime.fromMillisecondsSinceEpoch(
+            int.parse(blockData['timestamp'].substring(2), radix: 16) * 1000),
         from: txData['from'] ?? '',
         to: toAddress,
         amount: amount,
@@ -530,7 +564,7 @@ class EthereumRpcService {
             ? TransactionDirection.outgoing
             : TransactionDirection.incoming,
         confirmations: confirmations,
-        tokenSymbol: isTokenTransfer ? tokenSymbol : null,
+        tokenSymbol: tokenSymbol,
         tokenName: tokenName,
         tokenDecimals: tokenDecimals,
         tokenContractAddress: tokenContractAddress,
@@ -545,8 +579,6 @@ class EthereumRpcService {
         isError: status == TransactionStatus.failed,
         errorMessage: errorMessage,
         data: txData['input'],
-        traceData: traceData,
-        traceDataUnavailable: traceData == null,
       );
     } catch (e) {
       print('Exception in getTransactionDetails: $e');
@@ -560,39 +592,94 @@ class EthereumRpcService {
     return address1.toLowerCase() == address2.toLowerCase();
   }
 
-  // Send token transaction with improved error handling
-  Future<String> sendTokenTransaction(
-      String rpcUrl,
-      String privateKey,
-      String contractAddress,
-      String toAddress,
-      double amount,
-      int tokenDecimals,
-      {double? gasPrice,
-      int? gasLimit}) async {
+  // Add new method to get detailed gas prices
+  Future<Map<String, double>> getDetailedGasPrices(String rpcUrl) async {
     try {
-      final credentials = EthPrivateKey.fromHex(privateKey);
+      print('\n=== Gas Price Debug ===');
+
+      // Get current gas price in Wei
+      final gasPriceResponse = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);
+      final currentGasPriceWei =
+          FormatterUtils.parseBigInt(gasPriceResponse['result']);
+
+      // Convert Wei to Gwei
+      final currentGasPriceGwei = currentGasPriceWei.toDouble() / 1e9;
+
+      // Calculate suggested gas prices
+      final slow = currentGasPriceGwei;
+      final standard = currentGasPriceGwei * 1.2; // 20% higher
+      final fast = currentGasPriceGwei * 1.5; // 50% higher
+
+      print(
+          'Current Gas Price: ${currentGasPriceGwei.toStringAsFixed(2)} Gwei');
+      print('Suggested Prices:');
+      print('- Slow: ${slow.toStringAsFixed(2)} Gwei');
+      print('- Standard: ${standard.toStringAsFixed(2)} Gwei');
+      print('- Fast: ${fast.toStringAsFixed(2)} Gwei');
+      print('=== End Gas Price Debug ===\n');
+
+      return {
+        'slow': slow,
+        'standard': standard,
+        'fast': fast,
+        'current': currentGasPriceGwei,
+      };
+    } catch (e) {
+      print('Error getting gas prices: $e');
+      // Return default values if error
+      return {
+        'slow': 20.0,
+        'standard': 25.0,
+        'fast': 30.0,
+        'current': 20.0,
+      };
+    }
+  }
+
+  // Update sendTokenTransaction to handle BigInt properly
+  Future<String> sendTokenTransaction(
+    String rpcUrl,
+    String privateKey,
+    String contractAddress,
+    String toAddress,
+    double amount,
+    int tokenDecimals, {
+    double? gasPrice,
+    int? gasLimit,
+  }) async {
+    try {
+      String formattedPrivateKey =
+          privateKey.startsWith('0x') ? privateKey.substring(2) : privateKey;
+      final credentials = EthPrivateKey.fromHex(formattedPrivateKey);
       final sender = credentials.address;
 
-      // Get chain ID, nonce, and gas price in parallel
-      final futures = await Future.wait([
-        _getChainId(rpcUrl),
-        _getNonce(rpcUrl, sender),
-        gasPrice == null
-            ? _getCurrentGasPrice(rpcUrl)
-            : Future.value(BigInt.from(gasPrice * 1e9)),
-      ]);
+      // Get chain ID and nonce
+      final chainId = await _getChainId(rpcUrl);
+      final nonce = await _getNonce(rpcUrl, sender);
 
-      final chainId = futures[0] as int;
-      final nonce = futures[1] as int;
-      final gasPriceWei = futures[2] as BigInt;
+      // Handle gas price conversion properly
+      BigInt gasPriceWei;
+      if (gasPrice != null) {
+        // Convert provided gas price from Gwei to Wei
+        gasPriceWei = BigInt.from(gasPrice * 1e9);
+      } else {
+        // Get current gas price in Wei
+        final prices = await getDetailedGasPrices(rpcUrl);
+        gasPriceWei = BigInt.from(prices['fast']! * 1e9);
+      }
+
+      print('\n=== Transaction Debug ===');
+      print('Chain ID: $chainId');
+      print('Nonce: $nonce');
+      print('Gas Price (Wei): $gasPriceWei');
+      print('Gas Price (Gwei): ${gasPriceWei.toDouble() / 1e9}');
 
       // Convert amount to token units
       final amountInTokenUnits =
           BigInt.from(amount * BigInt.from(10).pow(tokenDecimals).toDouble());
 
-      // Use default gas limit for token transfers if not provided
-      final gas = gasLimit ?? 100000; // Higher gas limit for token transfers
+      // Use higher default gas limit for token transfers
+      final gas = gasLimit ?? 100000;
 
       // Create contract and prepare transfer call data
       final client = _getClient(rpcUrl);
@@ -632,8 +719,13 @@ class EthereumRpcService {
         ['0x${bytesToHex(signedTx!)}'],
       );
 
-      return txResponse['result'];
+      final txHash = txResponse['result'] as String;
+      print('Transaction hash: $txHash');
+      print('=== End Transaction Debug ===\n');
+
+      return txHash;
     } catch (e) {
+      print('Error sending token transaction: $e');
       throw Exception('Failed to send token transaction: $e');
     }
   }
