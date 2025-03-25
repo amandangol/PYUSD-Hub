@@ -22,6 +22,7 @@ class GasSelectionSheet extends StatefulWidget {
 class _GasSelectionSheetState extends State<GasSelectionSheet> {
   final _customGasPriceController = TextEditingController();
   final _customGasPriceFocusNode = FocusNode();
+  final _scrollController = ScrollController();
   bool _isCustom = false;
 
   @override
@@ -36,79 +37,21 @@ class _GasSelectionSheetState extends State<GasSelectionSheet> {
   void _onFocusChange() {
     if (_customGasPriceFocusNode.hasFocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
-        if (keyboardHeight > 0) {
-          _adjustBottomSheetForKeyboard();
-        }
+        // Scroll to the bottom of the sheet
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
       });
     }
-  }
-
-  void _adjustBottomSheetForKeyboard() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: _buildFullBottomSheetContent(),
-      ),
-    );
-  }
-
-  Widget _buildFullBottomSheetContent() {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Select Network Fee',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...widget.gasOptions.values.map((option) => _buildGasOption(
-                  context,
-                  option,
-                  option == widget.selectedOption && !_isCustom,
-                  isDarkMode,
-                )),
-            _buildCustomGasOption(context, isDarkMode),
-            const SizedBox(height: 16),
-            Text(
-              'Higher gas price = Faster transaction confirmation',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
   void dispose() {
     _customGasPriceController.dispose();
     _customGasPriceFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -116,41 +59,57 @@ class _GasSelectionSheetState extends State<GasSelectionSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final mediaQuery = MediaQuery.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Select Network Fee',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          height: mediaQuery.size.height * 0.7, // Increased height
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          const SizedBox(height: 16),
-          ...widget.gasOptions.values.map((option) => _buildGasOption(
-                context,
-                option,
-                option == widget.selectedOption && !_isCustom,
-                isDarkMode,
-              )),
-          _buildCustomGasOption(context, isDarkMode),
-          const SizedBox(height: 16),
-          Text(
-            'Higher gas price = Faster transaction confirmation',
-            style: TextStyle(
-              color: isDarkMode ? Colors.white70 : Colors.black54,
-              fontSize: 12,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Network Fee',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Column(
+                    children: [
+                      ...widget.gasOptions.values
+                          .map((option) => _buildGasOption(
+                                context,
+                                option,
+                                option == widget.selectedOption && !_isCustom,
+                                isDarkMode,
+                              )),
+                      _buildCustomGasOption(context, isDarkMode),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Higher gas price = Faster transaction confirmation',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -278,6 +237,12 @@ class _GasSelectionSheetState extends State<GasSelectionSheet> {
             ),
             onTap: () {
               setState(() => _isCustom = true);
+              // Scroll to the bottom when tapped
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
             },
             onChanged: (value) {
               if (value.isNotEmpty) {

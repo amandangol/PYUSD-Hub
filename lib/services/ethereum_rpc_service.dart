@@ -7,6 +7,10 @@ import '../providers/network_provider.dart';
 import '../screens/transactions/model/transaction_model.dart';
 
 class EthereumRpcService {
+  static final EthereumRpcService _instance = EthereumRpcService._internal();
+  factory EthereumRpcService() => _instance;
+  EthereumRpcService._internal();
+
   static const String erc20TransferAbi =
       '[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]';
 
@@ -18,8 +22,8 @@ class EthereumRpcService {
   ]
   ''';
 
-  // Cache for Web3Client instances to avoid creating new ones for each request
-  final Map<String, Web3Client> _clientCache = {};
+  // Use late initialization for client cache
+  late final Map<String, Web3Client> _clientCache = {};
 
   // API key for Etherscan
   static const String _etherscanApiKey = 'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
@@ -36,32 +40,34 @@ class EthereumRpcService {
   Future<Map<String, dynamic>> _makeRpcCall(
     String rpcUrl,
     String method,
-    List<dynamic> params,
-  ) async {
+    List<dynamic> params, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse(rpcUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'jsonrpc': '2.0',
-          'id': 1,
-          'method': method,
-          'params': params,
-        }),
-      );
+      final client = http.Client();
+      try {
+        final response = await client
+            .post(
+              Uri.parse(rpcUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': method,
+                'params': params,
+              }),
+            )
+            .timeout(timeout);
 
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to connect to Ethereum node: ${response.statusCode}');
+        if (response.statusCode != 200) {
+          throw Exception(
+              'Failed to connect to Ethereum node: ${response.statusCode}');
+        }
+
+        return jsonDecode(response.body);
+      } finally {
+        client.close();
       }
-
-      final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
-
-      if (jsonResponse.containsKey('error')) {
-        throw Exception('RPC Error: ${jsonResponse['error']['message']}');
-      }
-
-      return jsonResponse;
     } catch (e) {
       throw Exception('RPC call failed for $method: $e');
     }
@@ -366,14 +372,17 @@ class EthereumRpcService {
     String userAddress,
   ) async {
     try {
-      // Make parallel RPC calls for transaction and receipt data
-      final futures = await Future.wait([
-        _makeRpcCall(rpcUrl, 'eth_getTransactionByHash', [txHash]),
-        _makeRpcCall(rpcUrl, 'eth_getTransactionReceipt', [txHash]),
-      ]);
+      // Batch RPC calls
+      final batchCalls = [
+        ('eth_getTransactionByHash', [txHash]),
+        ('eth_getTransactionReceipt', [txHash]),
+        ('eth_blockNumber', []),
+      ];
 
-      final txResponse = futures[0];
-      final receiptResponse = futures[1];
+      final responses = await batchRpcCalls(rpcUrl, batchCalls);
+
+      final txResponse = responses[0];
+      final receiptResponse = responses[1];
 
       // Check if txResponse or txResponse['result'] is null
       if (txResponse['result'] == null) {
@@ -801,8 +810,17 @@ class EthereumRpcService {
   }
 
   // Get token details (name, symbol, decimals) with improved error handling
+  final Map<String, Map<String, dynamic>> _tokenDetailsCache = {};
+
   Future<Map<String, dynamic>> getTokenDetails(
-      String rpcUrl, String contractAddress) async {
+    String rpcUrl,
+    String contractAddress,
+  ) async {
+    // Check cache first
+    if (_tokenDetailsCache.containsKey(contractAddress)) {
+      return _tokenDetailsCache[contractAddress]!;
+    }
+
     final client = _getClient(rpcUrl);
 
     final contract = DeployedContract(
@@ -855,12 +873,15 @@ class EthereumRpcService {
         }
       } catch (_) {}
 
-      return {
+      // Cache the result
+      _tokenDetailsCache[contractAddress] = {
         'name': name,
         'symbol': symbol,
         'decimals': decimals,
         'address': contractAddress,
       };
+
+      return _tokenDetailsCache[contractAddress]!;
     } catch (e) {
       throw Exception('Failed to get token details: $e');
     }
@@ -894,25 +915,35 @@ class EthereumRpcService {
     }
   }
 
-  // Helper method to calculate confirmations
-  Future<int> _calculateConfirmations(
-      String rpcUrl, BigInt txBlockNumber) async {
-    try {
-      final response = await _makeRpcCall(rpcUrl, 'eth_blockNumber', []);
-      final BigInt currentBlock =
-          FormatterUtils.parseBigInt(response['result']);
-      return (currentBlock - txBlockNumber).toInt();
-    } catch (e) {
-      print('Error calculating confirmations: $e');
-      return 0;
-    }
+  // Optimize parallel requests with batch processing
+  Future<List<Map<String, dynamic>>> batchRpcCalls(
+    String rpcUrl,
+    List<(String, List<dynamic>)> calls,
+  ) async {
+    final batch = calls.asMap().map((index, call) => MapEntry(index, {
+          'jsonrpc': '2.0',
+          'id': index,
+          'method': call.$1,
+          'params': call.$2,
+        }));
+
+    final response = await http.post(
+      Uri.parse(rpcUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(batch.values.toList()),
+    );
+
+    final List<dynamic> results = jsonDecode(response.body);
+    return results.cast<Map<String, dynamic>>();
   }
 
   // Clean up method to dispose of Web3Client instances
+  @override
   void dispose() {
     _clientCache.forEach((url, client) {
       client.dispose();
     });
     _clientCache.clear();
+    _tokenDetailsCache.clear();
   }
 }
