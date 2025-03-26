@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../transactions/view/all_transactions/all_transaction_screen.dart';
 import '../../transactions/model/transaction_model.dart';
+import '../provider/homescreen_provider.dart';
 import 'transaction_item.dart';
 import '../../../utils/empty_state_utils.dart';
+import 'package:provider/provider.dart';
 
 class TransactionsSection extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -25,10 +28,16 @@ class TransactionsSection extends StatefulWidget {
 }
 
 class _TransactionsSectionState extends State<TransactionsSection> {
-  String _filter = 'All'; // 'All', 'PYUSD', 'ETH'
+  static const _filterOptions = ['All', 'PYUSD', 'ETH'];
 
-  // Cached filtered transactions to avoid recalculating every build
+  String _filter = _filterOptions[0];
   List<TransactionModel> _filteredTransactions = [];
+
+  // Memoize common styles
+  late final _loadingBoxDecoration = BoxDecoration(
+    color: widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50,
+    borderRadius: BorderRadius.circular(12),
+  );
 
   @override
   void initState() {
@@ -39,156 +48,164 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   @override
   void didUpdateWidget(TransactionsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    // Update filtered transactions when the original transactions list changes
     if (widget.transactions != oldWidget.transactions) {
       _updateFilteredTransactions();
     }
   }
 
-  // Helper method to update filtered transactions
   void _updateFilteredTransactions() {
-    // Debug print to see all transactions
-    print('All Transactions: ${widget.transactions.length}');
-    print('Transactions Details:');
-    for (var tx in widget.transactions) {
-      // print(
-      //     'Hash: ${tx.hash}, Status: ${tx.status}, Symbol: ${tx.tokenSymbol}');
-    }
+    if (!mounted) return;
 
-    // First get filtered transactions based on type
-    List<TransactionModel> filtered = _getFilteredTransactions();
+    final homeProvider = context.read<HomeScreenProvider>();
+    final currentFilter = homeProvider.currentFilter;
 
-    // More robust sorting to prioritize pending transactions
+    final filtered = widget.transactions.where((tx) {
+      switch (currentFilter) {
+        case 'PYUSD':
+          return tx.tokenSymbol == 'PYUSD';
+        case 'ETH':
+          return tx.tokenSymbol == null || tx.tokenSymbol == 'ETH';
+        default:
+          return true; // 'All' case
+      }
+    }).toList();
+
+    // Sort transactions
     filtered.sort((a, b) {
-      // Pending transactions are always first
-      if (a.status == TransactionStatus.pending &&
-          b.status != TransactionStatus.pending) {
-        return -1;
-      }
-      if (b.status == TransactionStatus.pending &&
-          a.status != TransactionStatus.pending) {
-        return 1;
-      }
-
-      // If both are pending, sort by most recent first
-      if (a.status == TransactionStatus.pending &&
-          b.status == TransactionStatus.pending) {
-        return b.timestamp.compareTo(a.timestamp);
-      }
-
-      // For non-pending transactions, sort by timestamp (newest first)
-      return b.timestamp.compareTo(a.timestamp);
+      final aPending = a.status == TransactionStatus.pending ? 1 : 0;
+      final bPending = b.status == TransactionStatus.pending ? 1 : 0;
+      final pendingCompare = bPending - aPending;
+      return pendingCompare != 0
+          ? pendingCompare
+          : b.timestamp.compareTo(a.timestamp);
     });
 
-    // Debug print filtered transactions
-    print('Filtered Transactions: ${filtered.length}');
-    for (var tx in filtered) {}
-
-    _filteredTransactions = filtered;
+    setState(() {
+      _filteredTransactions = filtered;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final homeProvider = context.watch<HomeScreenProvider>();
     final cardColor =
         widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50;
 
-    // Limit to 3 transactions for the home screen
+    // Listen to filter changes and update transactions
+    if (homeProvider.currentFilter != _filter) {
+      _filter = homeProvider.currentFilter;
+      _updateFilteredTransactions();
+    }
+
     final displayTransactions = _filteredTransactions.take(3).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Transactions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color:
-                    widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-              ),
-            ),
-            // Filter dropdown
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: widget.isDarkMode
-                    ? Colors.grey.shade800
-                    : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: DropdownButton<String>(
-                value: _filter,
-                icon: const Icon(Icons.filter_list, size: 16),
-                underline: const SizedBox(),
-                isDense: true,
-                style: TextStyle(
-                  color: widget.isDarkMode ? Colors.white : Colors.black87,
-                  fontSize: 14,
-                ),
-                dropdownColor:
-                    widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
-                items: <String>['All', 'PYUSD', 'ETH']
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null && newValue != _filter) {
-                    setState(() {
-                      _filter = newValue;
-                      _updateFilteredTransactions();
-                    });
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
+        _buildHeader(context),
         const SizedBox(height: 16),
-
-        // Show loading state
         if (widget.isLoading)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(),
-            ),
-          )
-        // Show empty state
+          _buildLoadingState()
         else if (displayTransactions.isEmpty)
-          _buildEmptyState()
-        // Show transactions
+          _buildEmptyState(homeProvider.currentFilter)
         else
           Column(
-            children: displayTransactions
-                .map((tx) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: TransactionItem(
-                        transaction: tx,
-                        currentAddress: widget.currentAddress,
-                        isDarkMode: widget.isDarkMode,
-                        cardColor: cardColor,
-                      ),
-                    ))
-                .toList(),
+            children: [
+              ...displayTransactions.map((tx) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: TransactionItem(
+                      transaction: tx,
+                      currentAddress: widget.currentAddress,
+                      isDarkMode: widget.isDarkMode,
+                      cardColor: cardColor,
+                    ),
+                  )),
+              if (_filteredTransactions.length > 3) _buildViewAllButton(),
+            ],
           ),
-
-        // View All button - only show if we have transactions and there are more than 3
-        if (_filteredTransactions.isNotEmpty &&
-            _filteredTransactions.length > 3)
-          _buildViewAllButton(),
       ],
     );
   }
 
+  Widget _buildHeader(BuildContext context) {
+    final homeProvider = context.watch<HomeScreenProvider>();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Transactions',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+          ),
+        ),
+
+        // Improved Dropdown with proper theming
+        DropdownButton<String>(
+          value: homeProvider.currentFilter,
+          icon: Icon(
+            Icons.filter_list_rounded,
+            size: 20,
+            color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+          ),
+          underline: const SizedBox(), // Remove default underline
+          dropdownColor:
+              widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
+          style: TextStyle(
+            color: widget.isDarkMode ? Colors.white : Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          items: homeProvider.availableFilters.map((String filter) {
+            return DropdownMenuItem<String>(
+              value: filter,
+              child: Text(
+                filter,
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (String? newFilter) async {
+            if (newFilter != null) {
+              await homeProvider.setTransactionFilter(newFilter);
+              _updateFilteredTransactions();
+            }
+          },
+          // Customize the dropdown button's appearance
+          elevation: 2,
+          borderRadius: BorderRadius.circular(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        ),
+      ],
+    );
+  }
+
+  // Optimize loading state with const widgets where possible
+  Widget _buildLoadingState() {
+    return Column(
+      children: List.generate(
+        4,
+        (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Container(
+            height: 72,
+            padding: const EdgeInsets.all(16),
+            decoration: _loadingBoxDecoration,
+            child: const LoadingItemContent(),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Helper method to build empty state widget
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(String currentFilter) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -201,7 +218,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
             ),
             const SizedBox(height: 16),
             Text(
-              EmptyStateUtils.getTransactionEmptyStateMessage(_filter),
+              EmptyStateUtils.getTransactionEmptyStateMessage(currentFilter),
               style: TextStyle(
                 fontSize: 16,
                 color: widget.isDarkMode ? Colors.white70 : Colors.black54,
@@ -271,20 +288,62 @@ class _TransactionsSectionState extends State<TransactionsSection> {
       ),
     );
   }
+}
 
-  // Helper method to filter transactions based on selected filter
-  List<TransactionModel> _getFilteredTransactions() {
-    if (_filter == 'All') {
-      return widget.transactions;
-    } else if (_filter == 'PYUSD') {
-      return widget.transactions
-          .where((tx) => tx.tokenSymbol == 'PYUSD')
-          .toList();
-    } else {
-      // ETH
-      return widget.transactions
-          .where((tx) => tx.tokenSymbol == null || tx.tokenSymbol == 'ETH')
-          .toList();
-    }
+// Extract loading item content to a separate const widget
+class LoadingItemContent extends StatelessWidget {
+  const LoadingItemContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final loadingColor = isDarkMode ? Colors.white10 : Colors.grey.shade200;
+
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: loadingColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 120,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: loadingColor,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 80,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: loadingColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 60,
+          height: 14,
+          decoration: BoxDecoration(
+            color: loadingColor,
+            borderRadius: BorderRadius.circular(7),
+          ),
+        ),
+      ],
+    );
   }
 }

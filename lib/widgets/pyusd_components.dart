@@ -5,11 +5,13 @@ import 'package:pinput/pinput.dart';
 /// A collection of reusable UI components for the PYUSD Hub app.
 
 /// A reusable app bar component with customizable styling.
+
 class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool isDarkMode;
   final VoidCallback? onRefreshPressed;
   final bool hasWallet;
   final String? title;
+  final String? networkName;
   final bool showLogo;
   final Widget? customBackButton;
   final VoidCallback? onBackPressed;
@@ -19,6 +21,7 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.isDarkMode,
     this.onRefreshPressed,
     this.title,
+    this.networkName,
     this.hasWallet = false,
     this.showLogo = true,
     this.customBackButton,
@@ -64,6 +67,39 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        if (networkName != null)
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: Chip(
+              label: Text(
+                networkName!,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+              backgroundColor: isDarkMode
+                  ? (networkName!.contains('Testnet')
+                      ? Colors.orange.withOpacity(0.2)
+                      : Colors.green.withOpacity(0.2))
+                  : (networkName!.contains('Testnet')
+                      ? Colors.orange.withOpacity(0.1)
+                      : Colors.green.withOpacity(0.1)),
+              side: BorderSide.none,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              visualDensity: VisualDensity.compact,
+              avatar: Icon(
+                networkName!.contains('Testnet')
+                    ? Icons.wifi_tethering
+                    : Icons.public,
+                size: 16,
+                color: networkName!.contains('Testnet')
+                    ? Colors.orange
+                    : Colors.green,
+              ),
+            ),
+          ),
         if (hasWallet && onRefreshPressed != null)
           IconButton(
             icon: Icon(

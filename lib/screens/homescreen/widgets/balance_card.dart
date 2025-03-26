@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../../utils/snackbar_utils.dart';
+import '../provider/homescreen_provider.dart';
 
 class BalanceCard extends StatelessWidget {
   final double? ethBalance;
@@ -9,9 +11,13 @@ class BalanceCard extends StatelessWidget {
   final String walletAddress;
   final bool isRefreshing;
   final Color primaryColor;
-  final String networkName;
-  final NetworkStatus networkStatus;
 
+  // Cache common styles and colors
+  static const _paypalBlue = Color(0xFF142C8E);
+  static const _paypalLightBlue = Color(0xFF253B80);
+  static const _animationDuration = Duration(milliseconds: 300);
+
+  // Use const constructor
   const BalanceCard({
     super.key,
     required this.ethBalance,
@@ -19,9 +25,14 @@ class BalanceCard extends StatelessWidget {
     required this.walletAddress,
     required this.isRefreshing,
     required this.primaryColor,
-    required this.networkName,
-    this.networkStatus = NetworkStatus.connected, // Default to connected
   });
+
+  // Memoize common styles
+  TextStyle _getBalanceTextStyle(bool isDarkMode) => TextStyle(
+        color: isDarkMode ? Colors.white : Colors.black87,
+        fontSize: 38,
+        fontWeight: FontWeight.bold,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +41,6 @@ class BalanceCard extends StatelessWidget {
 
     // Colors
     const paypalBlue = Color(0xFF142C8E);
-    const paypalLightBlue = Color(0xFF253B80);
 
     // Extract card content to improve readability
     return Card(
@@ -55,13 +65,13 @@ class BalanceCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildCardHeader(isDarkMode, paypalBlue, paypalLightBlue),
+                  _buildCardHeader(context, isDarkMode),
                   const SizedBox(height: 24),
-                  _buildBalanceSection(isDarkMode, paypalBlue),
+                  _buildBalanceSection(context, isDarkMode, paypalBlue),
                   const SizedBox(height: 24),
                   _buildDivider(isDarkMode),
                   const SizedBox(height: 16),
-                  _buildWalletAddressSection(isDarkMode, paypalBlue, context),
+                  _buildWalletAddressSection(context, isDarkMode, paypalBlue),
                 ],
               ),
             ),
@@ -71,7 +81,7 @@ class BalanceCard extends StatelessWidget {
     );
   }
 
-  // Extracted methods for better organization
+  // Optimize card decoration by reducing opacity calculations
   BoxDecoration _buildCardDecoration(bool isDarkMode) {
     return BoxDecoration(
       borderRadius: BorderRadius.circular(16),
@@ -79,12 +89,12 @@ class BalanceCard extends StatelessWidget {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: isDarkMode
-            ? const [Color(0xFF142C8E), Color(0xFF253B80)]
+            ? const [_paypalBlue, _paypalLightBlue]
             : const [Colors.white, Color(0xFFF5F7FA)],
       ),
-      boxShadow: [
+      boxShadow: const [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Color(0x0D000000), // Pre-calculated opacity
           blurRadius: 10,
           spreadRadius: 1,
         ),
@@ -111,8 +121,9 @@ class BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCardHeader(
-      bool isDarkMode, Color paypalBlue, Color paypalLightBlue) {
+  Widget _buildCardHeader(BuildContext context, bool isDarkMode) {
+    final homeProvider = context.watch<HomeScreenProvider>();
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -121,7 +132,7 @@ class BalanceCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: isDarkMode ? paypalLightBlue : paypalBlue,
+                color: isDarkMode ? _paypalLightBlue : _paypalBlue,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -134,7 +145,7 @@ class BalanceCard extends StatelessWidget {
             Text(
               'PYUSD',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : paypalBlue,
+                color: isDarkMode ? Colors.white : _paypalBlue,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
@@ -142,69 +153,22 @@ class BalanceCard extends StatelessWidget {
             ),
           ],
         ),
-        _buildNetworkStatusBadge(isDarkMode, paypalBlue),
+        IconButton(
+          icon: Icon(
+            homeProvider.isBalanceVisible
+                ? Icons.visibility
+                : Icons.visibility_off,
+            color: isDarkMode ? Colors.white70 : _paypalBlue,
+            size: 20,
+          ),
+          onPressed: () => homeProvider.toggleBalanceVisibility(),
+        ),
       ],
     );
   }
 
-  Widget _buildNetworkStatusBadge(bool isDarkMode, Color paypalBlue) {
-    // Network status colors
-    final Color statusColor = _getNetworkStatusColor(isDarkMode);
-    final Color backgroundColor = isDarkMode
-        ? Colors.white.withOpacity(0.1)
-        : paypalBlue.withOpacity(0.1);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withOpacity(0.2)
-              : paypalBlue.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            networkName,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : paypalBlue,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getNetworkStatusColor(bool isDarkMode) {
-    switch (networkStatus) {
-      case NetworkStatus.connected:
-        return Colors.green;
-      case NetworkStatus.connecting:
-        return Colors.orange;
-      case NetworkStatus.disconnected:
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Widget _buildBalanceSection(bool isDarkMode, Color paypalBlue) {
+  Widget _buildBalanceSection(
+      BuildContext context, bool isDarkMode, Color paypalBlue) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -217,57 +181,147 @@ class BalanceCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
+        isRefreshing
+            ? _buildBalanceLoadingSkeleton(isDarkMode)
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child:
+                        _buildBalanceDisplay(context, isDarkMode, paypalBlue),
+                  ),
+                  _buildEthBalanceChip(context, isDarkMode),
+                ],
+              ),
+      ],
+    );
+  }
+
+  Widget _buildBalanceLoadingSkeleton(bool isDarkMode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildBalanceDisplay(isDarkMode, paypalBlue),
-            const Spacer(),
-            _buildEthBalanceChip(isDarkMode),
+            // PYUSD Balance Skeleton
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildSkeletonBox(
+                    isDarkMode,
+                    width: 20,
+                    height: 38,
+                  ), // $ symbol
+                  const SizedBox(width: 4),
+                  _buildSkeletonBox(
+                    isDarkMode,
+                    width: 120,
+                    height: 38,
+                  ), // Balance amount
+                ],
+              ),
+            ),
+            // ETH Balance Chip Skeleton
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSkeletonBox(
+                    isDarkMode,
+                    width: 14,
+                    height: 14,
+                    isCircular: true,
+                  ), // Icon
+                  const SizedBox(width: 6),
+                  _buildSkeletonBox(
+                    isDarkMode,
+                    width: 80,
+                    height: 14,
+                  ), // ETH amount
+                ],
+              ),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildBalanceDisplay(bool isDarkMode, Color paypalBlue) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: isRefreshing
-          ? SizedBox(
-              height: 32,
-              width: 32,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                    isDarkMode ? Colors.white : paypalBlue),
-                strokeWidth: 2,
-              ),
-            )
-          : Row(
-              children: [
-                Text(
-                  '\$',
-                  key: const ValueKey('dollar'),
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : paypalBlue,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  (tokenBalance ?? 0).toStringAsFixed(2),
-                  key: ValueKey(tokenBalance),
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                    fontSize: 38,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildSkeletonBox(
+    bool isDarkMode, {
+    required double width,
+    required double height,
+    bool isCircular = false,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? Colors.white.withOpacity(0.1)
+            : Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(isCircular ? height / 2 : 8),
+      ),
+      child: ShimmerEffect(
+        isDarkMode: isDarkMode,
+        child: Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(isCircular ? height / 2 : 8),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildEthBalanceChip(bool isDarkMode) {
+  Widget _buildBalanceDisplay(
+      BuildContext context, bool isDarkMode, Color paypalBlue) {
+    final isBalanceVisible = context.select<HomeScreenProvider, bool>(
+      (provider) => provider.isBalanceVisible,
+    );
+
+    return AnimatedSwitcher(
+      duration: _animationDuration,
+      child: Row(
+        children: [
+          _buildCurrencySymbol(isDarkMode),
+          Text(
+            isBalanceVisible ? (tokenBalance ?? 0).toStringAsFixed(2) : '****',
+            key: ValueKey(tokenBalance),
+            style: _getBalanceTextStyle(isDarkMode),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrencySymbol(bool isDarkMode) {
+    return Text(
+      '\$',
+      key: const ValueKey('dollar'),
+      style: TextStyle(
+        color: isDarkMode ? Colors.white : _paypalBlue,
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _buildEthBalanceChip(BuildContext context, bool isDarkMode) {
+    final isBalanceVisible = context.select<HomeScreenProvider, bool>(
+      (provider) => provider.isBalanceVisible,
+    );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -286,7 +340,9 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            '${(ethBalance ?? 0).toStringAsFixed(4)} ETH',
+            isBalanceVisible
+                ? '${(ethBalance ?? 0).toStringAsFixed(4)} ETH'
+                : '**** ETH',
             style: TextStyle(
               color: isDarkMode ? Colors.white70 : Colors.black54,
               fontSize: 14,
@@ -308,7 +364,10 @@ class BalanceCard extends StatelessWidget {
   }
 
   Widget _buildWalletAddressSection(
-      bool isDarkMode, Color paypalBlue, BuildContext context) {
+    BuildContext context,
+    bool isDarkMode,
+    Color paypalBlue,
+  ) {
     return Row(
       children: [
         Container(
@@ -381,5 +440,73 @@ class BalanceCard extends StatelessWidget {
   }
 }
 
-// Network status enum for better type safety
-enum NetworkStatus { connected, connecting, disconnected, unknown }
+class ShimmerEffect extends StatefulWidget {
+  final Widget child;
+  final bool isDarkMode;
+
+  const ShimmerEffect({
+    Key? key,
+    required this.child,
+    required this.isDarkMode,
+  }) : super(key: key);
+
+  @override
+  State<ShimmerEffect> createState() => _ShimmerEffectState();
+}
+
+class _ShimmerEffectState extends State<ShimmerEffect>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
+
+    _animation = Tween<double>(begin: -2, end: 2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return ShaderMask(
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: widget.isDarkMode
+                  ? [
+                      Colors.white.withOpacity(0.02),
+                      Colors.white.withOpacity(0.1),
+                      Colors.white.withOpacity(0.02),
+                    ]
+                  : [
+                      Colors.grey.withOpacity(0.02),
+                      Colors.grey.withOpacity(0.1),
+                      Colors.grey.withOpacity(0.02),
+                    ],
+              stops: const [0.0, 0.5, 1.0],
+              transform: GradientRotation(_animation.value),
+            ).createShader(bounds);
+          },
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
+  }
+}

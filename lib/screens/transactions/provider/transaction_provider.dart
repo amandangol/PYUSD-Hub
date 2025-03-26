@@ -39,6 +39,14 @@ class TransactionProvider extends ChangeNotifier
   // Add a map to store pending transactions
   final Map<String, TransactionModel> _pendingTransactions = {};
 
+  // Add memory cache for transaction details
+  final Map<String, TransactionModel> _transactionCache = {};
+
+  // Add refresh lock
+  bool _isRefreshLocked = false;
+  static const Duration _minRefreshInterval = Duration(seconds: 15);
+  DateTime? _lastSuccessfulRefresh;
+
   // Getters
   List<TransactionModel> get transactions {
     final currentNetwork = _networkProvider.currentNetwork;
@@ -288,108 +296,84 @@ class TransactionProvider extends ChangeNotifier
     return result;
   }
 
-  Future<void> fetchTransactions({
-    bool forceRefresh = false,
-  }) async {
+  Future<void> fetchTransactions({bool forceRefresh = false}) async {
     if (disposed) return;
 
-    // print('\n=== Starting Fetch Transactions ===');
-    // print('Force Refresh: $forceRefresh');
-    // print(
-    //     'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-
     final address = _authProvider.getCurrentAddress();
-    if (address == null || address.isEmpty || _isFetchingTransactions) return;
+    if (address == null || address.isEmpty) return;
 
-    // Check if cache is valid
-    if (!forceRefresh && _lastRefresh != null) {
-      final timeSinceLastRefresh = DateTime.now().difference(_lastRefresh!);
-      if (timeSinceLastRefresh < _cacheValidDuration &&
-          transactions.isNotEmpty) {
-        print('Using cached transactions');
-        return;
-      }
+    // Check if refresh is locked and not forced
+    if (_isRefreshLocked && !forceRefresh) return;
+
+    // Check minimum refresh interval
+    if (!forceRefresh && _lastSuccessfulRefresh != null) {
+      final timeSinceLastRefresh =
+          DateTime.now().difference(_lastSuccessfulRefresh!);
+      if (timeSinceLastRefresh < _minRefreshInterval) return;
     }
 
+    _isRefreshLocked = true;
     _isFetchingTransactions = true;
     safeNotifyListeners(this);
 
     try {
       final currentNetwork = _networkProvider.currentNetwork;
 
-      // Reset data if forced refresh
-      if (forceRefresh) {
-        _currentPage = 1;
-        _hasMoreTransactions = true;
-        _transactionsByNetwork[currentNetwork] = [];
-        // print('Reset transaction data for force refresh');
-      }
-
-      // Skip if we already loaded all transactions
-      if (!_hasMoreTransactions && !forceRefresh) {
-        _isFetchingTransactions = false;
-        safeNotifyListeners(this);
-        // print('No more transactions to load');
-        return;
-      }
-
-      // Fetch normal transactions
-      final ethTxs = await _rpcService.getTransactions(
-        address,
-        currentNetwork,
-        page: _currentPage,
-        perPage: _perPage,
-      );
-      print('Fetched ${ethTxs.length} ETH transactions');
-
-      // Fetch token transactions
-      final tokenTxs = await _rpcService.getTokenTransactions(
-        address,
-        currentNetwork,
-        page: _currentPage,
-        perPage: _perPage,
-      );
-      // print('Fetched ${tokenTxs.length} token transactions');
+      // Fetch transactions in parallel
+      final futures = await Future.wait([
+        _rpcService.getTransactions(
+          address,
+          currentNetwork,
+          page: _currentPage,
+          perPage: _perPage,
+        ),
+        _rpcService.getTokenTransactions(
+          address,
+          currentNetwork,
+          page: _currentPage,
+          perPage: _perPage,
+        ),
+      ]);
 
       if (disposed) return;
+
+      final ethTxs = futures[0];
+      final tokenTxs = futures[1];
 
       // Process transactions
       final newTransactions =
           _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
-      // print('Processed ${newTransactions.length} total transactions');
+      _updateTransactionState(newTransactions, currentNetwork, forceRefresh);
 
-      // Determine if we have more transactions
-      _hasMoreTransactions = newTransactions.length >= _perPage;
-      _currentPage++;
-
-      // Add to existing transactions
-      if (_transactionsByNetwork[currentNetwork] == null) {
-        _transactionsByNetwork[currentNetwork] = [];
-      }
-
-      if (forceRefresh) {
-        _transactionsByNetwork[currentNetwork] = newTransactions;
-        print('Replaced transactions list with new transactions');
-      } else {
-        _transactionsByNetwork[currentNetwork]!.addAll(newTransactions);
-        print('Added new transactions to existing list');
-      }
-
-      // Update last refresh time
-      _lastRefresh = DateTime.now();
+      _lastSuccessfulRefresh = DateTime.now();
     } catch (e) {
       setError(this, 'Failed to fetch transactions: $e');
-      print('Error fetching transactions: $e');
     } finally {
+      _isRefreshLocked = false;
       if (!disposed) {
         _isFetchingTransactions = false;
         safeNotifyListeners(this);
       }
     }
+  }
 
-    print(
-        'Final Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-    print('=== End Fetch Transactions ===\n');
+  void _updateTransactionState(List<TransactionModel> newTransactions,
+      NetworkType network, bool forceRefresh) {
+    // Update cache
+    for (var tx in newTransactions) {
+      _transactionCache[tx.hash] = tx;
+    }
+
+    // Update state
+    if (forceRefresh) {
+      _transactionsByNetwork[network] = newTransactions;
+    } else {
+      _transactionsByNetwork[network]?.addAll(newTransactions);
+    }
+
+    _hasMoreTransactions = newTransactions.length >= _perPage;
+    _currentPage++;
+    _lastRefresh = DateTime.now();
   }
 
   Future<void> loadMoreTransactions() async {
@@ -773,6 +757,97 @@ class TransactionProvider extends ChangeNotifier
           recommended: false,
         ),
       };
+    }
+  }
+
+  // Combined refresh method
+  Future<void> refreshWalletData({bool forceRefresh = false}) async {
+    if (disposed) return;
+
+    final address = _authProvider.getCurrentAddress();
+    if (address == null || address.isEmpty) return;
+
+    // Check if refresh is locked and not forced
+    if (_isRefreshLocked && !forceRefresh) return;
+
+    // Check minimum refresh interval
+    if (!forceRefresh && _lastSuccessfulRefresh != null) {
+      final timeSinceLastRefresh =
+          DateTime.now().difference(_lastSuccessfulRefresh!);
+      if (timeSinceLastRefresh < _minRefreshInterval) return;
+    }
+
+    _isRefreshLocked = true;
+    _isFetchingTransactions = true;
+    safeNotifyListeners(this);
+
+    try {
+      final currentNetwork = _networkProvider.currentNetwork;
+      final rpcUrl = _networkProvider.currentRpcEndpoint;
+
+      // Explicitly type the futures
+      final Future<List<Map<String, dynamic>>> ethTxsFuture =
+          _rpcService.getTransactions(
+        address,
+        currentNetwork,
+        page: _currentPage,
+        perPage: _perPage,
+      );
+
+      final Future<List<Map<String, dynamic>>> tokenTxsFuture =
+          _rpcService.getTokenTransactions(
+        address,
+        currentNetwork,
+        page: _currentPage,
+        perPage: _perPage,
+      );
+
+      final Future<double> ethBalanceFuture =
+          _rpcService.getEthBalance(rpcUrl, address);
+
+      final Future<double> tokenBalanceFuture = _rpcService.getTokenBalance(
+        rpcUrl,
+        _tokenContractAddresses[currentNetwork] ?? '',
+        address,
+        decimals: 6,
+      );
+
+      // Fetch all data in parallel with proper typing
+      final results = await Future.wait<dynamic>([
+        ethTxsFuture,
+        tokenTxsFuture,
+        ethBalanceFuture,
+        tokenBalanceFuture,
+      ]);
+
+      if (disposed) return;
+
+      // Cast results to proper types
+      final List<Map<String, dynamic>> ethTxs =
+          results[0] as List<Map<String, dynamic>>;
+      final List<Map<String, dynamic>> tokenTxs =
+          results[1] as List<Map<String, dynamic>>;
+      final double ethBalance = results[2] as double;
+      final double tokenBalance = results[3] as double;
+
+      // Update transactions
+      final newTransactions =
+          _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
+      _updateTransactionState(newTransactions, currentNetwork, forceRefresh);
+
+      // Update balances in WalletProvider
+      _walletProvider.updateBalances(ethBalance, tokenBalance);
+
+      _lastSuccessfulRefresh = DateTime.now();
+    } catch (e) {
+      print('Error refreshing wallet data: $e');
+      setError(this, 'Failed to refresh wallet data: $e');
+    } finally {
+      _isRefreshLocked = false;
+      if (!disposed) {
+        _isFetchingTransactions = false;
+        safeNotifyListeners(this);
+      }
     }
   }
 

@@ -51,6 +51,10 @@ class NetworkProvider extends ChangeNotifier {
   String getNetworkName(NetworkType type) =>
       _networkNames[type] ?? 'Unknown Network';
 
+  // Get current network name
+  String get currentNetworkDisplayName =>
+      _networkNames[_currentNetwork] ?? 'Unknown Network';
+
   // Switch network
   Future<void> switchNetwork(NetworkType network) async {
     if (_currentNetwork != network) {

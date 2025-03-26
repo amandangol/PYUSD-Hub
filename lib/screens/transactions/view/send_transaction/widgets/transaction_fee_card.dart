@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../widgets/pyusd_components.dart';
 import '../../../provider/transaction_provider.dart';
 
 class TransactionFeeCard extends StatelessWidget {
@@ -12,6 +13,8 @@ class TransactionFeeCard extends StatelessWidget {
   final VoidCallback onGasOptionsPressed;
   final bool isLoadingGasPrice;
   final bool hasInsufficientETH;
+  final String networkName;
+  final double maxSendableEth;
 
   const TransactionFeeCard({
     super.key,
@@ -25,6 +28,8 @@ class TransactionFeeCard extends StatelessWidget {
     required this.onGasOptionsPressed,
     this.isLoadingGasPrice = false,
     this.hasInsufficientETH = false,
+    required this.networkName,
+    required this.maxSendableEth,
   });
 
   @override
@@ -32,20 +37,34 @@ class TransactionFeeCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDarkMode ? Colors.white24 : Colors.black12,
-        ),
-      ),
+    return PyusdCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Asset Selection
+            // Asset Selection Header
+            Row(
+              children: [
+                Icon(
+                  Icons.swap_horiz,
+                  size: 20,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Select Asset',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Asset Selection Buttons with Enhanced Balance Display
             Row(
               children: [
                 _buildAssetButton(
@@ -63,6 +82,19 @@ class TransactionFeeCard extends StatelessWidget {
                 ),
               ],
             ),
+
+            // Show max sendable ETH if relevant
+            if (selectedAsset == 'ETH' && estimatedGasFee > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Max sendable (after gas): ${maxSendableEth.toStringAsFixed(6)} ETH',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
 
             const SizedBox(height: 16),
 
@@ -110,6 +142,16 @@ class TransactionFeeCard extends StatelessWidget {
                                     : Colors.black54,
                                 fontSize: 13,
                               ),
+                            )
+                          else
+                            Text(
+                              'Select gas price',
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                                fontSize: 13,
+                              ),
                             ),
                         ],
                       ),
@@ -137,7 +179,7 @@ class TransactionFeeCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${estimatedGasFee.toStringAsFixed(6)} ETH',
+                    '${estimatedGasFee.toStringAsFixed(9)} ETH',
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -146,7 +188,7 @@ class TransactionFeeCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.warning_rounded,
                       color: Colors.orange,
                       size: 18,
@@ -155,7 +197,7 @@ class TransactionFeeCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'Insufficient ETH for gas fees. Current balance: ${ethBalance.toStringAsFixed(4)} ETH',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.orange,
                           fontSize: 12,
                         ),
@@ -196,31 +238,71 @@ class TransactionFeeCard extends StatelessWidget {
 
   Widget _buildAssetButton(
       BuildContext context, String asset, bool isSelected, bool isDarkMode) {
+    final balance = asset == 'PYUSD' ? tokenBalance : ethBalance;
+    final theme = Theme.of(context);
+
     return Expanded(
       child: GestureDetector(
         onTap: () => onAssetSelected(asset),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? Theme.of(context).primaryColor
+                ? theme.colorScheme.primary
                 : isDarkMode
                     ? Colors.white.withOpacity(0.05)
                     : Colors.grey.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Text(
-              asset,
-              style: TextStyle(
-                color: isSelected
-                    ? Colors.white
-                    : isDarkMode
-                        ? Colors.white
-                        : Colors.black87,
-                fontWeight: FontWeight.w600,
-              ),
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : isDarkMode
+                      ? Colors.white24
+                      : Colors.black12,
+              width: 1,
             ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    asset == 'PYUSD'
+                        ? Icons.attach_money
+                        : Icons.currency_exchange,
+                    size: 16,
+                    color: isSelected
+                        ? Colors.white
+                        : isDarkMode
+                            ? Colors.white70
+                            : Colors.black87,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    asset,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : isDarkMode
+                              ? Colors.white
+                              : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                balance.toStringAsFixed(asset == 'ETH' ? 4 : 2),
+                style: TextStyle(
+                  color: isSelected ? Colors.white : theme.colorScheme.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ),

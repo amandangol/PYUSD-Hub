@@ -200,7 +200,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                   ),
               ],
             ),
-            if (latestBlockNumber != null && oldestBlockNumber != null) ...[
+            if (oldestBlockNumber != null) ...[
               const SizedBox(height: 8),
               Container(
                 padding:

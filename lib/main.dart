@@ -11,6 +11,7 @@ import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/authentication/screen/splash_screen.dart';
 import 'screens/authentication/service/wallet_service.dart';
 import 'screens/authentication/widget/activity_aware_widget.dart';
+import 'screens/homescreen/provider/homescreen_provider.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
@@ -63,6 +64,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (context) => SessionProvider(context.read<AuthProvider>()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => HomeScreenProvider(),
         ),
         ChangeNotifierProvider(
           create: (context) =>

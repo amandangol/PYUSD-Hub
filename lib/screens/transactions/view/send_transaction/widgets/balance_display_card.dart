@@ -23,9 +23,6 @@ class BalanceDisplayCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return PyusdCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 12,
-      elevation: 2,
       child: Column(
         children: [
           Text(

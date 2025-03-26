@@ -31,6 +31,11 @@ class WalletProvider extends ChangeNotifier {
   Timer? _refreshTimer;
   Timer? _debounceTimer;
 
+  // Add refresh lock
+  bool _isRefreshLocked = false;
+  static const Duration _minRefreshInterval = Duration(seconds: 15);
+  DateTime? _lastSuccessfulRefresh;
+
   // Getters
   double get ethBalance => _balances[_networkProvider.currentNetwork] ?? 0.0;
   double get tokenBalance =>
@@ -96,23 +101,38 @@ class WalletProvider extends ChangeNotifier {
     final address = _authProvider.getCurrentAddress();
     if (address == null || address.isEmpty) return;
 
-    final currentNetwork = _networkProvider.currentNetwork;
+    // Check if refresh is locked and not forced
+    if (_isRefreshLocked && !forceRefresh) return;
 
-    // Always refresh if force refresh is true
-    if (forceRefresh) {
-      await _executeRefresh(address, currentNetwork);
-      return;
+    // Check minimum refresh interval
+    if (!forceRefresh && _lastSuccessfulRefresh != null) {
+      final timeSinceLastRefresh =
+          DateTime.now().difference(_lastSuccessfulRefresh!);
+      if (timeSinceLastRefresh < _minRefreshInterval) return;
     }
 
-    // Cancel any pending debounce timer
-    _debounceTimer?.cancel();
+    _isRefreshLocked = true;
+    _isBalanceRefreshing = true;
+    notifyListeners();
 
-    // Use shorter debounce for better responsiveness
-    _debounceTimer = Timer(const Duration(milliseconds: 200), () async {
-      if (!_isCacheValid(currentNetwork)) {
-        await _executeRefresh(address, currentNetwork);
+    try {
+      final currentNetwork = _networkProvider.currentNetwork;
+      await _refreshBalances(address);
+      _lastSuccessfulRefresh = DateTime.now();
+      _lastRefreshTimes[currentNetwork] = DateTime.now();
+      clearError();
+    } catch (e) {
+      if (!_isDisposed) {
+        _setError('Error refreshing balances: $e');
       }
-    });
+    } finally {
+      _isRefreshLocked = false;
+      if (!_isDisposed) {
+        _isBalanceRefreshing = false;
+        _isInitialLoad = false;
+        notifyListeners();
+      }
+    }
   }
 
   // Execute the actual refresh operation
@@ -148,35 +168,16 @@ class WalletProvider extends ChangeNotifier {
     final currentNetwork = _networkProvider.currentNetwork;
 
     try {
-      // Debug log before fetching
-      print('\n=== PYUSD Balance Debug ===');
-      print('Current cached PYUSD balance: ${_tokenBalances[currentNetwork]}');
-      print('Fetching new balances for address: $address');
-      print('Network: $currentNetwork');
-      print('RPC URL: $rpcUrl');
-
       // Fetch balances in parallel
       final ethBalance = await _rpcService.getEthBalance(rpcUrl, address);
       final tokenBalance =
           await _getTokenBalance(rpcUrl, address, currentNetwork);
 
-      print('New ETH balance: $ethBalance');
-      print('New PYUSD balance: $tokenBalance');
-
       if (!_isDisposed) {
         final oldTokenBalance = _tokenBalances[currentNetwork];
         _balances[currentNetwork] = ethBalance;
         _tokenBalances[currentNetwork] = tokenBalance;
-
-        // Debug log balance change
-        if (oldTokenBalance != tokenBalance) {
-          print('PYUSD balance changed: $oldTokenBalance -> $tokenBalance');
-        } else {
-          print('PYUSD balance unchanged');
-        }
       }
-
-      print('=== End Balance Debug ===\n');
     } catch (e) {
       print('Error in _refreshBalances: $e');
       throw e;
@@ -259,5 +260,17 @@ class WalletProvider extends ChangeNotifier {
     } catch (e) {
       print('Debug: Manual balance check failed: $e');
     }
+  }
+
+  // Add method to update balances directly
+  void updateBalances(double ethBalance, double tokenBalance) {
+    if (_isDisposed) return;
+
+    final currentNetwork = _networkProvider.currentNetwork;
+    _balances[currentNetwork] = ethBalance;
+    _tokenBalances[currentNetwork] = tokenBalance;
+    _isBalanceRefreshing = false;
+    _isInitialLoad = false;
+    notifyListeners();
   }
 }

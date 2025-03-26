@@ -94,7 +94,7 @@ class GasDetailsWidget extends StatelessWidget {
                 TransactionDetailRow(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'Total Fee',
-                  value: '${transaction.fee.toStringAsFixed(6)} ETH',
+                  value: '${transaction.fee.toStringAsFixed(9)} ETH',
                   infoMessage:
                       'Total transaction fee calculated as Gas Used × Gas Price. This is the actual cost of the transaction.',
                   valueColor: gasColor,

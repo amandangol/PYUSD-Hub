@@ -12,8 +12,8 @@ class TransactionDetailProvider
         OngoingOperationUtils<TransactionDetailModel?> {
   final EthereumRpcService _rpcService = EthereumRpcService();
 
-  // Cache expiration time (10 minutes)
-  static const Duration _cacheExpiration = Duration(minutes: 10);
+  // Cache expiration time (1 hour)
+  static const Duration _cacheExpiration = Duration(hours: 1);
 
   // Cache for ongoing operations to prevent duplicate requests
   final Map<String, Future<TransactionDetailModel?>> _ongoingOperations = {};
@@ -21,7 +21,6 @@ class TransactionDetailProvider
   // Batch size for parallel processing
   static const int _batchSize = 5;
 
-  // Get transaction details (from cache or fetch new)
   Future<TransactionDetailModel?> getTransactionDetails({
     required String txHash,
     required String rpcUrl,
@@ -200,34 +199,6 @@ class TransactionDetailProvider
     }
   }
 
-  // Extract and return internal transactions from a transaction
-  Future<List<Map<String, dynamic>>?> getInternalTransactions({
-    required String txHash,
-    required String rpcUrl,
-    required NetworkType networkType,
-    required String currentAddress,
-  }) async {
-    if (disposed) return null;
-
-    // First check if we already have this transaction with trace data in cache
-    final cachedTransaction =
-        getCachedItem(txHash, expiration: _cacheExpiration);
-    if (cachedTransaction?.internalTransactions != null) {
-      return cachedTransaction!.internalTransactions;
-    }
-
-    // If not in cache or no trace data, fetch the full transaction details
-    final details = await getTransactionDetails(
-      txHash: txHash,
-      rpcUrl: rpcUrl,
-      networkType: networkType,
-      currentAddress: currentAddress,
-      forceRefresh: true, // Force refresh to get the trace data
-    );
-
-    return details?.internalTransactions;
-  }
-
   // Get detailed error info for failed transactions
   Future<String?> getTransactionErrorDetails({
     required String txHash,
@@ -254,34 +225,6 @@ class TransactionDetailProvider
     );
 
     return details?.errorMessage;
-  }
-
-  // Get raw trace data specifically for developers/debugging purposes
-  Future<Map<String, dynamic>?> getRawTraceData({
-    required String txHash,
-    required String rpcUrl,
-    required NetworkType networkType,
-    required String currentAddress,
-  }) async {
-    if (disposed) return null;
-
-    // First check if we already have this transaction with trace data in cache
-    final cachedTransaction =
-        getCachedItem(txHash, expiration: _cacheExpiration);
-    if (cachedTransaction?.traceData != null) {
-      return cachedTransaction!.traceData;
-    }
-
-    // If not in cache or no trace data, fetch the full transaction details
-    final details = await getTransactionDetails(
-      txHash: txHash,
-      rpcUrl: rpcUrl,
-      networkType: networkType,
-      currentAddress: currentAddress,
-      forceRefresh: true, // Force refresh to get the trace data
-    );
-
-    return details?.traceData;
   }
 
   // Check if transaction details are already cached

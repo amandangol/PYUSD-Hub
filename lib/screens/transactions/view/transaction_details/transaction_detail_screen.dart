@@ -44,8 +44,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   late final TransactionDetailProvider _transactionDetailProvider;
   final MarketService _marketService = MarketService();
   Map<String, double> _marketPrices = {};
-  Map<String, dynamic>? _traceData;
-  List<Map<String, dynamic>>? _internalTransactions;
 
   // TabController for the tabbed interface
   late TabController _tabController;
@@ -166,7 +164,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
       setState(() {
         _detailedTransaction = details;
-        _traceData = details?.traceData;
         _isInitializing = false;
         _isRefreshing = false;
       });

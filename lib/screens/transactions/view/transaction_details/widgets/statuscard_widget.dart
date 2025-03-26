@@ -103,7 +103,7 @@ class StatusCardWidget extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${transaction.fee.toStringAsFixed(6)} ETH',
+                    '${transaction.fee.toStringAsFixed(9)} ETH',
                     style: TextStyle(
                       fontSize: 12,
                       color: subtitleColor,

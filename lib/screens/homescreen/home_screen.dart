@@ -14,6 +14,7 @@ import 'widgets/action_button.dart';
 import 'widgets/balance_card.dart';
 import 'widgets/network_status_card.dart';
 import 'widgets/transaction_section.dart';
+import 'provider/homescreen_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,17 +29,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _hasError = false;
   Timer? _debounceTimer;
   Timer? _refreshTimer;
-
-  // Static duration constants
-  static const Duration _debounceDuration = Duration(milliseconds: 300);
+  AnimationController? _refreshIndicatorController;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _refreshIndicatorController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Initialize the HomeScreenProvider
+      await context.read<HomeScreenProvider>().initialize();
       _initializeData();
-      // Set up periodic refresh for pending transactions
-      _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {});
+      // Set up periodic refresh
+      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+        if (mounted) {
+          _refreshWalletData(showLoadingIndicator: false);
+        }
+      });
     });
   }
 
@@ -54,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _debounceTimer?.cancel();
     _scrollController.dispose();
     _refreshTimer?.cancel();
+    _refreshIndicatorController?.dispose();
     super.dispose();
   }
 
@@ -69,26 +80,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _hasError = false;
     });
 
+    if (showLoadingIndicator) {
+      _refreshIndicatorController?.repeat();
+    }
+
     try {
-      final walletProvider =
-          Provider.of<WalletProvider>(context, listen: false);
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
 
-      // Force refresh both balances and transactions
-      await Future.wait([
-        walletProvider.refreshBalances(forceRefresh: true),
-        transactionProvider.fetchTransactions(forceRefresh: true),
-      ]);
-
-      // Schedule a follow-up refresh after a short delay
-      if (mounted) {
-        Future.delayed(const Duration(seconds: 5), () {
-          if (mounted) {
-            walletProvider.refreshBalances(forceRefresh: true);
-          }
-        });
-      }
+      // Single refresh call that updates both transactions and balances
+      await transactionProvider.refreshWalletData(forceRefresh: forceRefresh);
     } catch (e) {
       print('Error refreshing wallet data: $e');
       if (mounted) {
@@ -101,6 +102,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         setState(() {
           _isRefreshing = false;
         });
+        if (showLoadingIndicator) {
+          _refreshIndicatorController?.stop();
+        }
       }
     }
   }
@@ -121,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Read network name once
     final networkName = context.select<NetworkProvider, String>(
-        (provider) => provider.currentNetwork.name);
+        (provider) => provider.currentNetworkDisplayName);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -130,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         hasWallet: true,
         showLogo: true,
         title: "PYUSD Wallet",
+        networkName: networkName,
         onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
       ),
       body: _buildBody(
@@ -250,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       walletAddress: walletAddress,
       isRefreshing: isRefreshing || isInitialLoad,
       primaryColor: primaryColor,
-      networkName: networkName,
+      // networkName: networkName,
     );
   }
 
@@ -259,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color primaryColor,
     required String walletAddress,
   }) {
-    // Use Selector to minimize rebuilds
     final transactions =
         context.select<TransactionProvider, List<TransactionModel>>(
             (provider) => provider.transactions);
@@ -277,12 +281,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // Navigation methods
   void _navigateToSend() {
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (context) => const SendTransactionScreen()),
-    ).then((_) {
-      if (mounted) {
-        // Refresh data after sending transaction
+    ).then((transactionSent) {
+      if (mounted && transactionSent == true) {
+        // Only refresh if a transaction was actually sent
         _refreshWalletData(forceRefresh: true);
       }
     });
@@ -300,15 +304,5 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       message: "Swap Feature coming soon",
     );
-  }
-
-  String _formatAmount(TransactionModel tx) {
-    if (tx.tokenSymbol != null) {
-      // PYUSD has 6 decimals, display the amount as is since it's already converted
-      return '${tx.amount.toStringAsFixed(2)} ${tx.tokenSymbol}';
-    } else {
-      // ETH has 4 decimal places
-      return '${tx.amount.toStringAsFixed(4)} ETH';
-    }
   }
 }
