@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../services/notification_service.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../services/ethereum_rpc_service.dart';
 import '../../../providers/network_provider.dart';
@@ -41,11 +42,24 @@ class TransactionProvider extends ChangeNotifier
 
   // Add memory cache for transaction details
   final Map<String, TransactionModel> _transactionCache = {};
+  final NotificationService _notificationService;
 
   // Add refresh lock
   bool _isRefreshLocked = false;
   static const Duration _minRefreshInterval = Duration(seconds: 15);
   DateTime? _lastSuccessfulRefresh;
+
+  // Add this field to track active monitoring tasks
+  final Map<String, bool> _activeMonitoring = {};
+
+  // Add static instance
+  static TransactionProvider? _instance;
+
+  // Add getter for instance
+  static TransactionProvider get instance {
+    assert(_instance != null, 'TransactionProvider not initialized');
+    return _instance!;
+  }
 
   // Getters
   List<TransactionModel> get transactions {
@@ -83,10 +97,14 @@ class TransactionProvider extends ChangeNotifier
     required NetworkProvider networkProvider,
     required WalletProvider walletProvider,
     required TransactionDetailProvider detailProvider,
+    required NotificationService notificationService,
   })  : _authProvider = authProvider,
         _networkProvider = networkProvider,
         _walletProvider = walletProvider,
-        _detailProvider = detailProvider {
+        _detailProvider = detailProvider,
+        _notificationService = notificationService {
+    _instance = this;
+    // Initialize
     _initializeTransactionMaps();
     _networkProvider.addListener(_onNetworkChanged);
 
@@ -106,6 +124,15 @@ class TransactionProvider extends ChangeNotifier
   // Handle network change
   void _onNetworkChanged() {
     if (!disposed) {
+      print('Network changed - clearing cached data');
+      // Clear existing data for clean slate
+      _currentPage = 1;
+      _hasMoreTransactions = true;
+      _isRefreshLocked = false;
+      _lastSuccessfulRefresh = null;
+      _transactionsByNetwork[_networkProvider.currentNetwork]?.clear();
+
+      // Force refresh transactions for new network
       fetchTransactions(forceRefresh: true);
     }
   }
@@ -415,13 +442,15 @@ class TransactionProvider extends ChangeNotifier
     );
   }
 
-  // Modified sendETH method
+  // Modified sendETH method with better notification handling
   Future<String> sendETH(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
     if (disposed) throw Exception('TransactionProvider is disposed');
 
+    String? txHash;
     try {
-      final txHash = await _rpcService.sendEthTransaction(
+      // Send transaction
+      txHash = await _rpcService.sendEthTransaction(
         _networkProvider.currentRpcEndpoint,
         _authProvider.wallet!.privateKey,
         toAddress,
@@ -430,12 +459,14 @@ class TransactionProvider extends ChangeNotifier
         gasLimit: gasLimit,
       );
 
+      print('Transaction sent with hash: $txHash');
+
       // Create and add pending transaction
       final pendingTx = _createPendingTransaction(
         txHash: txHash,
         toAddress: toAddress,
         amount: amount,
-        tokenSymbol: null,
+        tokenSymbol: 'ETH',
         gasPrice: gasPrice ?? 2.0,
         gasLimit: gasLimit ?? 21000,
       );
@@ -444,23 +475,56 @@ class TransactionProvider extends ChangeNotifier
       _pendingTransactions[txHash] = pendingTx;
       notifyListeners();
 
+      // Show pending notification
+      try {
+        await _notificationService.showTransactionNotification(
+          txHash: txHash,
+          tokenSymbol: 'ETH',
+          amount: amount,
+          status: TransactionStatus.pending,
+        );
+      } catch (e) {
+        print('Error showing pending notification: $e');
+      }
+
       // Start monitoring
-      _monitorTransaction(txHash);
+      _startTransactionMonitoring(txHash);
+
+      // Verify transaction was sent successfully
+      final isConfirmed = await verifyTransactionStatus(txHash);
+      if (isConfirmed) {
+        print('Transaction verified as confirmed: $txHash');
+      }
 
       return txHash;
     } catch (e) {
+      print('Error sending ETH transaction: $e');
+      if (txHash != null) {
+        // Show failure notification if we have a transaction hash
+        try {
+          await _notificationService.showTransactionNotification(
+            txHash: txHash,
+            tokenSymbol: 'ETH',
+            amount: amount,
+            status: TransactionStatus.failed,
+          );
+        } catch (notifError) {
+          print('Error showing failure notification: $notifError');
+        }
+      }
       throw Exception('Failed to send ETH: $e');
     }
   }
 
-  // Modified sendPYUSD method
+  // Modified sendPYUSD method with better notification handling
   Future<String> sendPYUSD(String toAddress, double amount,
       {double? gasPrice, int? gasLimit}) async {
     if (disposed) throw Exception('TransactionProvider is disposed');
 
+    String? txHash;
     try {
       final tokenAddress = _getTokenAddressForCurrentNetwork();
-      final txHash = await _rpcService.sendTokenTransaction(
+      txHash = await _rpcService.sendTokenTransaction(
         _networkProvider.currentRpcEndpoint,
         _authProvider.wallet!.privateKey,
         tokenAddress,
@@ -470,6 +534,8 @@ class TransactionProvider extends ChangeNotifier
         gasPrice: gasPrice,
         gasLimit: gasLimit,
       );
+
+      print('PYUSD Transaction sent with hash: $txHash');
 
       // Create and add pending transaction
       final pendingTx = _createPendingTransaction(
@@ -485,23 +551,63 @@ class TransactionProvider extends ChangeNotifier
       _pendingTransactions[txHash] = pendingTx;
       notifyListeners();
 
+      // Show pending notification
+      try {
+        await _notificationService.showTransactionNotification(
+          txHash: txHash,
+          tokenSymbol: 'PYUSD',
+          amount: amount,
+          status: TransactionStatus.pending,
+        );
+      } catch (e) {
+        print('Error showing pending notification: $e');
+      }
+
       // Start monitoring
-      _monitorTransaction(txHash);
+      _startTransactionMonitoring(txHash);
+
+      // Verify transaction was sent successfully
+      final isConfirmed = await verifyTransactionStatus(txHash);
+      if (isConfirmed) {
+        print('Transaction verified as confirmed: $txHash');
+      }
 
       return txHash;
     } catch (e) {
+      print('Error sending PYUSD transaction: $e');
+      if (txHash != null) {
+        try {
+          await _notificationService.showTransactionNotification(
+            txHash: txHash,
+            tokenSymbol: 'PYUSD',
+            amount: amount,
+            status: TransactionStatus.failed,
+          );
+        } catch (notifError) {
+          print('Error showing failure notification: $notifError');
+        }
+      }
       throw Exception('Failed to send PYUSD: $e');
     }
   }
 
-  // Modified monitoring method
-  void _monitorTransaction(String txHash) {
-    if (disposed) return;
+  // Modify _monitorInBackground method
+  Future<void> _monitorInBackground(String txHash) async {
+    print('Starting background monitoring for transaction: $txHash');
 
-    const checkInterval = Duration(seconds: 5);
-    _pendingTransactionTimers[txHash] =
-        Timer.periodic(checkInterval, (timer) async {
+    Timer? monitoringTimer;
+
+    monitoringTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!_activeMonitoring.containsKey(txHash) ||
+          !_activeMonitoring[txHash]!) {
+        print('Stopping monitoring for transaction: $txHash');
+        timer.cancel();
+        _activeMonitoring.remove(txHash);
+        return;
+      }
+
       try {
+        print('Checking status for transaction: $txHash');
         final details = await _rpcService.getTransactionDetails(
           _networkProvider.currentRpcEndpoint,
           txHash,
@@ -509,51 +615,155 @@ class TransactionProvider extends ChangeNotifier
           _authProvider.getCurrentAddress() ?? '',
         );
 
-        if (details != null && details.status != TransactionStatus.pending) {
-          // Transaction is no longer pending
-          timer.cancel();
-          _pendingTransactionTimers.remove(txHash);
-          _pendingTransactions.remove(txHash);
+        if (details?.status == TransactionStatus.confirmed) {
+          print('Transaction confirmed: $txHash');
+          final pendingTx = _pendingTransactions[txHash];
+          if (pendingTx != null) {
+            try {
+              await _notificationService.showTransactionNotification(
+                txHash: txHash,
+                tokenSymbol: pendingTx.tokenSymbol ?? 'ETH',
+                amount: pendingTx.amount,
+                status: TransactionStatus.confirmed,
+              );
+              print('Confirmation notification sent for: $txHash');
+            } catch (e) {
+              print('Error sending confirmation notification: $e');
+            }
 
-          // Refresh the full transaction list
-          await fetchTransactions(forceRefresh: true);
+            // Remove from pending and update active monitoring
+            _pendingTransactions.remove(txHash);
+            _activeMonitoring[txHash] = false;
+            timer.cancel();
+
+            // Refresh transaction list and balances
+            await refreshWalletData(forceRefresh: true);
+
+            // Update UI
+            notifyListeners();
+          }
+        } else if (details?.status == TransactionStatus.failed) {
+          print('Transaction failed: $txHash');
+          _activeMonitoring[txHash] = false;
+          timer.cancel();
+
+          // Also refresh on failure
+          await refreshWalletData(forceRefresh: true);
+          notifyListeners();
         }
       } catch (e) {
-        print('Error monitoring transaction $txHash: $e');
+        print('Background monitoring error for $txHash: $e');
       }
     });
+
+    _pendingTransactionTimers[txHash] = monitoringTimer;
+  }
+
+  // Modify refreshWalletData to be more robust
+  Future<void> refreshWalletData({bool forceRefresh = false}) async {
+    if (disposed) return;
+
+    final address = _authProvider.getCurrentAddress();
+    if (address == null || address.isEmpty) return;
+
+    // Only check refresh lock if not forced
+    if (!forceRefresh && _isRefreshLocked) return;
+
+    _isRefreshLocked = true;
+    _isFetchingTransactions = true;
+    safeNotifyListeners(this);
+
+    try {
+      print(
+          'Refreshing wallet data for network: ${_networkProvider.currentNetworkName}');
+      final currentNetwork = _networkProvider.currentNetwork;
+      final rpcUrl = _networkProvider.currentRpcEndpoint;
+
+      // Reset page counter when forcing refresh
+      if (forceRefresh) {
+        _currentPage = 1;
+        // Clear existing transactions for this network
+        _transactionsByNetwork[currentNetwork]?.clear();
+      }
+
+      final futures = await Future.wait([
+        _rpcService.getTransactions(
+          address,
+          currentNetwork,
+          page: _currentPage,
+          perPage: _perPage,
+        ),
+        _rpcService.getTokenTransactions(
+          address,
+          currentNetwork,
+          page: _currentPage,
+          perPage: _perPage,
+        ),
+        _rpcService.getEthBalance(rpcUrl, address),
+        _rpcService.getTokenBalance(
+          rpcUrl,
+          _tokenContractAddresses[currentNetwork] ?? '',
+          address,
+          decimals: 6,
+        ),
+      ]);
+
+      if (disposed) return;
+
+      final ethTxs = futures[0] as List<Map<String, dynamic>>;
+      final tokenTxs = futures[1] as List<Map<String, dynamic>>;
+      final ethBalance = futures[2] as double;
+      final tokenBalance = futures[3] as double;
+
+      // Process transactions
+      final newTransactions = _processTransactions(
+        ethTxs,
+        tokenTxs,
+        address,
+        currentNetwork,
+      );
+
+      print(
+          'Processed ${newTransactions.length} transactions for ${currentNetwork.name}');
+
+      // Update transaction state
+      if (forceRefresh) {
+        _transactionsByNetwork[currentNetwork] = newTransactions;
+      } else {
+        _transactionsByNetwork[currentNetwork] = [
+          ...(_transactionsByNetwork[currentNetwork] ?? []),
+          ...newTransactions,
+        ];
+      }
+
+      // Update balances
+      _walletProvider.updateBalances(ethBalance, tokenBalance);
+
+      _hasMoreTransactions = newTransactions.length >= _perPage;
+      if (!forceRefresh) {
+        _currentPage++;
+      }
+
+      _lastSuccessfulRefresh = DateTime.now();
+    } catch (e) {
+      print('Error refreshing wallet data: $e');
+      setError(this, 'Failed to refresh wallet data: $e');
+    } finally {
+      _isRefreshLocked = false;
+      _isFetchingTransactions = false;
+      if (!disposed) {
+        notifyListeners();
+      }
+    }
+  }
+
+  // Add this method to force an immediate refresh
+  Future<void> forceRefresh() async {
+    await refreshWalletData(forceRefresh: true);
   }
 
   // Add helper method to check if there are pending transactions
   bool get hasPendingTransactions => _pendingTransactions.isNotEmpty;
-
-  // Common refresh logic after transactions
-  Future<void> _refreshAfterTransaction() async {
-    if (disposed) return;
-
-    // print('\n=== Starting Transaction Refresh ===');
-    // print(
-    //     'Current Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-
-    // Add a small delay to allow the transaction to be mined
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!disposed) {
-      // Refresh balances first
-      await _walletProvider.refreshBalances(forceRefresh: true);
-      print('Balances refreshed');
-
-      if (!disposed) {
-        // Then refresh transactions
-        await fetchTransactions(forceRefresh: true);
-        print('Transactions refreshed');
-      }
-    }
-
-    // print(
-    //     'Final Main Transactions: ${_transactionsByNetwork[_networkProvider.currentNetwork]?.length ?? 0}');
-    // print('=== End Transaction Refresh ===\n');
-  }
 
   // Estimate gas for ETH transfer
   Future<int> estimateEthTransferGas(String toAddress, double amount) async {
@@ -578,7 +788,7 @@ class TransactionProvider extends ChangeNotifier
 
   // Estimate gas for PYUSD token transfer
   Future<int> estimateTokenTransferGas(String toAddress, double amount) async {
-    if (disposed) return 100000; // Default gas if disposed
+    if (disposed) return 100000;
     if (_authProvider.wallet == null) {
       throw Exception('Wallet is not initialized');
     }
@@ -760,108 +970,86 @@ class TransactionProvider extends ChangeNotifier
     }
   }
 
-  // Combined refresh method
-  Future<void> refreshWalletData({bool forceRefresh = false}) async {
-    if (disposed) return;
-
-    final address = _authProvider.getCurrentAddress();
-    if (address == null || address.isEmpty) return;
-
-    // Check if refresh is locked and not forced
-    if (_isRefreshLocked && !forceRefresh) return;
-
-    // Check minimum refresh interval
-    if (!forceRefresh && _lastSuccessfulRefresh != null) {
-      final timeSinceLastRefresh =
-          DateTime.now().difference(_lastSuccessfulRefresh!);
-      if (timeSinceLastRefresh < _minRefreshInterval) return;
-    }
-
-    _isRefreshLocked = true;
-    _isFetchingTransactions = true;
-    safeNotifyListeners(this);
-
+  // Add this helper method to verify transaction status
+  Future<bool> verifyTransactionStatus(String txHash) async {
     try {
-      final currentNetwork = _networkProvider.currentNetwork;
-      final rpcUrl = _networkProvider.currentRpcEndpoint;
-
-      // Explicitly type the futures
-      final Future<List<Map<String, dynamic>>> ethTxsFuture =
-          _rpcService.getTransactions(
-        address,
-        currentNetwork,
-        page: _currentPage,
-        perPage: _perPage,
+      final details = await _rpcService.getTransactionDetails(
+        _networkProvider.currentRpcEndpoint,
+        txHash,
+        _networkProvider.currentNetwork,
+        _authProvider.getCurrentAddress() ?? '',
       );
 
-      final Future<List<Map<String, dynamic>>> tokenTxsFuture =
-          _rpcService.getTokenTransactions(
-        address,
-        currentNetwork,
-        page: _currentPage,
-        perPage: _perPage,
-      );
-
-      final Future<double> ethBalanceFuture =
-          _rpcService.getEthBalance(rpcUrl, address);
-
-      final Future<double> tokenBalanceFuture = _rpcService.getTokenBalance(
-        rpcUrl,
-        _tokenContractAddresses[currentNetwork] ?? '',
-        address,
-        decimals: 6,
-      );
-
-      // Fetch all data in parallel with proper typing
-      final results = await Future.wait<dynamic>([
-        ethTxsFuture,
-        tokenTxsFuture,
-        ethBalanceFuture,
-        tokenBalanceFuture,
-      ]);
-
-      if (disposed) return;
-
-      // Cast results to proper types
-      final List<Map<String, dynamic>> ethTxs =
-          results[0] as List<Map<String, dynamic>>;
-      final List<Map<String, dynamic>> tokenTxs =
-          results[1] as List<Map<String, dynamic>>;
-      final double ethBalance = results[2] as double;
-      final double tokenBalance = results[3] as double;
-
-      // Update transactions
-      final newTransactions =
-          _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
-      _updateTransactionState(newTransactions, currentNetwork, forceRefresh);
-
-      // Update balances in WalletProvider
-      _walletProvider.updateBalances(ethBalance, tokenBalance);
-
-      _lastSuccessfulRefresh = DateTime.now();
+      print('Verification - Transaction Status: ${details?.status}');
+      return details?.status == TransactionStatus.confirmed;
     } catch (e) {
-      print('Error refreshing wallet data: $e');
-      setError(this, 'Failed to refresh wallet data: $e');
-    } finally {
-      _isRefreshLocked = false;
-      if (!disposed) {
-        _isFetchingTransactions = false;
-        safeNotifyListeners(this);
-      }
+      print('Error verifying transaction status: $e');
+      return false;
     }
   }
 
+  // Override dispose to handle cleanup properly
   @override
   void dispose() {
-    markDisposed();
-    _networkProvider.removeListener(_onNetworkChanged);
-    // Cancel all pending transaction timers
-    for (final timer in _pendingTransactionTimers.values) {
-      timer.cancel();
-    }
+    // Don't actually dispose the provider, just clean up resources
+    print('Cleaning up TransactionProvider resources...');
+    _pendingTransactionTimers.forEach((_, timer) => timer.cancel());
     _pendingTransactionTimers.clear();
+    // Don't clear _pendingTransactions or _activeMonitoring
+  }
+
+  // Add method to stop monitoring specific transaction
+  void stopMonitoring(String txHash) {
+    _activeMonitoring.remove(txHash);
+  }
+
+  // Add method to stop all monitoring
+  void stopAllMonitoring() {
+    _activeMonitoring.clear();
+  }
+
+  // Add this method
+  void cleanup() {
+    print('Performing full cleanup of TransactionProvider...');
+    _activeMonitoring.clear();
     _pendingTransactions.clear();
-    super.dispose();
+    _pendingTransactionTimers.forEach((_, timer) => timer.cancel());
+    _pendingTransactionTimers.clear();
+    _transactionCache.clear();
+  }
+
+  // Add this method to TransactionProvider class
+  Future<void> _startTransactionMonitoring(String txHash) async {
+    print('\n=== Starting Transaction Monitoring ===');
+    print('Transaction Hash: $txHash');
+
+    // Initialize monitoring status
+    _activeMonitoring[txHash] = true;
+
+    try {
+      // Initial status check
+      final details = await _rpcService.getTransactionDetails(
+        _networkProvider.currentRpcEndpoint,
+        txHash,
+        _networkProvider.currentNetwork,
+        _authProvider.getCurrentAddress() ?? '',
+      );
+
+      print('Initial transaction status: ${details?.status}');
+
+      // Start background monitoring
+      await _monitorInBackground(txHash);
+    } catch (e) {
+      print('Error starting transaction monitoring: $e');
+      _activeMonitoring[txHash] = false;
+    }
+  }
+
+  // Add this method to clear network data
+  void clearNetworkData(NetworkType network) {
+    _transactionsByNetwork[network]?.clear();
+    _currentPage = 1;
+    _hasMoreTransactions = true;
   }
 }
 

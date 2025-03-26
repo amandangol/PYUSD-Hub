@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/network_provider.dart';
 import '../../../widgets/pyusd_components.dart';
+import '../../transactions/provider/transaction_provider.dart';
 
 class NetworkStatusCard extends StatelessWidget {
   final bool isDarkMode;
@@ -92,8 +93,8 @@ class NetworkStatusCard extends StatelessWidget {
   }
 
   void _showNetworkSelector(
-      BuildContext context, NetworkProvider networkProvider) {
-    showModalBottomSheet(
+      BuildContext context, NetworkProvider networkProvider) async {
+    final result = await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => PyusdBottomSheet(
@@ -130,6 +131,12 @@ class NetworkStatusCard extends StatelessWidget {
         ),
       ),
     );
+
+    if (result == true) {
+      // Force refresh transactions after network switch
+      await Provider.of<TransactionProvider>(context, listen: false)
+          .forceRefresh();
+    }
   }
 
   Widget _buildNetworkOption({
@@ -145,9 +152,10 @@ class NetworkStatusCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          networkProvider.switchNetwork(networkType);
-          Navigator.pop(context);
+        onTap: () async {
+          await networkProvider.switchNetwork(networkType);
+          Navigator.pop(
+              context, true); // Return true to indicate network changed
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(

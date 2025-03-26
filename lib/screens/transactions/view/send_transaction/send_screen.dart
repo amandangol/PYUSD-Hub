@@ -377,17 +377,29 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
-      // Navigate back with result indicating transaction was sent
-      Navigator.of(context)
-          .pop(true); // Pass true to indicate transaction was sent
+      Navigator.of(context).pop(true);
     } catch (e) {
-      // Show error message
-      if (_mounted && context.mounted) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Transaction failed: ${e.toString().substring(0, 50)}',
-          isError: true,
-        );
+      // Check if the error is actually a transaction failure
+      if (e.toString().contains('transaction failed') ||
+          e.toString().contains('rejected') ||
+          e.toString().contains('insufficient funds')) {
+        if (_mounted && context.mounted) {
+          SnackbarUtil.showSnackbar(
+            context: context,
+            message: 'Transaction failed: ${e.toString()}',
+            isError: true,
+          );
+        }
+      } else {
+        // For other errors, show a warning that the transaction status is uncertain
+        if (_mounted && context.mounted) {
+          SnackbarUtil.showSnackbar(
+            context: context,
+            message:
+                'Transaction status uncertain. Please check your wallet history.',
+            isError: true,
+          );
+        }
       }
     } finally {
       // Reset loading state

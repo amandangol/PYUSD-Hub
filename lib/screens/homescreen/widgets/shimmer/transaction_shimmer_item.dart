@@ -90,7 +90,7 @@ class TransactionShimmerItem extends StatelessWidget {
                             const BorderRadius.all(Radius.circular(8)),
                         color: isDarkMode
                             ? Colors.white.withOpacity(0.5)
-                            : Colors.grey.withOpacity(0.1),
+                            : Colors.grey.withOpacity(0.5),
                       ),
                     ),
                   ),

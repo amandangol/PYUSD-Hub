@@ -52,7 +52,7 @@ class AmountCard extends StatelessWidget {
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,' +
-                        (selectedAsset == 'PYUSD' ? '2' : '4') +
+                        (selectedAsset == 'PYUSD' ? '4' : '6') +
                         r'}$')),
                   ],
                   validator: (value) {

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/screens/authentication/provider/session_provider.dart';
+import 'package:pyusd_hub/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Import all providers
@@ -12,12 +14,12 @@ import 'screens/authentication/screen/splash_screen.dart';
 import 'screens/authentication/service/wallet_service.dart';
 import 'screens/authentication/widget/activity_aware_widget.dart';
 import 'screens/homescreen/provider/homescreen_provider.dart';
-import 'screens/homescreen/view/home_screen.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 
 // Import all screens
+import 'screens/homescreen/view/home_screen.dart';
 import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';
@@ -27,6 +29,16 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Get the singleton instance
+  final notificationService = NotificationService();
+  await Future.delayed(
+      const Duration(seconds: 1)); // Give time for initialization
+
+  // Test notification during development
+  if (kDebugMode) {
+    await notificationService.testNotification();
+  }
 
   // Load environment variables
   await dotenv.load(fileName: ".env");
@@ -90,22 +102,18 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => TransactionDetailProvider(),
         ),
-        ChangeNotifierProxyProvider3<AuthProvider, NetworkProvider,
-            WalletProvider, TransactionProvider>(
-          create: (context) => TransactionProvider(
-            authProvider: context.read<AuthProvider>(),
-            networkProvider: context.read<NetworkProvider>(),
-            walletProvider: context.read<WalletProvider>(),
-            detailProvider: context.read<TransactionDetailProvider>(),
-          ),
-          update: (context, authProvider, networkProvider, walletProvider,
-                  previous) =>
-              TransactionProvider(
-            authProvider: authProvider,
-            networkProvider: networkProvider,
-            walletProvider: walletProvider,
-            detailProvider: context.read<TransactionDetailProvider>(),
-          ),
+        ChangeNotifierProvider<TransactionProvider>(
+          lazy: false,
+          create: (context) {
+            final provider = TransactionProvider(
+              authProvider: context.read<AuthProvider>(),
+              networkProvider: context.read<NetworkProvider>(),
+              walletProvider: context.read<WalletProvider>(),
+              detailProvider: context.read<TransactionDetailProvider>(),
+              notificationService: NotificationService(),
+            );
+            return provider;
+          },
         ),
         Provider<MarketService>(
           create: (_) => MarketService(),
@@ -131,10 +139,11 @@ class MyApp extends StatelessWidget {
             // Use the navigator key from SessionProvider
             navigatorKey: sessionProvider.navigatorKey,
             // Define initial route
-            home: const ActivityAwareWidget(
-              child: SplashScreen(),
-            ),
+            initialRoute: '/',
             routes: {
+              '/': (context) => const ActivityAwareWidget(
+                    child: SplashScreen(),
+                  ),
               '/main': (context) => const ActivityAwareWidget(
                     child: MainApp(),
                   ),

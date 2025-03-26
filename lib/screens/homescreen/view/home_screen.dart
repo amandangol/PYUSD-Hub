@@ -39,16 +39,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(seconds: 1),
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Initialize the HomeScreenProvider
-      await context.read<HomeScreenProvider>().initialize();
+    // Listen for network changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final networkProvider =
+          Provider.of<NetworkProvider>(context, listen: false);
+      networkProvider.addListener(_onNetworkChanged);
       _initializeData();
-      // Set up periodic refresh
-      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-        if (mounted) {
-          _refreshWalletData(showLoadingIndicator: false);
-        }
-      });
     });
   }
 
@@ -61,6 +57,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    final networkProvider =
+        Provider.of<NetworkProvider>(context, listen: false);
+    networkProvider.removeListener(_onNetworkChanged);
     _debounceTimer?.cancel();
     _scrollController.dispose();
     _refreshTimer?.cancel();
@@ -303,5 +302,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       message: "Swap Feature coming soon",
     );
+  }
+
+  // Add network change handler
+  void _onNetworkChanged() {
+    if (mounted) {
+      _refreshWalletData(forceRefresh: true);
+    }
   }
 }

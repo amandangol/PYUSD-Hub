@@ -486,7 +486,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       ]);
 
       if (logsResponse == null || logsResponse is! List) {
-        print('Invalid logs response: $logsResponse');
+        // print('Invalid logs response: $logsResponse');
         return;
       }
 

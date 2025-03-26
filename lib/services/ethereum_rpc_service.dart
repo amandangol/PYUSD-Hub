@@ -104,10 +104,10 @@ class EthereumRpcService {
 
     try {
       print('\n=== Token Balance RPC Debug ===');
-      print('Fetching balance for:');
-      print('Token: $tokenContractAddress');
+      // print('Fetching balance for:');
+      // print('Token: $tokenContractAddress');
       print('Wallet: $walletAddress');
-      print('Decimals: $decimals');
+      // print('Decimals: $decimals');
 
       // ERC20 balanceOf function signature + wallet address (padded)
       final String data =
@@ -126,7 +126,7 @@ class EthereumRpcService {
       );
 
       final String hexBalance = response['result'];
-      print('Raw hex balance: $hexBalance');
+      // print('Raw hex balance: $hexBalance');
 
       if (hexBalance == '0x') {
         print('Zero balance returned');
@@ -136,8 +136,8 @@ class EthereumRpcService {
       final BigInt tokenBalance = FormatterUtils.parseBigInt(hexBalance);
       final double balance = tokenBalance / BigInt.from(10).pow(decimals);
 
-      print('Parsed balance: $balance PYUSD');
-      print('=== End Token Balance Debug ===\n');
+      // print('Parsed balance: $balance PYUSD');
+      // print('=== End Token Balance Debug ===\n');
 
       return balance;
     } catch (e) {
@@ -371,6 +371,10 @@ class EthereumRpcService {
     NetworkType networkType,
     String userAddress,
   ) async {
+    print('\n=== Fetching Transaction Details ===');
+    print('Transaction Hash: $txHash');
+    print('Network: ${networkType.name}');
+
     try {
       // Batch RPC calls
       final batchCalls = [
@@ -380,28 +384,37 @@ class EthereumRpcService {
       ];
 
       final responses = await batchRpcCalls(rpcUrl, batchCalls);
-
       final txResponse = responses[0];
       final receiptResponse = responses[1];
 
-      // Check if txResponse or txResponse['result'] is null
+      // Debug logs
+      print('Transaction Response: ${txResponse['result']}');
+      print('Receipt Response: ${receiptResponse['result']}');
+
+      // Check if transaction exists
       if (txResponse['result'] == null) {
-        print('Transaction not found or returned null result: $txHash');
+        print('Transaction not found: $txHash');
         return null;
       }
 
-      final txData = txResponse['result'] as Map<String, dynamic>?;
-      if (txData == null || txData.isEmpty) {
-        print('Transaction data is null or empty: $txHash');
-        return null;
-      }
+      final txData = txResponse['result'] as Map<String, dynamic>;
+      final receiptData = receiptResponse['result'] as Map<String, dynamic>?;
 
-      final receiptData = receiptResponse['result'] != null
-          ? receiptResponse['result'] as Map<String, dynamic>?
-          : null;
+      // Determine transaction status
+      TransactionStatus status;
+      if (receiptData == null || receiptData['blockNumber'] == null) {
+        status = TransactionStatus.pending;
+        print('Transaction is pending');
+      } else if (receiptData['status'] == '0x1') {
+        status = TransactionStatus.confirmed;
+        print('Transaction is confirmed');
+      } else {
+        status = TransactionStatus.failed;
+        print('Transaction failed');
+      }
 
       // Handle pending transactions
-      if (receiptData == null) {
+      if (status == TransactionStatus.pending) {
         return TransactionDetailModel(
           hash: txHash,
           timestamp: DateTime.now(),
@@ -419,7 +432,7 @@ class EthereumRpcService {
           gasPrice: txData['gasPrice'] != null
               ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
               : 0.0,
-          status: TransactionStatus.pending,
+          status: status,
           direction: _compareAddresses(txData['from'], userAddress)
               ? TransactionDirection.outgoing
               : TransactionDirection.incoming,
@@ -438,7 +451,7 @@ class EthereumRpcService {
       // Get block data and current block number in parallel
       final blockFutures = await Future.wait([
         _makeRpcCall(
-            rpcUrl, 'eth_getBlockByHash', [receiptData['blockHash'], false]),
+            rpcUrl, 'eth_getBlockByHash', [receiptData!['blockHash'], false]),
         _makeRpcCall(rpcUrl, 'eth_blockNumber', []),
       ]);
 
@@ -447,7 +460,7 @@ class EthereumRpcService {
 
       // Check if blockResponse or blockResponse['result] is null
       if (blockResponse['result'] == null) {
-        print('Block data not found: ${receiptData['blockHash']}');
+        print('Block data not found: ${receiptData!['blockHash']}');
         return TransactionDetailModel(
           hash: txHash,
           timestamp: DateTime.now(),
@@ -457,7 +470,7 @@ class EthereumRpcService {
               ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
               : 0.0,
           gasUsed: receiptData['gasUsed'] != null
-              ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
+              ? FormatterUtils.parseBigInt(receiptData!['gasUsed']).toDouble()
               : 0.0,
           gasLimit: txData['gas'] != null
               ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
@@ -465,23 +478,21 @@ class EthereumRpcService {
           gasPrice: txData['gasPrice'] != null
               ? FormatterUtils.parseBigInt(txData['gasPrice']).toDouble() / 1e9
               : 0.0,
-          status: receiptData['status'] == '0x1'
-              ? TransactionStatus.confirmed
-              : TransactionStatus.failed,
+          status: status,
           direction: _compareAddresses(txData['from'], userAddress)
               ? TransactionDirection.outgoing
               : TransactionDirection.incoming,
           confirmations: 0,
           network: networkType,
-          blockNumber: receiptData['blockNumber'] != null
-              ? FormatterUtils.parseBigInt(receiptData['blockNumber'])
+          blockNumber: receiptData!['blockNumber'] != null
+              ? FormatterUtils.parseBigInt(receiptData!['blockNumber'])
                   .toString()
               : '0',
           nonce: txData['nonce'] != null
               ? int.parse(txData['nonce'].substring(2), radix: 16)
               : 0,
           blockHash: receiptData['blockHash'] ?? '',
-          isError: receiptData['status'] != '0x1',
+          isError: status == TransactionStatus.failed,
           data: txData['input'],
         );
       }
@@ -490,7 +501,7 @@ class EthereumRpcService {
       final currentBlock =
           FormatterUtils.parseBigInt(currentBlockResponse['result']);
       final txBlockNumber =
-          FormatterUtils.parseBigInt(receiptData['blockNumber']);
+          FormatterUtils.parseBigInt(receiptData!['blockNumber']);
       final confirmations = (currentBlock - txBlockNumber).toInt();
 
       // Check if it's a token transfer
@@ -529,11 +540,6 @@ class EthereumRpcService {
             : 0.0;
       }
 
-      // Determine transaction status
-      final status = receiptData['status'] == '0x1'
-          ? TransactionStatus.confirmed
-          : TransactionStatus.failed;
-
       // Determine basic error status for failed transactions
       String? errorMessage;
       if (status == TransactionStatus.failed) {
@@ -552,7 +558,7 @@ class EthereumRpcService {
         }
       }
 
-      return TransactionDetailModel(
+      final transactionDetails = TransactionDetailModel(
         hash: txHash,
         timestamp: DateTime.fromMillisecondsSinceEpoch(
             int.parse(blockData['timestamp'].substring(2), radix: 16) * 1000),
@@ -589,9 +595,13 @@ class EthereumRpcService {
         errorMessage: errorMessage,
         data: txData['input'],
       );
+
+      print(
+          'Returning transaction details with status: ${transactionDetails.status}');
+      return transactionDetails;
     } catch (e) {
-      print('Exception in getTransactionDetails: $e');
-      return null;
+      print('Error in getTransactionDetails: $e');
+      rethrow;
     }
   }
 
@@ -604,7 +614,7 @@ class EthereumRpcService {
   // Add new method to get detailed gas prices
   Future<Map<String, double>> getDetailedGasPrices(String rpcUrl) async {
     try {
-      print('\n=== Gas Price Debug ===');
+      // print('\n=== Gas Price Debug ===');
 
       // Get current gas price in Wei
       final gasPriceResponse = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);

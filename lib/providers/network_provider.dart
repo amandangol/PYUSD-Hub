@@ -58,7 +58,10 @@ class NetworkProvider extends ChangeNotifier {
   // Switch network
   Future<void> switchNetwork(NetworkType network) async {
     if (_currentNetwork != network) {
+      print(
+          'Switching network from ${_currentNetwork.name} to ${network.name}');
       _currentNetwork = network;
+      // Clear any cached data when switching networks
       notifyListeners();
     }
   }

@@ -29,9 +29,8 @@ class SnackbarUtil {
             Expanded(
               child: Text(
                 message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
+                style:
+                    theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
               ),
             ),
           ],
