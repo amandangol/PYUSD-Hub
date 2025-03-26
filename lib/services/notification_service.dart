@@ -156,13 +156,13 @@ class NotificationService {
     print('=== End Notification ===\n');
   }
 
-  // Add a test method
-  Future<void> testNotification() async {
-    await showTransactionNotification(
-      txHash: 'test_hash',
-      tokenSymbol: 'ETH',
-      amount: 1.0,
-      status: TransactionStatus.confirmed,
-    );
-  }
+  // // Add a test method
+  // Future<void> testNotification() async {
+  //   await showTransactionNotification(
+  //     txHash: 'test_hash',
+  //     tokenSymbol: 'ETH',
+  //     amount: 1.0,
+  //     status: TransactionStatus.confirmed,
+  //   );
+  // }
 }

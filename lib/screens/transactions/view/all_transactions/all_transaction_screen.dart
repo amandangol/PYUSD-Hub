@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../utils/snackbar_utils.dart';
 import '../../model/transaction_model.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../homescreen/widgets/transaction_item.dart';
 import '../../provider/transactiondetail_provider.dart';
 import '../../../../utils/empty_state_utils.dart';
+import '../../../homescreen/provider/homescreen_provider.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -25,7 +27,7 @@ class AllTransactionsScreen extends StatefulWidget {
 }
 
 class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
-  String _filter = 'All'; // 'All', 'PYUSD', 'ETH'
+  String _filter = 'All';
   bool _isRefreshing = false;
 
   @override
@@ -35,139 +37,15 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     final backgroundColor =
         widget.isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
 
-    // Filter transactions based on selected filter
     final filteredTransactions = _getFilteredTransactions();
 
-    // Ensure we have the providers available
-    final transactionDetailProvider =
-        Provider.of<TransactionDetailProvider>(context, listen: false);
     Provider.of<NetworkProvider>(context, listen: false);
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'All Transactions',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-          ),
-        ),
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          // Filter dropdown in the app bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: widget.isDarkMode
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: DropdownButton<String>(
-              value: _filter,
-              icon: const Icon(Icons.filter_list, size: 16),
-              underline: const SizedBox(),
-              isDense: true,
-              style: TextStyle(
-                color: widget.isDarkMode ? Colors.white : Colors.black87,
-                fontSize: 14,
-              ),
-              dropdownColor:
-                  widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
-              items: <String>['All', 'PYUSD', 'ETH']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _filter = newValue;
-                  });
-                }
-              },
-            ),
-          ),
-
-          // Refresh button
-          IconButton(
-            icon: _isRefreshing
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          widget.isDarkMode
-                              ? Colors.white
-                              : const Color(0xFF1A1A2E)),
-                    ),
-                  )
-                : Icon(
-                    Icons.refresh,
-                    color: widget.isDarkMode
-                        ? Colors.white
-                        : const Color(0xFF1A1A2E),
-                  ),
-            onPressed: _isRefreshing
-                ? null
-                : () async {
-                    setState(() {
-                      _isRefreshing = true;
-                    });
-
-                    // Clear transaction details cache
-                    transactionDetailProvider.clearCache();
-
-                    // Wait a moment for visual feedback
-                    await Future.delayed(const Duration(milliseconds: 1000));
-
-                    if (mounted) {
-                      setState(() {
-                        _isRefreshing = false;
-                      });
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Transaction cache refreshed'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    }
-                  },
-          ),
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {
-            _isRefreshing = true;
-          });
-
-          // Clear transaction details cache
-          transactionDetailProvider.clearCache();
-
-          // Wait a moment for visual feedback
-          await Future.delayed(const Duration(milliseconds: 1000));
-
-          if (mounted) {
-            setState(() {
-              _isRefreshing = false;
-            });
-          }
-        },
+        onRefresh: _handleRefresh,
         child: filteredTransactions.isEmpty
             ? _buildEmptyState()
             : ListView.builder(
@@ -187,6 +65,142 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 },
               ),
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      title: Row(
+        children: [
+          Text(
+            'All Transactions',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+          ),
+          const Spacer(),
+          // Custom styled filter dropdown
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: widget.isDarkMode
+                  ? Colors.grey.shade800.withOpacity(0.5)
+                  : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.isDarkMode
+                    ? Colors.grey.shade700
+                    : Colors.grey.shade300,
+                width: 1,
+              ),
+            ),
+            child: DropdownButton<String>(
+              value: _filter,
+              icon: Icon(
+                Icons.filter_list_rounded,
+                size: 20,
+                color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+              ),
+              underline: const SizedBox(),
+              isDense: true,
+              style: TextStyle(
+                color: widget.isDarkMode ? Colors.white : Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              dropdownColor:
+                  widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
+              items: ['All', 'PYUSD', 'ETH'].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: widget.isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _filter = newValue;
+                  });
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Refresh button
+          _buildRefreshButton(),
+        ],
+      ),
+      leading: IconButton(
+        icon: Icon(
+          Icons.arrow_back,
+          color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+        ),
+        onPressed: () => Navigator.pop(context),
+      ),
+    );
+  }
+
+  Widget _buildRefreshButton() {
+    return IconButton(
+      icon: _isRefreshing
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+              ),
+            )
+          : Icon(
+              Icons.refresh,
+              color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+      onPressed: _isRefreshing ? null : _handleRefresh,
+    );
+  }
+
+  Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    // Clear transaction details cache
+    final transactionDetailProvider =
+        Provider.of<TransactionDetailProvider>(context, listen: false);
+    transactionDetailProvider.clearCache();
+
+    // Wait a moment for visual feedback
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    if (mounted) {
+      setState(() {
+        _isRefreshing = false;
+      });
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: 'Transaction cache refreshed',
+      );
+    }
+  }
+
+  List<TransactionModel> _getFilteredTransactions() {
+    final homeProvider =
+        Provider.of<HomeScreenProvider>(context, listen: false);
+    return homeProvider.getFilteredAndSortedTransactions(
+      widget.transactions,
+      filterOverride: _filter,
     );
   }
 
@@ -226,37 +240,5 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         ),
       ],
     );
-  }
-
-  // Helper method to filter transactions based on selected filter
-  List<TransactionModel> _getFilteredTransactions() {
-    // First apply type filter
-    List<TransactionModel> filtered;
-    if (_filter == 'All') {
-      filtered = widget.transactions;
-    } else if (_filter == 'PYUSD') {
-      filtered =
-          widget.transactions.where((tx) => tx.tokenSymbol == 'PYUSD').toList();
-    } else {
-      filtered =
-          widget.transactions.where((tx) => tx.tokenSymbol == null).toList();
-    }
-
-    // Sort: Pending transactions first, then by timestamp
-    filtered.sort((a, b) {
-      // If one is pending and the other isn't, pending comes first
-      if (a.status == TransactionStatus.pending &&
-          b.status != TransactionStatus.pending) {
-        return -1;
-      }
-      if (b.status == TransactionStatus.pending &&
-          a.status != TransactionStatus.pending) {
-        return 1;
-      }
-      // Otherwise sort by timestamp (newest first)
-      return b.timestamp.compareTo(a.timestamp);
-    });
-
-    return filtered;
   }
 }

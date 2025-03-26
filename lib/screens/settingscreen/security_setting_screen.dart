@@ -55,6 +55,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     final theme = Theme.of(context);
     final defaultPinTheme = _defaultPinTheme(context);
     final primaryColor = theme.colorScheme.primary;
+    final securityProvider =
+        Provider.of<SecuritySettingsProvider>(context, listen: false);
 
     final focusedPinTheme = defaultPinTheme.copyWith(
       decoration: defaultPinTheme.decoration!.copyWith(
@@ -78,7 +80,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Enable Biometrics'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -94,13 +96,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               obscureText: true,
               obscuringCharacter: '•',
               onCompleted: (pin) async {
-                Navigator.of(context).pop();
-                final securityProvider = Provider.of<SecuritySettingsProvider>(
-                    context,
-                    listen: false);
+                Navigator.of(dialogContext).pop();
 
                 final success = await securityProvider.enableBiometrics(pin);
                 if (success) {
+                  // Directly update the state and notify listeners
+                  securityProvider.setIsBiometricsEnabled(true);
+
                   if (mounted) {
                     SnackbarUtil.showSnackbar(
                       context: _scaffoldContext,
@@ -140,7 +142,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           TextButton(
             onPressed: () {
               _pinController.clear();
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
             },
             child: const Text('Cancel'),
           ),
@@ -154,6 +156,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     final defaultPinTheme = _defaultPinTheme(context);
     final primaryColor = theme.colorScheme.primary;
     final securityProvider = Provider.of<SecuritySettingsProvider>(context);
+    final onBackground = theme.colorScheme.onSurface;
 
     final focusedPinTheme = defaultPinTheme.copyWith(
       decoration: defaultPinTheme.decoration!.copyWith(
@@ -183,142 +186,110 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         text: 'Change PIN',
         icon: const Icon(Icons.lock_outline),
       );
-    } else if (securityProvider.pinChangeStep == PinChangeStep.enterCurrent) {
-      // Step 1: Enter current PIN
-      return Column(
-        children: [
-          const Text(
-            'Enter your current PIN',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Pinput(
-                  controller: _pinController,
-                  length: 6,
-                  defaultPinTheme: defaultPinTheme,
-                  focusedPinTheme: focusedPinTheme,
-                  submittedPinTheme: submittedPinTheme,
-                  obscureText: true,
-                  obscuringCharacter: '•',
-                  onCompleted: (pin) {
-                    securityProvider.setCurrentPin(pin);
-                    _pinController.clear();
-                  },
-                  keyboardType: TextInputType.number,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
-                  showCursor: true,
-                  cursor: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        width: 2,
-                        height: 22,
-                        color: primaryColor,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  // Toggle visibility would be implemented here in a real app
-                },
-                icon: const Icon(Icons.visibility),
-                color: primaryColor,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () {
-              securityProvider.resetPinChangeProcess();
-              _pinController.clear();
-            },
-            child: const Text('Cancel'),
-          ),
-        ],
-      );
     } else {
-      // Step 2: Enter new PIN
-      return Column(
-        children: [
-          const Text(
-            'Enter your new PIN',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Pinput(
-                  controller: _pinController,
-                  length: 6,
-                  defaultPinTheme: defaultPinTheme,
-                  focusedPinTheme: focusedPinTheme,
-                  submittedPinTheme: submittedPinTheme,
-                  obscureText: true,
-                  obscuringCharacter: '•',
-                  onCompleted: (newPin) async {
-                    final success = await securityProvider.changePin(newPin);
-
-                    if (mounted) {
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('PIN changed successfully'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(securityProvider.error ??
-                                'Failed to change PIN'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                    _pinController.clear();
-                  },
-                  keyboardType: TextInputType.number,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
-                  showCursor: true,
-                  cursor: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        width: 2,
-                        height: 22,
-                        color: primaryColor,
-                      ),
-                    ],
-                  ),
+              Text(
+                securityProvider.pinChangeStep == PinChangeStep.enterCurrent
+                    ? 'Enter Current PIN'
+                    : 'Enter New PIN',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: onBackground,
                 ),
               ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.visibility),
-                color: primaryColor,
+              const SizedBox(height: 16),
+              Text(
+                securityProvider.pinChangeStep == PinChangeStep.enterCurrent
+                    ? 'Verify your current PIN to proceed with changes'
+                    : 'Choose a new 6-digit PIN for your wallet',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: onBackground.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Pinput(
+                      controller: _pinController,
+                      length: 6,
+                      defaultPinTheme: defaultPinTheme,
+                      focusedPinTheme: focusedPinTheme,
+                      submittedPinTheme: submittedPinTheme,
+                      obscureText: true,
+                      obscuringCharacter: '•',
+                      onCompleted: (pin) async {
+                        if (securityProvider.pinChangeStep ==
+                            PinChangeStep.enterCurrent) {
+                          securityProvider.setCurrentPin(pin);
+                          _pinController.clear();
+                        } else {
+                          final success = await securityProvider.changePin(pin);
+
+                          if (mounted) {
+                            if (success) {
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: 'PIN changed successfully',
+                              );
+                            } else {
+                              SnackbarUtil.showSnackbar(
+                                context: context,
+                                message: securityProvider.error ??
+                                    'Failed to change PIN',
+                                isError: true,
+                              );
+                            }
+                          }
+                          _pinController.clear();
+                        }
+                      },
+                      keyboardType: TextInputType.number,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
+                      showCursor: true,
+                      cursor: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            width: 2,
+                            height: 22,
+                            color: primaryColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      securityProvider.resetPinChangeProcess();
+                      _pinController.clear();
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () {
-              securityProvider.resetPinChangeProcess();
-              _pinController.clear();
-            },
-            child: const Text('Cancel'),
-          ),
-        ],
+        ),
       );
     }
   }
@@ -451,6 +422,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                       // Disable biometrics directly
                                       final success = await securityProvider
                                           .disableBiometrics();
+
+                                      // Force state update
+                                      setState(() {
+                                        securityProvider
+                                            .setIsBiometricsEnabled(false);
+                                      });
 
                                       if (mounted) {
                                         if (success) {

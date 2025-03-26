@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../provider/auth_provider.dart';
 import '../widget/session_timeout_dialog_widget.dart';
 import '../widget/session_warning_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
+  static const String _autoLockDurationKey = 'auto_lock_duration';
   int _autoLockDuration = 5; // Default: 5 minutes
   DateTime _lastActivityTime = DateTime.now();
   Timer? _autoLockTimer;
@@ -17,12 +19,21 @@ class SessionProvider extends ChangeNotifier {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   SessionProvider(this._authProvider) {
+    _loadAutoLockDuration();
     _startAutoLockTimer();
   }
 
   // Getters
   int get autoLockDuration => _autoLockDuration;
   bool get isActive => _isActive;
+
+  // Load saved auto-lock duration
+  Future<void> _loadAutoLockDuration() async {
+    final prefs = await SharedPreferences.getInstance();
+    _autoLockDuration = prefs.getInt(_autoLockDurationKey) ??
+        5; // Default to 5 minutes if not set
+    notifyListeners();
+  }
 
   // Update last activity time (call this when user interacts with the app)
   void updateActivity() {
@@ -51,8 +62,12 @@ class SessionProvider extends ChangeNotifier {
   }
 
   // Set auto-lock duration in minutes
-  void setAutoLockDuration(int minutes) {
+  Future<void> setAutoLockDuration(int minutes) async {
     _autoLockDuration = minutes;
+    // Save the new duration
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_autoLockDurationKey, minutes);
+
     _resetAutoLockTimer();
     notifyListeners();
   }

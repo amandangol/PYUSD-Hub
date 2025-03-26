@@ -35,11 +35,6 @@ void main() async {
   await Future.delayed(
       const Duration(seconds: 1)); // Give time for initialization
 
-  // Test notification during development
-  if (kDebugMode) {
-    await notificationService.testNotification();
-  }
-
   // Load environment variables
   await dotenv.load(fileName: ".env");
 

@@ -86,9 +86,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
+      final walletProvider =
+          Provider.of<WalletProvider>(context, listen: false);
 
-      // Single refresh call that updates both transactions and balances
-      await transactionProvider.refreshWalletData(forceRefresh: forceRefresh);
+      // Start both refreshes immediately and wait for them to complete
+      final balanceFuture =
+          walletProvider.refreshBalances(forceRefresh: forceRefresh);
+      final transactionsFuture =
+          transactionProvider.refreshWalletData(forceRefresh: forceRefresh);
+
+      // Use Future.wait with a timeout
+      await Future.wait(
+        [balanceFuture, transactionsFuture],
+        eagerError: false, // Continue even if one fails
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          // Handle timeout gracefully
+          print('Refresh timeout - some operations may not have completed');
+          return [null, null];
+        },
+      );
     } catch (e) {
       print('Error refreshing wallet data: $e');
       if (mounted) {
@@ -304,7 +322,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Add network change handler
   void _onNetworkChanged() {
     if (mounted) {
       _refreshWalletData(forceRefresh: true);

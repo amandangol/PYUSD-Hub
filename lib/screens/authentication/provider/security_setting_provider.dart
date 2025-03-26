@@ -54,24 +54,22 @@ class SecuritySettingsProvider with ChangeNotifier {
   // Enable biometrics
   Future<bool> enableBiometrics(String pin) async {
     final success = await _authProvider.enableBiometrics(pin);
-
-    if (success) {
-      _isBiometricsEnabled = true;
-      notifyListeners();
-    }
-
     return success;
   }
 
-  // Disable biometrics - fixed to directly call AuthProvider's disableBiometrics
+  // Explicitly set biometrics enabled state
+  void setIsBiometricsEnabled(bool enabled) {
+    _isBiometricsEnabled = enabled;
+    notifyListeners();
+  }
+
+  // Disable biometrics
   Future<bool> disableBiometrics() async {
     final success = await _authProvider.disableBiometrics();
-
     if (success) {
       _isBiometricsEnabled = false;
       notifyListeners();
     }
-
     return success;
   }
 

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../transactions/view/all_transactions/all_transaction_screen.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../provider/homescreen_provider.dart';
-import 'balance_card.dart';
 import 'shimmer/transaction_shimmer_item.dart';
 import 'transaction_item.dart';
 import '../../../utils/empty_state_utils.dart';
@@ -30,21 +28,20 @@ class TransactionsSection extends StatefulWidget {
 }
 
 class _TransactionsSectionState extends State<TransactionsSection> {
-  static const _filterOptions = ['All', 'PYUSD', 'ETH'];
-
-  String _filter = _filterOptions[0];
+  String _filter = 'All';
   List<TransactionModel> _filteredTransactions = [];
-
-  // Memoize common styles
-  late final _loadingBoxDecoration = BoxDecoration(
-    color: widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50,
-    borderRadius: BorderRadius.circular(12),
-  );
+  HomeScreenProvider? _homeProvider;
 
   @override
   void initState() {
     super.initState();
-    _updateFilteredTransactions();
+    // Defer the first update to after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _homeProvider = context.read<HomeScreenProvider>();
+        _updateFilteredTransactions();
+      }
+    });
   }
 
   @override
@@ -58,44 +55,30 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   void _updateFilteredTransactions() {
     if (!mounted) return;
 
-    final homeProvider = context.read<HomeScreenProvider>();
-    final currentFilter = homeProvider.currentFilter;
+    final homeProvider = _homeProvider ?? context.read<HomeScreenProvider>();
+    final filtered =
+        homeProvider.getFilteredAndSortedTransactions(widget.transactions);
 
-    final filtered = widget.transactions.where((tx) {
-      switch (currentFilter) {
-        case 'PYUSD':
-          return tx.tokenSymbol == 'PYUSD';
-        case 'ETH':
-          return tx.tokenSymbol == null || tx.tokenSymbol == 'ETH';
-        default:
-          return true; // 'All' case
-      }
-    }).toList();
-
-    // Sort transactions
-    filtered.sort((a, b) {
-      final aPending = a.status == TransactionStatus.pending ? 1 : 0;
-      final bPending = b.status == TransactionStatus.pending ? 1 : 0;
-      final pendingCompare = bPending - aPending;
-      return pendingCompare != 0
-          ? pendingCompare
-          : b.timestamp.compareTo(a.timestamp);
-    });
-
-    setState(() {
-      _filteredTransactions = filtered;
-    });
+    if (mounted) {
+      setState(() {
+        _filteredTransactions = filtered;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final homeProvider = context.watch<HomeScreenProvider>();
+    // Use select to minimize rebuilds
+    final currentFilter = context.select<HomeScreenProvider, String>(
+      (provider) => provider.currentFilter,
+    );
+
     final cardColor =
         widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50;
 
-    // Listen to filter changes and update transactions
-    if (homeProvider.currentFilter != _filter) {
-      _filter = homeProvider.currentFilter;
+    // Update filter if changed
+    if (currentFilter != _filter) {
+      _filter = currentFilter;
       _updateFilteredTransactions();
     }
 
@@ -109,7 +92,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
         if (widget.isLoading)
           _buildLoadingState()
         else if (displayTransactions.isEmpty)
-          _buildEmptyState(homeProvider.currentFilter)
+          _buildEmptyState(currentFilter)
         else
           Column(
             children: [
@@ -122,7 +105,9 @@ class _TransactionsSectionState extends State<TransactionsSection> {
                       cardColor: cardColor,
                     ),
                   )),
-              if (_filteredTransactions.length > 3) _buildViewAllButton(),
+              if (_filteredTransactions.length > 3)
+                _buildViewAllButton(
+                    filteredTransactions: _filteredTransactions),
             ],
           ),
       ],
@@ -226,23 +211,27 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     );
   }
 
-  // Helper method to build view all button
-  Widget _buildViewAllButton() {
+  // Update the view all button to take filtered transactions as parameter
+  Widget _buildViewAllButton({
+    required List<TransactionModel> filteredTransactions,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(top: 16.0),
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AllTransactionsScreen(
-                transactions: _filteredTransactions,
-                currentAddress: widget.currentAddress,
-                isDarkMode: widget.isDarkMode,
-                primaryColor: widget.primaryColor,
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AllTransactionsScreen(
+                  transactions: filteredTransactions,
+                  currentAddress: widget.currentAddress,
+                  isDarkMode: widget.isDarkMode,
+                  primaryColor: widget.primaryColor,
+                ),
               ),
-            ),
-          );
+            );
+          }
         },
         child: Container(
           width: double.infinity,

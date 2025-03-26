@@ -33,8 +33,9 @@ class WalletProvider extends ChangeNotifier {
 
   // Add refresh lock
   bool _isRefreshLocked = false;
-  static const Duration _minRefreshInterval = Duration(seconds: 15);
+  static const Duration _minRefreshInterval = Duration(seconds: 5);
   DateTime? _lastSuccessfulRefresh;
+  static const Duration _rpcTimeout = Duration(seconds: 10);
 
   // Getters
   double get ethBalance => _balances[_networkProvider.currentNetwork] ?? 0.0;
@@ -101,32 +102,30 @@ class WalletProvider extends ChangeNotifier {
     final address = _authProvider.getCurrentAddress();
     if (address == null || address.isEmpty) return;
 
-    // Check if refresh is locked and not forced
-    if (_isRefreshLocked && !forceRefresh) return;
+    // Skip if already refreshing and not forced
+    if (_isBalanceRefreshing && !forceRefresh) return;
 
-    // Check minimum refresh interval
+    // Check minimum refresh interval unless forced
     if (!forceRefresh && _lastSuccessfulRefresh != null) {
       final timeSinceLastRefresh =
           DateTime.now().difference(_lastSuccessfulRefresh!);
-      if (timeSinceLastRefresh < _minRefreshInterval) return;
+      if (timeSinceLastRefresh < _minRefreshInterval) {
+        return;
+      }
     }
 
-    _isRefreshLocked = true;
     _isBalanceRefreshing = true;
     notifyListeners();
 
     try {
-      final currentNetwork = _networkProvider.currentNetwork;
       await _refreshBalances(address);
       _lastSuccessfulRefresh = DateTime.now();
-      _lastRefreshTimes[currentNetwork] = DateTime.now();
       clearError();
     } catch (e) {
       if (!_isDisposed) {
         _setError('Error refreshing balances: $e');
       }
     } finally {
-      _isRefreshLocked = false;
       if (!_isDisposed) {
         _isBalanceRefreshing = false;
         _isInitialLoad = false;
@@ -168,17 +167,33 @@ class WalletProvider extends ChangeNotifier {
     final currentNetwork = _networkProvider.currentNetwork;
 
     try {
-      // Fetch balances in parallel
-      final ethBalance = await _rpcService.getEthBalance(rpcUrl, address);
-      final tokenBalance =
-          await _getTokenBalance(rpcUrl, address, currentNetwork);
+      // Create timeout futures
+      final ethFuture = _rpcService
+          .getEthBalance(rpcUrl, address)
+          .timeout(_rpcTimeout, onTimeout: () => ethBalance);
+
+      final tokenFuture = _getTokenBalance(rpcUrl, address, currentNetwork)
+          .timeout(_rpcTimeout, onTimeout: () => tokenBalance);
+
+      // Run both requests in parallel with timeout
+      final results = await Future.wait([
+        ethFuture,
+        tokenFuture,
+      ], eagerError: true);
 
       if (!_isDisposed) {
-        _balances[currentNetwork] = ethBalance;
-        _tokenBalances[currentNetwork] = tokenBalance;
+        // Update balances only if both calls succeed
+        _balances[currentNetwork] = results[0];
+        _tokenBalances[currentNetwork] = results[1];
+
+        // Cache the successful results
+        _lastRefreshTimes[currentNetwork] = DateTime.now();
       }
     } catch (e) {
       print('Error in _refreshBalances: $e');
+      // If there's an error, keep the old values
+      // but still allow future refreshes
+      _isRefreshLocked = false;
       throw e;
     }
   }
@@ -189,21 +204,19 @@ class WalletProvider extends ChangeNotifier {
     final tokenContractAddress = _tokenContractAddresses[network];
     if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
       print('Debug: No token contract address for network $network');
-      return 0.0;
+      return tokenBalance; // Return existing balance instead of 0
     }
 
     try {
-      final balance = await _rpcService.getTokenBalance(
+      return await _rpcService.getTokenBalance(
         rpcUrl,
         tokenContractAddress,
         address,
         decimals: 6, // PYUSD decimals
       );
-      print('Debug: Raw token balance response: $balance');
-      return balance;
     } catch (e) {
       print('Debug: Error fetching token balance: $e');
-      rethrow;
+      return tokenBalance; // Return existing balance on error
     }
   }
 

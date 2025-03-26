@@ -170,6 +170,10 @@ class BalanceCard extends StatelessWidget {
 
   Widget _buildBalanceSection(
       BuildContext context, bool isDarkMode, Color paypalBlue) {
+    final isBalanceVisible = context.select<HomeScreenProvider, bool>(
+      (provider) => provider.isBalanceVisible,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -182,18 +186,21 @@ class BalanceCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        isRefreshing
-            ? _buildBalanceLoadingSkeleton(isDarkMode)
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child:
-                        _buildBalanceDisplay(context, isDarkMode, paypalBlue),
-                  ),
-                  _buildEthBalanceChip(context, isDarkMode),
-                ],
-              ),
+        AnimatedSwitcher(
+          duration: _animationDuration,
+          child: isRefreshing
+              ? _buildBalanceLoadingSkeleton(isDarkMode)
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child:
+                          _buildBalanceDisplay(context, isDarkMode, paypalBlue),
+                    ),
+                    _buildEthBalanceChip(context, isDarkMode),
+                  ],
+                ),
+        ),
       ],
     );
   }

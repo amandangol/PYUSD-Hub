@@ -5,6 +5,11 @@ class SessionTimeoutDialog extends StatelessWidget {
   final String title;
   final String message;
   final String buttonText;
+  final Color? titleColor;
+  final Color? messageColor;
+  final Color? iconColor;
+  final Color? buttonTextColor;
+  final Color? buttonBackgroundColor;
 
   const SessionTimeoutDialog({
     super.key,
@@ -13,31 +18,72 @@ class SessionTimeoutDialog extends StatelessWidget {
     this.message =
         'Your session has expired due to inactivity. For security reasons, you have been logged out.',
     this.buttonText = 'OK',
+    this.titleColor,
+    this.messageColor,
+    this.iconColor = Colors.redAccent,
+    this.buttonTextColor,
+    this.buttonBackgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
     return WillPopScope(
       onWillPop: () async => false, // Prevent dismissal with back button
       child: AlertDialog(
-        title: Text(title),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          title,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            color: titleColor ?? theme.colorScheme.error,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(message),
-            const SizedBox(height: 16),
-            const Icon(
+            Icon(
               Icons.lock_outline,
-              size: 48,
-              color: Colors.redAccent,
+              size: 64,
+              color: iconColor,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: messageColor,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: onConfirm,
-            child: Text(buttonText),
+          Center(
+            child: ElevatedButton(
+              onPressed: onConfirm,
+              style: ElevatedButton.styleFrom(
+                foregroundColor: buttonTextColor ?? Colors.white,
+                backgroundColor:
+                    buttonBackgroundColor ?? theme.colorScheme.error,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                buttonText,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: buttonTextColor ?? Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
         ],
       ),

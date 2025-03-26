@@ -73,11 +73,16 @@ class HomeScreenProvider with ChangeNotifier {
     }
   }
 
-  // Add method to get filtered transactions
-  List<TransactionModel> getFilteredTransactions(
-      List<TransactionModel> transactions) {
+  // Enhanced filtering method that can be reused across components
+  List<TransactionModel> getFilteredAndSortedTransactions(
+    List<TransactionModel> transactions, {
+    String? filterOverride,
+  }) {
+    final filterToUse = filterOverride ?? _currentFilter;
+
+    // Apply filter
     final filtered = transactions.where((tx) {
-      switch (_currentFilter) {
+      switch (filterToUse) {
         case 'PYUSD':
           return tx.tokenSymbol == 'PYUSD';
         case 'ETH':
@@ -87,7 +92,7 @@ class HomeScreenProvider with ChangeNotifier {
       }
     }).toList();
 
-    // Sort transactions
+    // Sort transactions: Pending first, then by timestamp
     filtered.sort((a, b) {
       final aPending = a.status == TransactionStatus.pending ? 1 : 0;
       final bPending = b.status == TransactionStatus.pending ? 1 : 0;
