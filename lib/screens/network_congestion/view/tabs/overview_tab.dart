@@ -96,7 +96,7 @@ class OverviewTab extends StatelessWidget {
                       _buildStatusItemWithInfo(
                         context,
                         'Current Gas Price',
-                        '${congestionData.currentGasPrice.toStringAsFixed(2)} Gwei',
+                        '${congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
                         Icons.local_gas_station,
                         'The current cost per unit of gas in Gwei. Higher gas prices indicate increased network demand.',
                       ),

@@ -131,11 +131,10 @@ class MyApp extends StatelessWidget {
             // Use the navigator key from SessionProvider
             navigatorKey: sessionProvider.navigatorKey,
             // Define initial route
-            initialRoute: '/',
+            home: const ActivityAwareWidget(
+              child: SplashScreen(),
+            ),
             routes: {
-              '/': (context) => const ActivityAwareWidget(
-                    child: SplashScreen(),
-                  ),
               '/main': (context) => const ActivityAwareWidget(
                     child: MainApp(),
                   ),

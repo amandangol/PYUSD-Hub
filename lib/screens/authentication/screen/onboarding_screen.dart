@@ -36,13 +36,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.initWallet();
 
-    // Only auto-navigate to login if not in force-onboarding mode
-    if (!widget.forceOnboarding && authProvider.wallet != null && mounted) {
-      Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()));
-    }
-
     if (mounted) {
+      // If we have a wallet, go to login screen unless force onboarding is true
+      if (!widget.forceOnboarding && authProvider.hasWallet) {
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()));
+      }
+
       setState(() {
         _isLoading = false;
       });

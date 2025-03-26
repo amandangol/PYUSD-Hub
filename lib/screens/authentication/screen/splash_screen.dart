@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/screens/authentication/screen/login_screen.dart';
-import 'package:pyusd_hub/screens/authentication/screen/onboarding_screen.dart';
-import 'dart:async';
 import '../provider/auth_provider.dart';
-import '../../../providers/theme_provider.dart';
+import 'login_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,179 +11,38 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  bool _isInitializing = false;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200), // Slightly faster animation
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-    _animationController.forward();
-
-    // Initialize wallet and other services
     _initializeApp();
   }
 
   Future<void> _initializeApp() async {
-    if (_isInitializing) return;
-    _isInitializing = true;
-
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.initWallet();
 
-    try {
-      // Initialize wallet
-      await authProvider.initWallet();
+    if (!mounted) return;
 
-      if (mounted) {
-        setState(() {});
-
-        // Navigate after a short delay to allow animation to complete
-        Timer(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            if (authProvider.isAuthenticated) {
-              // Navigate directly to main app if already authenticated
-              Navigator.of(context).pushReplacementNamed('/main');
-            } else if (authProvider.wallet != null) {
-              // Navigate to login screen if wallet exists but not authenticated
-              Navigator.of(context).pushReplacement(
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const LoginScreen(),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                    var begin = const Offset(1.0, 0.0);
-                    var end = Offset.zero;
-                    var curve = Curves.easeInOut;
-                    var tween = Tween(begin: begin, end: end)
-                        .chain(CurveTween(curve: curve));
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
-                    );
-                  },
-                ),
-              );
-            } else {
-              // Navigate to onboarding screen if no wallet exists
-              Navigator.of(context).pushReplacement(
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const OnboardingScreen(),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                    var begin = const Offset(1.0, 0.0);
-                    var end = Offset.zero;
-                    var curve = Curves.easeInOut;
-                    var tween = Tween(begin: begin, end: end)
-                        .chain(CurveTween(curve: curve));
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
-                    );
-                  },
-                ),
-              );
-            }
-          }
-        });
-      }
-    } catch (e) {
-      _isInitializing = false;
-      if (mounted) {
-        setState(() {});
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error initializing app: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    // Determine which screen to show
+    if (authProvider.hasWallet) {
+      // If we have a wallet, go to login screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    } else {
+      // If no wallet, go to onboarding
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
     }
   }
 
   @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.isDarkMode;
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-
-    return Scaffold(
-      backgroundColor: backgroundColor,
+    return const Scaffold(
       body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: isDarkMode
-                      ? Colors.white12
-                      : Colors.black.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.account_balance_wallet,
-                    size: 64,
-                    color: primaryColor,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'PYUSD Wallet',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Digital Asset Management',
-                style: TextStyle(
-                  fontSize: 16,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-              const SizedBox(height: 48),
-              // Loading indicator
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                  strokeWidth: 3,
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: CircularProgressIndicator(),
       ),
     );
   }

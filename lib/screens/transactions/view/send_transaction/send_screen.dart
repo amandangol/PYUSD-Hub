@@ -8,7 +8,6 @@ import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/pyusd_components.dart';
 import '../../provider/transaction_provider.dart';
 import 'widgets/amount_input_card.dart';
-import 'widgets/balance_display_card.dart';
 import 'widgets/recipent_card.dart';
 import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';

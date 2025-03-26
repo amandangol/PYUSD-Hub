@@ -63,9 +63,8 @@ class AuthProvider extends ChangeNotifier {
         // Load wallet metadata - just address, not sensitive data yet
         _wallet = await _walletService.loadWalletMetadata();
 
-        // If we have a saved auth state, attempt to auto-authenticate
+        // If we have a saved auth state and biometrics is enabled, attempt auto-authentication
         if (savedAuthState) {
-          // Don't set authenticated state until we have the full wallet data
           if (_isBiometricsAvailable &&
               await _authService.isBiometricsEnabled()) {
             try {
@@ -76,24 +75,25 @@ class AuthProvider extends ChangeNotifier {
                     await _walletService.decryptAndLoadWalletWithKey(secretKey);
                 if (_wallet?.privateKey.isNotEmpty == true) {
                   _isAuthenticated = true;
-                } else {
-                  // If wallet loading failed, clear the saved auth state
-                  await prefs.setBool('isAuthenticated', false);
+                  notifyListeners();
+                  return;
                 }
               }
             } catch (e) {
               print('Failed to auto-load wallet with biometrics: $e');
-              await prefs.setBool('isAuthenticated', false);
             }
-          } else {
-            // If no biometrics, clear the saved auth state
-            await prefs.setBool('isAuthenticated', false);
           }
+          // If biometric auth failed or isn't available, clear the saved state
+          await prefs.setBool('isAuthenticated', false);
         }
-      } else {
-        _wallet = null;
-        _isAuthenticated = false;
+
+        // Keep the wallet metadata even if not authenticated
+        return;
       }
+
+      // Clear wallet if no PIN is set
+      _wallet = null;
+      _isAuthenticated = false;
     } catch (e) {
       _setError('Failed to initialize wallet: $e');
       // Clear saved auth state on error
@@ -101,6 +101,7 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setBool('isAuthenticated', false);
     } finally {
       _setLoading(false);
+      notifyListeners();
     }
   }
 

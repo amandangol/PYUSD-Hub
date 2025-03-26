@@ -22,7 +22,7 @@ class TransactionProvider extends ChangeNotifier
   // Token contract addresses
   final Map<NetworkType, String> _tokenContractAddresses = {
     NetworkType.sepoliaTestnet: '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9',
-    NetworkType.ethereumMainnet: '0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9',
+    NetworkType.ethereumMainnet: '0x6c3ea9036406852006290770bedfcaba0e23a0e8',
   };
 
   // State

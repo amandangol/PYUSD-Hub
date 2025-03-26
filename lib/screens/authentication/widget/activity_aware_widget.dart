@@ -36,9 +36,12 @@ class _ActivityAwareWidgetState extends State<ActivityAwareWidget>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Update activity when app comes to foreground
     if (state == AppLifecycleState.resumed) {
+      // Update activity and reset timers when app comes to foreground
       _sessionProvider.updateActivity();
+    } else if (state == AppLifecycleState.paused) {
+      // Optional: You might want to start counting inactivity when app goes to background
+      // _sessionProvider.onAppBackground();
     }
   }
 

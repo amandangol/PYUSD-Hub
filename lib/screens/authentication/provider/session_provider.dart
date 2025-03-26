@@ -31,6 +31,8 @@ class SessionProvider extends ChangeNotifier {
 
     if (_isShowingWarning) {
       _dismissWarningDialog();
+      // Reset timers when continuing session
+      _resetAutoLockTimer();
     }
 
     notifyListeners();
@@ -68,14 +70,29 @@ class SessionProvider extends ChangeNotifier {
 
     // Create new timer that fires more frequently
     _autoLockTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      _checkInactivity();
+      if (_isActive) {
+        // Only check inactivity if session is active
+        _checkInactivity();
+      }
     });
   }
 
-  // Reset the auto-lock timer (e.g., when duration changes)
+  // Reset the auto-lock timer (e.g., when duration changes or session continues)
   void _resetAutoLockTimer() {
-    _startAutoLockTimer();
-    updateActivity();
+    _autoLockTimer?.cancel();
+    _warningTimer?.cancel();
+    _warningExpiryTimer?.cancel();
+
+    // Don't set timer if duration is 0 (never auto-lock)
+    if (_autoLockDuration == 0) return;
+
+    // Create new timer that fires more frequently
+    _autoLockTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (_isActive) {
+        // Only check inactivity if session is active
+        _checkInactivity();
+      }
+    });
   }
 
   // Check if the app has been inactive for longer than the auto-lock duration
