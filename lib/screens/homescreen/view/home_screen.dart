@@ -1,20 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../widgets/pyusd_components.dart';
-import '../authentication/provider/auth_provider.dart';
-import '../../providers/network_provider.dart';
-import '../../providers/wallet_provider.dart';
-import '../../utils/snackbar_utils.dart';
-import '../transactions/model/transaction_model.dart';
-import '../transactions/provider/transaction_provider.dart';
-import '../transactions/view/receive_transaction/receive_screen.dart';
-import '../transactions/view/send_transaction/send_screen.dart';
-import 'widgets/action_button.dart';
-import 'widgets/balance_card.dart';
-import 'widgets/network_status_card.dart';
-import 'widgets/transaction_section.dart';
-import 'provider/homescreen_provider.dart';
+import '../../../widgets/pyusd_components.dart';
+import '../../authentication/provider/auth_provider.dart';
+import '../../../providers/network_provider.dart';
+import '../../../providers/wallet_provider.dart';
+import '../../../utils/snackbar_utils.dart';
+import '../../transactions/model/transaction_model.dart';
+import '../../transactions/provider/transaction_provider.dart';
+import '../../transactions/view/receive_transaction/receive_screen.dart';
+import '../../transactions/view/send_transaction/send_screen.dart';
+import '../widgets/action_button.dart';
+import '../widgets/balance_card.dart';
+import '../widgets/network_status_card.dart';
+import '../widgets/transaction_section.dart';
+import '../provider/homescreen_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         showLogo: true,
         title: "PYUSD Wallet",
         networkName: networkName,
-        onRefreshPressed: () => _refreshWalletData(forceRefresh: true),
       ),
       body: _buildBody(
           isDarkMode: isDarkMode,

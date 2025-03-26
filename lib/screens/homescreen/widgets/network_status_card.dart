@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/network_provider.dart';
 import '../../../widgets/pyusd_components.dart';
-import '../provider/homescreen_provider.dart';
 
 class NetworkStatusCard extends StatelessWidget {
   final bool isDarkMode;
@@ -14,7 +13,6 @@ class NetworkStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final homeProvider = context.watch<HomeScreenProvider>();
     final networkProvider = context.watch<NetworkProvider>();
     final isTestnet =
         networkProvider.currentNetwork == NetworkType.sepoliaTestnet;

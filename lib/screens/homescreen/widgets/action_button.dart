@@ -21,25 +21,25 @@ class ActionButtons extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        ActionButton(
-          icon: Icons.arrow_upward,
-          label: 'Send',
+        _ActionButton(
           onPressed: onSendPressed,
+          label: 'Send',
+          icon: Icons.arrow_upward_rounded,
           color: primaryColor,
           isDarkMode: isDarkMode,
         ),
-        ActionButton(
-          icon: Icons.arrow_downward,
-          label: 'Receive',
+        _ActionButton(
           onPressed: onReceivePressed,
-          color: primaryColor,
+          label: 'Receive',
+          icon: Icons.arrow_downward_rounded,
+          color: isDarkMode ? Colors.deepPurple : Colors.purple,
           isDarkMode: isDarkMode,
         ),
-        ActionButton(
-          icon: Icons.swap_horiz,
-          label: 'Swap',
+        _ActionButton(
           onPressed: onSwapPressed,
-          color: primaryColor,
+          label: 'Swap',
+          icon: Icons.swap_horiz_rounded,
+          color: isDarkMode ? Colors.teal : Colors.teal[600]!,
           isDarkMode: isDarkMode,
         ),
       ],
@@ -47,51 +47,77 @@ class ActionButtons extends StatelessWidget {
   }
 }
 
-class ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _ActionButton extends StatelessWidget {
   final VoidCallback onPressed;
+  final String label;
+  final IconData icon;
   final Color color;
   final bool isDarkMode;
 
-  const ActionButton({
-    super.key,
-    required this.icon,
-    required this.label,
+  const _ActionButton({
     required this.onPressed,
+    required this.label,
+    required this.icon,
     required this.color,
     required this.isDarkMode,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Column(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 100,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color,
+                color.withOpacity(0.7),
+              ],
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isDarkMode ? Colors.white : Colors.black87,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

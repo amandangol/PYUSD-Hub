@@ -12,12 +12,12 @@ import 'screens/authentication/screen/splash_screen.dart';
 import 'screens/authentication/service/wallet_service.dart';
 import 'screens/authentication/widget/activity_aware_widget.dart';
 import 'screens/homescreen/provider/homescreen_provider.dart';
+import 'screens/homescreen/view/home_screen.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 
 // Import all screens
-import 'screens/homescreen/home_screen.dart';
 import 'screens/network_congestion/provider/network_congestion_provider.dart';
 import 'screens/network_congestion/view/network_congestion_screen.dart';
 import 'screens/settingscreen/settings_screen.dart';

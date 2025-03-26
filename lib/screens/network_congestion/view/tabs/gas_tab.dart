@@ -118,21 +118,19 @@ class _GasTabState extends State<GasTab> {
               children: [
                 _buildPriorityGasCard(
                   'Low Priority',
-                  (this._congestionData.currentGasPrice * 0.8)
-                      .toStringAsFixed(3),
+                  (_congestionData.currentGasPrice * 0.8).toStringAsFixed(3),
                   'Slower',
                   Colors.green,
                 ),
                 _buildPriorityGasCard(
                   'Medium Priority',
-                  this._congestionData.currentGasPrice.toStringAsFixed(3),
+                  _congestionData.currentGasPrice.toStringAsFixed(3),
                   'Standard',
                   Colors.blue,
                 ),
                 _buildPriorityGasCard(
                   'High Priority',
-                  (this._congestionData.currentGasPrice * 1.2)
-                      .toStringAsFixed(3),
+                  (_congestionData.currentGasPrice * 1.2).toStringAsFixed(3),
                   'Faster',
                   Colors.orange,
                 ),

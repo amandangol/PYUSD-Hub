@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../transactions/view/all_transactions/all_transaction_screen.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../provider/homescreen_provider.dart';
+import 'balance_card.dart';
+import 'shimmer/transaction_shimmer_item.dart';
 import 'transaction_item.dart';
 import '../../../utils/empty_state_utils.dart';
 import 'package:provider/provider.dart';
@@ -112,7 +114,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
           Column(
             children: [
               ...displayTransactions.map((tx) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
+                    padding: const EdgeInsets.only(bottom: 12.0),
                     child: TransactionItem(
                       transaction: tx,
                       currentAddress: widget.currentAddress,
@@ -186,19 +188,13 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     );
   }
 
-  // Optimize loading state with const widgets where possible
+  // Optimize loading state with shimmer effect
   Widget _buildLoadingState() {
     return Column(
       children: List.generate(
-        4,
-        (index) => Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Container(
-            height: 72,
-            padding: const EdgeInsets.all(16),
-            decoration: _loadingBoxDecoration,
-            child: const LoadingItemContent(),
-          ),
+        3,
+        (index) => TransactionShimmerItem(
+          isDarkMode: widget.isDarkMode,
         ),
       ),
     );
@@ -286,64 +282,6 @@ class _TransactionsSectionState extends State<TransactionsSection> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// Extract loading item content to a separate const widget
-class LoadingItemContent extends StatelessWidget {
-  const LoadingItemContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final loadingColor = isDarkMode ? Colors.white10 : Colors.grey.shade200;
-
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: loadingColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 120,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: loadingColor,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: 80,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: loadingColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          width: 60,
-          height: 14,
-          decoration: BoxDecoration(
-            color: loadingColor,
-            borderRadius: BorderRadius.circular(7),
-          ),
-        ),
-      ],
     );
   }
 }

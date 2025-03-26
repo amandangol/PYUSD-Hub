@@ -717,19 +717,19 @@ class TransactionProvider extends ChangeNotifier
       return {
         'eco': GasOption(
           name: 'Eco',
-          price: baseGasPrice * 1.1, // 10% above base
+          price: baseGasPrice * 0.8,
           timeEstimate: '5-10 min',
           recommended: false,
         ),
         'standard': GasOption(
           name: 'Standard',
-          price: baseGasPrice * 1.5, // 50% above base
+          price: baseGasPrice,
           timeEstimate: '2-5 min',
           recommended: true,
         ),
         'fast': GasOption(
           name: 'Fast',
-          price: baseGasPrice * 2.0, // 100% above base
+          price: baseGasPrice * 1.2,
           timeEstimate: '30-60 sec',
           recommended: false,
         ),

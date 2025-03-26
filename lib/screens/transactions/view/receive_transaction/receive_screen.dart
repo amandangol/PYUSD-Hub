@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../widgets/pyusd_components.dart';
 import '../../../authentication/provider/auth_provider.dart';
 import '../../../../providers/network_provider.dart';
 import '../../../../providers/wallet_provider.dart';
@@ -45,31 +46,14 @@ class ReceiveScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'Receive PYUSD',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        iconTheme: IconThemeData(
-          color: textColor,
-        ),
-        actions: [
-          // Add refresh button
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: textColor,
-            ),
-            onPressed: () {
-              walletProvider.refreshBalances(forceRefresh: true);
-            },
-          ),
-        ],
+      appBar: PyusdAppBar(
+        isDarkMode: isDarkMode,
+        title: 'Receive PYUSD',
+        showLogo: false,
+        networkName: networkProvider.currentNetworkDisplayName,
+        onRefreshPressed: () {
+          walletProvider.refreshBalances(forceRefresh: true);
+        },
       ),
       body: SafeArea(
         child: SingleChildScrollView(

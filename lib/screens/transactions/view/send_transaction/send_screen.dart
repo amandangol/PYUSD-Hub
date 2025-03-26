@@ -452,7 +452,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         appBar: PyusdAppBar(
           isDarkMode: isDarkMode,
           title: 'Send $_selectedAsset',
-          networkName: networkProvider.currentNetwork.name,
+          networkName: networkProvider.currentNetworkDisplayName,
           showLogo: false,
           onBackPressed: () {
             Navigator.of(context)
