@@ -1,7 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/firebase_options.dart';
 import 'package:pyusd_hub/screens/authentication/provider/session_provider.dart';
 import 'package:pyusd_hub/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,8 +33,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Get the singleton instance
-  final notificationService = NotificationService();
-  await Future.delayed(const Duration(seconds: 1));
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Load environment variables
   await dotenv.load(fileName: ".env");

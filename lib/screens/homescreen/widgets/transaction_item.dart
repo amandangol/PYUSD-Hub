@@ -28,14 +28,14 @@ class TransactionItem extends StatefulWidget {
 class _TransactionItemState extends State<TransactionItem> {
   bool _isLoading = false;
 
-  // Helper method to format amount - updated to match the detail screen formatting
+  // Helper method to format amount
   String _formatAmount(TransactionModel tx) {
-    if (tx.tokenSymbol != null) {
-      // PYUSD has 6 decimals, display the amount as is since it's already converted
-      return '${tx.amount.toStringAsFixed(4)} ${tx.tokenSymbol}';
+    if (tx.tokenSymbol == 'PYUSD') {
+      // PYUSD with 6 decimals, display 2 decimal places
+      return '${tx.amount.toStringAsFixed(2)} PYUSD';
     } else {
-      // ETH has 4 decimal places
-      return '${tx.amount.toStringAsFixed(4)} ETH';
+      // ETH with 18 decimals, display 6 decimal places for better precision
+      return '${tx.amount.toStringAsFixed(6)} ETH';
     }
   }
 

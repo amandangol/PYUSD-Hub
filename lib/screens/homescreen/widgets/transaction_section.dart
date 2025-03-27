@@ -48,6 +48,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   void didUpdateWidget(TransactionsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.transactions != oldWidget.transactions) {
+      print('Transactions updated in TransactionSection');
       _updateFilteredTransactions();
     }
   }
@@ -62,6 +63,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     if (mounted) {
       setState(() {
         _filteredTransactions = filtered;
+        print('Filtered transactions updated: ${_filteredTransactions.length}');
       });
     }
   }
@@ -83,6 +85,8 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     }
 
     final displayTransactions = _filteredTransactions.take(3).toList();
+    print(
+        'Building TransactionSection with ${displayTransactions.length} transactions');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

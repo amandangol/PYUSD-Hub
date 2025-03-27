@@ -149,6 +149,7 @@ class TransactionDetailModel extends TransactionModel {
   final bool traceDataUnavailable;
   final Map<String, dynamic>? transactionAnalysis;
   final Map<String, dynamic>? transactionTrace;
+  final Map<String, dynamic>? receipt;
 
   TransactionDetailModel({
     required super.hash,
@@ -170,6 +171,7 @@ class TransactionDetailModel extends TransactionModel {
     this.traceData,
     this.internalTransactions,
     this.errorMessage,
+    this.receipt,
     super.tokenSymbol,
     super.tokenName,
     super.tokenDecimals,
@@ -209,6 +211,7 @@ class TransactionDetailModel extends TransactionModel {
     bool? traceDataUnavailable,
     Map<String, dynamic>? transactionAnalysis,
     Map<String, dynamic>? transactionTrace,
+    Map<String, dynamic>? receipt,
   }) {
     return TransactionDetailModel(
       hash: hash ?? this.hash,
@@ -238,35 +241,16 @@ class TransactionDetailModel extends TransactionModel {
       traceDataUnavailable: traceDataUnavailable ?? this.traceDataUnavailable,
       transactionAnalysis: transactionAnalysis ?? this.transactionAnalysis,
       transactionTrace: transactionTrace ?? this.transactionTrace,
+      receipt: receipt ?? this.receipt,
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
-    return {
-      'hash': hash,
-      'timestamp': timestamp.toIso8601String(),
-      'from': from,
-      'to': to,
-      'amount': amount,
-      'gasUsed': gasUsed,
-      'gasLimit': gasLimit,
-      'gasPrice': gasPrice,
-      'status': status.toString(),
-      'direction': direction.toString(),
-      'confirmations': confirmations,
-      'network': network.toString(),
-      'blockNumber': blockNumber,
-      'nonce': nonce,
-      'blockHash': blockHash,
-      'isError': isError,
-      'errorMessage': errorMessage,
-      'tokenSymbol': tokenSymbol,
-      'tokenName': tokenName,
-      'tokenDecimals': tokenDecimals,
-      'tokenContractAddress': tokenContractAddress,
-      'data': data,
-      'traceData': traceData,
-    };
+    final json = super.toJson();
+    json['traceData'] = traceData;
+    json['receipt'] = receipt;
+    return json;
   }
 
   factory TransactionDetailModel.fromJson(Map<String, dynamic> json) {
@@ -300,6 +284,7 @@ class TransactionDetailModel extends TransactionModel {
       tokenContractAddress: json['tokenContractAddress'] as String?,
       data: json['data'] as String?,
       traceData: json['traceData'] as Map<String, dynamic>?,
+      receipt: json['receipt'] as Map<String, dynamic>?,
     );
   }
 }

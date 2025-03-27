@@ -11,6 +11,7 @@ import 'widgets/gasdetails_widget.dart';
 import 'widgets/marketanalysis_widget.dart';
 import 'widgets/statuscard_widget.dart';
 import 'widgets/transaction_details_widget.dart';
+import 'dart:convert';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -256,13 +257,85 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         onRefresh: _refreshTransactionDetails,
         child: _detailedTransaction == null
             ? _buildErrorView(backgroundColor, textColor, primaryColor)
-            : _buildTransactionDetails(
-                statusColor,
-                isIncoming,
-                cardColor,
-                textColor,
-                subtitleColor,
-                primaryColor,
+            : Column(
+                children: [
+                  // Status Card
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: StatusCardWidget(
+                      transaction: _detailedTransaction!,
+                      isIncoming: isIncoming,
+                      statusColor: statusColor,
+                      cardColor: cardColor,
+                      textColor: textColor,
+                      subtitleColor: subtitleColor,
+                    ),
+                  ),
+
+                  // TabBar
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: primaryColor,
+                      unselectedLabelColor: subtitleColor,
+                      indicatorColor: primaryColor,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                      tabs: const [
+                        Tab(text: "Details", icon: Icon(Icons.info_outline)),
+                        Tab(text: "Gas", icon: Icon(Icons.local_gas_station)),
+                        Tab(text: "Market", icon: Icon(Icons.show_chart)),
+                      ],
+                    ),
+                  ),
+
+                  // Tab content
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // Transaction Details Tab
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: TransactionDetailsWidget(
+                            transaction: _detailedTransaction!,
+                            currentAddress: widget.currentAddress,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            subtitleColor: subtitleColor,
+                            primaryColor: primaryColor,
+                            onShowErrorDetails: _showErrorDetails,
+                          ),
+                        ),
+                        // Gas Details Tab
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: GasDetailsWidget(
+                            transaction: _detailedTransaction!,
+                            isDarkMode: widget.isDarkMode,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            subtitleColor: subtitleColor,
+                          ),
+                        ),
+                        // Market Analysis Tab
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: MarketAnalysisWidget(
+                            transaction: _detailedTransaction!,
+                            marketPrices: _marketPrices,
+                            isLoadingMarketData: _isLoadingMarketData,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            subtitleColor: subtitleColor,
+                            primaryColor: primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -349,120 +422,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
     );
   }
 
-  Widget _buildTransactionDetails(
-    Color statusColor,
-    bool isIncoming,
-    Color cardColor,
-    Color textColor,
-    Color subtitleColor,
-    Color primaryColor,
-  ) {
-    if (_detailedTransaction == null) return const SizedBox.shrink();
-
-    return Stack(
-      children: [
-        Column(
-          children: [
-            // Scrollable section for the Status Card
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: StatusCardWidget(
-                transaction: _detailedTransaction!,
-                isIncoming: isIncoming,
-                statusColor: statusColor,
-                cardColor: cardColor,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
-              ),
-            ),
-
-            // TabBar section
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: TabBar(
-                controller: _tabController,
-                labelColor: primaryColor,
-                unselectedLabelColor: subtitleColor,
-                indicatorColor: primaryColor,
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                tabs: const [
-                  Tab(text: "Details", icon: Icon(Icons.info_outline)),
-                  Tab(text: "Gas", icon: Icon(Icons.local_gas_station)),
-                  Tab(text: "Market", icon: Icon(Icons.show_chart)),
-                ],
-              ),
-            ),
-
-            // Tab content - takes remaining space
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Transaction Details Tab
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        TransactionDetailsWidget(
-                          transaction: _detailedTransaction!,
-                          currentAddress: widget.currentAddress,
-                          cardColor: cardColor,
-                          textColor: textColor,
-                          subtitleColor: subtitleColor,
-                          primaryColor: primaryColor,
-                          onShowErrorDetails: _showErrorDetails,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                  // Gas Details Tab
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: GasDetailsWidget(
-                      transaction: _detailedTransaction!,
-                      isDarkMode: widget.isDarkMode,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      subtitleColor: subtitleColor,
-                    ),
-                  ),
-                  // Market Analysis Tab
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: MarketAnalysisWidget(
-                      transaction: _detailedTransaction!,
-                      marketPrices: _marketPrices,
-                      isLoadingMarketData: _isLoadingMarketData,
-                      cardColor: cardColor,
-                      textColor: textColor,
-                      subtitleColor: subtitleColor,
-                      primaryColor: primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        // Loading indicator overlay when refreshing
-        if (_isRefreshing)
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.2),
-              child: Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   Future<void> _showErrorDetails() async {
     if (_detailedTransaction == null || !_detailedTransaction!.isError) return;
 
@@ -516,15 +475,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         return Colors.orange;
       case TransactionStatus.failed:
         return Colors.red;
-    }
-  }
-
-  String _formatWeiToEth(String weiValue) {
-    try {
-      final wei = BigInt.parse(weiValue);
-      return (wei.toDouble() / 1e18).toStringAsFixed(18);
-    } catch (e) {
-      return '0';
     }
   }
 }
