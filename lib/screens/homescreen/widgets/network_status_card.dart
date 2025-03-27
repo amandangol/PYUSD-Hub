@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/network_provider.dart';
+import '../../../providers/wallet_provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../transactions/provider/transaction_provider.dart';
 
@@ -94,7 +95,9 @@ class NetworkStatusCard extends StatelessWidget {
 
   void _showNetworkSelector(
       BuildContext context, NetworkProvider networkProvider) async {
-    final result = await showModalBottomSheet(
+    if (!context.mounted) return;
+
+    final result = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => PyusdBottomSheet(
@@ -132,10 +135,59 @@ class NetworkStatusCard extends StatelessWidget {
       ),
     );
 
-    if (result == true) {
-      // Force refresh transactions after network switch
-      await Provider.of<TransactionProvider>(context, listen: false)
-          .forceRefresh();
+    if (result == true && context.mounted) {
+      try {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.blueAccent,
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text('Switching network...'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+
+        final transactionProvider =
+            Provider.of<TransactionProvider>(context, listen: false);
+        final walletProvider =
+            Provider.of<WalletProvider>(context, listen: false);
+
+        await Future.wait(
+          [
+            walletProvider.refreshBalances(forceRefresh: true),
+            transactionProvider.refreshWalletData(forceRefresh: true),
+          ],
+          eagerError: false,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => [null, null],
+        );
+      } catch (e) {
+        print('Error during network switch refresh: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error refreshing data. Pull to refresh.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -152,11 +204,12 @@ class NetworkStatusCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () async {
-          await networkProvider.switchNetwork(networkType);
-          Navigator.pop(
-              context, true); // Return true to indicate network changed
-        },
+        onTap: networkProvider.isSwitching
+            ? null // Disable during switching
+            : () async {
+                await networkProvider.switchNetwork(networkType);
+                Navigator.pop(context, true);
+              },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),

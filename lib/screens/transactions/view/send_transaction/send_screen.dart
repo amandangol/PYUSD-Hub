@@ -8,6 +8,7 @@ import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/pyusd_components.dart';
 import '../../provider/transaction_provider.dart';
 import 'widgets/amount_input_card.dart';
+import 'widgets/qr_scanner_screen.dart';
 import 'widgets/recipent_card.dart';
 import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';
@@ -412,12 +413,18 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   }
 
   Future<void> _scanQRCode() async {
-    // This would normally use a QR code scanner plugin
-    // For this example, we'll just simulate it by setting a value
-    _safeSetState(() {
-      _addressController.text = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
-      _validateAddress(_addressController.text);
-    });
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const QRScannerScreen(),
+      ),
+    );
+
+    if (result != null && result is String) {
+      _safeSetState(() {
+        _addressController.text = result;
+        _validateAddress(result);
+      });
+    }
   }
 
   Future<void> _launchURL(String url) async {

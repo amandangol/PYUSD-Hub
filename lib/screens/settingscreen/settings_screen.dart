@@ -164,10 +164,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: primaryColor,
                       ),
                       value: themeProvider.isDarkMode,
-                      onChanged: (value) {
-                        themeProvider.setDarkMode(value);
+                      onChanged: (bool value) {
+                        // Toggle theme using the provider
+                        themeProvider.toggleTheme();
+
+                        // Force rebuild of the entire app to apply theme changes
+                        setState(() {});
                       },
                       activeColor: primaryColor,
+                      inactiveTrackColor: Colors.grey.withOpacity(0.3),
                     ),
                   ],
                 ),

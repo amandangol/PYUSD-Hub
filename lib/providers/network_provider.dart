@@ -35,6 +35,10 @@ class NetworkProvider extends ChangeNotifier {
     NetworkType.ethereumMainnet: 'ETH',
   };
 
+  // Add new field to track switching state
+  bool _isSwitching = false;
+  bool get isSwitching => _isSwitching;
+
   // Getters
   NetworkType get currentNetwork => _currentNetwork;
   String get currentRpcEndpoint => _rpcEndpoints[_currentNetwork] ?? '';
@@ -55,14 +59,23 @@ class NetworkProvider extends ChangeNotifier {
   String get currentNetworkDisplayName =>
       _networkNames[_currentNetwork] ?? 'Unknown Network';
 
-  // Switch network
+  // Modify switchNetwork method
   Future<void> switchNetwork(NetworkType network) async {
     if (_currentNetwork != network) {
-      print(
-          'Switching network from ${_currentNetwork.name} to ${network.name}');
-      _currentNetwork = network;
-      // Clear any cached data when switching networks
-      notifyListeners();
+      try {
+        _isSwitching = true;
+        notifyListeners();
+
+        print(
+            'Switching network from ${_currentNetwork.name} to ${network.name}');
+        _currentNetwork = network;
+
+        // Notify listeners of the network change
+        notifyListeners();
+      } finally {
+        _isSwitching = false;
+        notifyListeners();
+      }
     }
   }
 

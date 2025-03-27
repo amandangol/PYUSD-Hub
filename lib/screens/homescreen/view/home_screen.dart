@@ -14,7 +14,6 @@ import '../widgets/action_button.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/network_status_card.dart';
 import '../widgets/transaction_section.dart';
-import '../provider/homescreen_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

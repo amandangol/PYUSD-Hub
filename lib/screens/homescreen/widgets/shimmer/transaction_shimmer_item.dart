@@ -20,8 +20,8 @@ class TransactionShimmerItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color: isDarkMode
-              ? Colors.white.withOpacity(0.1)
-              : Colors.grey.withOpacity(0.1),
+              ? Colors.white.withOpacity(0.5)
+              : Colors.grey.withOpacity(0.5),
         ),
       ),
       child: Padding(
@@ -37,7 +37,7 @@ class TransactionShimmerItem extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isDarkMode
                       ? Colors.white.withOpacity(0.5)
-                      : Colors.grey.withOpacity(0.1),
+                      : Colors.grey.withOpacity(0.5),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -59,7 +59,7 @@ class TransactionShimmerItem extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isDarkMode
                                 ? Colors.white.withOpacity(0.5)
-                                : Colors.grey.withOpacity(0.1),
+                                : Colors.grey.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
@@ -71,7 +71,7 @@ class TransactionShimmerItem extends StatelessWidget {
                           width: 50,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
@@ -103,7 +103,7 @@ class TransactionShimmerItem extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isDarkMode
                             ? Colors.white.withOpacity(0.5)
-                            : Colors.grey.withOpacity(0.1),
+                            : Colors.grey.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
@@ -123,8 +123,8 @@ class TransactionShimmerItem extends StatelessWidget {
                     height: 16,
                     decoration: BoxDecoration(
                       color: isDarkMode
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.grey.withOpacity(0.1),
+                          ? Colors.white.withOpacity(0.5)
+                          : Colors.grey.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
@@ -140,7 +140,7 @@ class TransactionShimmerItem extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isDarkMode
                           ? Colors.white.withOpacity(0.1)
-                          : Colors.grey.withOpacity(0.1),
+                          : Colors.grey.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(

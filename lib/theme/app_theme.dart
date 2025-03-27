@@ -5,9 +5,14 @@ class AppTheme {
   // Color constants
   static const Color _lightPrimaryColor = Color(0xFF3D56F0);
   static const Color _lightAccentColor = Color(0xFF4F67FF);
-  static const Color _lightBackgroundColor = Colors.white;
+  static const Color _lightBackgroundColor =
+      Color(0xFFF5F7FA); // Softer background
   static const Color _lightSurfaceColor = Colors.white;
   static const Color _lightErrorColor = Color(0xFFB00020);
+  static const Color _lightTextPrimaryColor =
+      Color(0xFF1A1A2E); // Darker text color
+  static const Color _lightTextSecondaryColor =
+      Color(0xFF4A4A68); // Slightly lighter secondary te
 
   static const Color _darkPrimaryColor = Color(0xFF4F67FF);
   static const Color _darkAccentColor = Color(0xFF6B7FFF);
@@ -62,43 +67,49 @@ class AppTheme {
     brightness: Brightness.light,
     primaryColor: _lightPrimaryColor,
     scaffoldBackgroundColor: _lightBackgroundColor,
-    colorScheme: const ColorScheme.light(
+    colorScheme: ColorScheme.light(
       primary: _lightPrimaryColor,
       secondary: _lightAccentColor,
       surface: _lightSurfaceColor,
       error: _lightErrorColor,
+      background: _lightBackgroundColor,
     ),
     textTheme: _lightTextTheme,
     appBarTheme: AppBarTheme(
-      elevation: 0,
+      elevation: 1, // Slight elevation for depth
       backgroundColor: _lightBackgroundColor,
-      iconTheme: const IconThemeData(color: Colors.black87),
+      iconTheme: IconThemeData(color: _lightTextPrimaryColor),
       titleTextStyle: _lightTextTheme.titleLarge,
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
     cardTheme: CardTheme(
       color: _lightSurfaceColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 3, // Increased elevation
+      shadowColor: Colors.black.withOpacity(0.1), // Soft shadow
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side:
+            BorderSide(color: Colors.grey.shade200, width: 1), // Subtle border
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: _lightSurfaceColor,
+      fillColor: Colors.white, // Pure white for input backgrounds
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.shade200),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _lightPrimaryColor),
+        borderSide: BorderSide(color: _lightPrimaryColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _lightErrorColor),
+        borderSide: BorderSide(color: _lightErrorColor),
       ),
       contentPadding: const EdgeInsets.all(20),
     ),
@@ -108,13 +119,14 @@ class AppTheme {
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        elevation: 2,
+        elevation: 3, // Slight elevation
+        shadowColor: _lightPrimaryColor.withOpacity(0.4), // Soft shadow
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: _lightPrimaryColor,
-        side: const BorderSide(color: _lightPrimaryColor),
+        side: BorderSide(color: _lightPrimaryColor.withOpacity(0.5)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 16),
       ),
@@ -126,19 +138,21 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: _lightSurfaceColor,
       selectedItemColor: _lightPrimaryColor,
-      unselectedItemColor: Colors.black54,
-      elevation: 8,
+      unselectedItemColor: _lightTextSecondaryColor.withOpacity(0.6),
+      elevation: 4, // Slight elevation
       type: BottomNavigationBarType.fixed,
     ),
     dividerTheme: DividerThemeData(
-      color: Colors.grey.shade200,
+      color: Colors.grey.shade300,
       thickness: 1,
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
+      backgroundColor: _lightTextPrimaryColor,
+      contentTextStyle: const TextStyle(color: Colors.white),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
   );

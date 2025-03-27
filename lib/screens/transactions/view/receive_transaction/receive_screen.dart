@@ -386,7 +386,7 @@ class ReceiveScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Only send PYUSD to this address. Sending other assets may result in permanent loss.',
+                          'Only send PYUSD/ETH to this address. Sending other assets may result in permanent loss.',
                           style: TextStyle(
                             color: isDarkMode
                                 ? Colors.amber.shade400

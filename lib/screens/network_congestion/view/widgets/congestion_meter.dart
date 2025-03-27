@@ -32,6 +32,7 @@ class CongestionMeter extends StatelessWidget {
       children: [
         Text(
           label,
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 14,
           ),

@@ -30,8 +30,6 @@ class AmountCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return PyusdCard(
-      borderRadius: 12,
-      elevation: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

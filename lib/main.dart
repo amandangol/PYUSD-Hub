@@ -32,15 +32,14 @@ void main() async {
 
   // Get the singleton instance
   final notificationService = NotificationService();
-  await Future.delayed(
-      const Duration(seconds: 1)); // Give time for initialization
+  await Future.delayed(const Duration(seconds: 1));
 
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
-  // Initialize SharedPreferences
+  // Initialize SharedPreferences with dark mode as default
   final prefs = await SharedPreferences.getInstance();
-  final isDarkMode = prefs.getBool("theme") ?? false;
+  final isDarkMode = prefs.getBool("theme") ?? true;
 
   // Create and initialize ThemeProvider
   final themeProvider = ThemeProvider();
@@ -120,7 +119,7 @@ class MyApp extends StatelessWidget {
           create: (_) => WalletService(),
         ),
         ChangeNotifierProvider.value(
-          value: themeProvider,
+          value: themeProvider..setDarkMode(true),
         ),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(

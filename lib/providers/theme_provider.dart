@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeProvider with ChangeNotifier {
   final String key = "theme";
   SharedPreferences? _prefs;
-  bool _isDarkMode = false; // Default value
+  bool _isDarkMode = true;
   bool get isDarkMode => _isDarkMode;
   bool _isInitialized = false;
 
@@ -18,7 +18,7 @@ class ThemeProvider with ChangeNotifier {
   Future<void> initialize() async {
     if (!_isInitialized) {
       _prefs = await SharedPreferences.getInstance();
-      _isDarkMode = _prefs?.getBool(key) ?? false;
+      _isDarkMode = _prefs?.getBool(key) ?? true;
       _isInitialized = true;
       notifyListeners();
     }
@@ -27,7 +27,7 @@ class ThemeProvider with ChangeNotifier {
   // Load from preferences - only called after initialization
   Future<void> _loadFromPrefs() async {
     if (_prefs != null) {
-      _isDarkMode = _prefs!.getBool(key) ?? false;
+      _isDarkMode = _prefs!.getBool(key) ?? true;
       notifyListeners();
     }
   }
@@ -40,16 +40,23 @@ class ThemeProvider with ChangeNotifier {
   }
 
   // Toggle between light and dark theme
-  void toggleTheme() {
+  void toggleTheme() async {
     _isDarkMode = !_isDarkMode;
-    notifyListeners();
-    _saveToPrefs();
+    await _saveToPrefs(); // Save first
+    notifyListeners(); // Then notify
   }
 
   // Set specific theme mode
-  void setDarkMode(bool isDark) {
-    _isDarkMode = isDark;
+  void setDarkMode(bool isDark) async {
+    if (_isDarkMode != isDark) {
+      _isDarkMode = isDark;
+      await _saveToPrefs(); // Save first
+      notifyListeners(); // Then notify
+    }
+  }
+
+  // Add method to force theme update
+  void forceThemeUpdate() {
     notifyListeners();
-    _saveToPrefs();
   }
 }

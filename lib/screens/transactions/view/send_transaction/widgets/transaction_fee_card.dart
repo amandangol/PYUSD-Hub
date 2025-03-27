@@ -35,6 +35,7 @@ class TransactionFeeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return PyusdCard(
@@ -49,16 +50,12 @@ class TransactionFeeCard extends StatelessWidget {
                 Icon(
                   Icons.swap_horiz,
                   size: 20,
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  color: colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Select Asset',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
+                  style: theme.textTheme.titleMedium,
                 ),
               ],
             ),
