@@ -4,7 +4,7 @@ import '../screens/authentication/provider/auth_provider.dart';
 import '../services/ethereum_rpc_service.dart';
 import 'network_provider.dart';
 
-class WalletProvider extends ChangeNotifier {
+class WalletStateProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
@@ -55,7 +55,7 @@ class WalletProvider extends ChangeNotifier {
   }
 
   // Constructor with dependency injection
-  WalletProvider({
+  WalletStateProvider({
     required AuthProvider authProvider,
     required NetworkProvider networkProvider,
   })  : _authProvider = authProvider,

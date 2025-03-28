@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../transactions/view/all_transactions/all_transaction_screen.dart';
 import '../../transactions/model/transaction_model.dart';
-import '../provider/homescreen_provider.dart';
+import '../provider/walletscreen_provider.dart';
 import 'shimmer/transaction_shimmer_item.dart';
 import 'transaction_item.dart';
 import '../../../utils/empty_state_utils.dart';
@@ -30,7 +30,7 @@ class TransactionsSection extends StatefulWidget {
 class _TransactionsSectionState extends State<TransactionsSection> {
   String _filter = 'All';
   List<TransactionModel> _filteredTransactions = [];
-  HomeScreenProvider? _homeProvider;
+  WaletScreenProvider? _homeProvider;
 
   @override
   void initState() {
@@ -38,7 +38,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     // Defer the first update to after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _homeProvider = context.read<HomeScreenProvider>();
+        _homeProvider = context.read<WaletScreenProvider>();
         _updateFilteredTransactions();
       }
     });
@@ -56,7 +56,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   void _updateFilteredTransactions() {
     if (!mounted) return;
 
-    final homeProvider = _homeProvider ?? context.read<HomeScreenProvider>();
+    final homeProvider = _homeProvider ?? context.read<WaletScreenProvider>();
     final filtered =
         homeProvider.getFilteredAndSortedTransactions(widget.transactions);
 
@@ -71,7 +71,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   @override
   Widget build(BuildContext context) {
     // Use select to minimize rebuilds
-    final currentFilter = context.select<HomeScreenProvider, String>(
+    final currentFilter = context.select<WaletScreenProvider, String>(
       (provider) => provider.currentFilter,
     );
 
@@ -119,7 +119,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final homeProvider = context.watch<HomeScreenProvider>();
+    final homeProvider = context.watch<WaletScreenProvider>();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -13,6 +13,8 @@ class CustomTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final Icon? prefixIcon;
   final String? suffixText;
+  final FocusNode? focusNode;
+
   const CustomTextField({
     super.key,
     required this.controller,
@@ -25,6 +27,7 @@ class CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.suffixText,
+    this.focusNode,
   });
 
   @override
@@ -40,6 +43,7 @@ class CustomTextField extends StatelessWidget {
       suffixIcon: suffixIcon,
       prefixIcon: prefixIcon,
       suffixText: suffixText,
+      focusNode: focusNode,
     );
   }
 }

@@ -4,7 +4,7 @@ import '../../../services/notification_service.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../services/ethereum_rpc_service.dart';
 import '../../../providers/network_provider.dart';
-import '../../../providers/wallet_provider.dart';
+import '../../../providers/walletstate_provider.dart';
 import '../../../utils/provider_utils.dart';
 import '../model/transaction_model.dart';
 import 'transactiondetail_provider.dart';
@@ -13,7 +13,7 @@ class TransactionProvider extends ChangeNotifier
     with ProviderUtils, CacheUtils<List<TransactionModel>> {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
-  final WalletProvider _walletProvider;
+  final WalletStateProvider _walletProvider;
   final TransactionDetailProvider _detailProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
   final NotificationService _notificationService;
@@ -74,7 +74,7 @@ class TransactionProvider extends ChangeNotifier
   TransactionProvider({
     required AuthProvider authProvider,
     required NetworkProvider networkProvider,
-    required WalletProvider walletProvider,
+    required WalletStateProvider walletProvider,
     required TransactionDetailProvider detailProvider,
     required NotificationService notificationService,
   })  : _authProvider = authProvider,

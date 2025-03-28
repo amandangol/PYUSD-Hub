@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../providers/network_provider.dart';
-import '../../../providers/wallet_provider.dart';
+import '../../../providers/walletstate_provider.dart';
 import '../../../utils/snackbar_utils.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../../transactions/provider/transaction_provider.dart';
@@ -15,14 +15,15 @@ import '../widgets/balance_card.dart';
 import '../widgets/network_status_card.dart';
 import '../widgets/transaction_section.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class WalletScreen extends StatefulWidget {
+  const WalletScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _WalletScreenState extends State<WalletScreen>
+    with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool _isRefreshing = false;
   bool _hasError = false;
@@ -86,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
       final walletProvider =
-          Provider.of<WalletProvider>(context, listen: false);
+          Provider.of<WalletStateProvider>(context, listen: false);
 
       // Start both refreshes immediately and wait for them to complete
       final balanceFuture =
@@ -253,16 +254,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }) {
     // Use Selector to minimize rebuilds, but ensure fresh data
     final ethBalance = context
-        .select<WalletProvider, double>((provider) => provider.ethBalance);
+        .select<WalletStateProvider, double>((provider) => provider.ethBalance);
 
-    final tokenBalance = context
-        .select<WalletProvider, double>((provider) => provider.tokenBalance);
+    final tokenBalance = context.select<WalletStateProvider, double>(
+        (provider) => provider.tokenBalance);
 
-    final isRefreshing = context.select<WalletProvider, bool>(
+    final isRefreshing = context.select<WalletStateProvider, bool>(
         (provider) => provider.isBalanceRefreshing);
 
-    final isInitialLoad = context
-        .select<WalletProvider, bool>((provider) => provider.isInitialLoad);
+    final isInitialLoad = context.select<WalletStateProvider, bool>(
+        (provider) => provider.isInitialLoad);
 
     return BalanceCard(
       ethBalance: ethBalance,

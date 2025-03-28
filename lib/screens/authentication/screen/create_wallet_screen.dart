@@ -4,6 +4,7 @@ import '../../../widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import 'mnemonic_screen.dart';
 import '../widget/pin_input_widget.dart.dart';
+import '../../../providers/navigation_provider.dart';
 
 class CreateWalletScreen extends StatefulWidget {
   const CreateWalletScreen({super.key});

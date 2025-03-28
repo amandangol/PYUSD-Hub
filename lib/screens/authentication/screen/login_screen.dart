@@ -5,6 +5,7 @@ import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';
 import 'onboarding_screen.dart';
+import '../../../providers/navigation_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -64,7 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         await authProvider.saveAuthState();
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/main');
+          // Set the wallet screen before navigation
+          context.read<NavigationProvider>().setWalletScreen();
+          // Navigate to main app and clear the navigation stack
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/main',
+            (route) => false,
+          );
         }
       } else {
         setState(() {
@@ -93,7 +100,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         await authProvider.saveAuthState();
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/main');
+          // Set the wallet screen before navigation
+          context.read<NavigationProvider>().setWalletScreen();
+          // Navigate to main app and clear the navigation stack
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/main',
+            (route) => false,
+          );
         }
       } else {
         setState(() {

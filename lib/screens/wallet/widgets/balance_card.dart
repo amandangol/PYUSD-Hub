@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../utils/snackbar_utils.dart';
-import '../provider/homescreen_provider.dart';
+import '../provider/walletscreen_provider.dart';
 import 'shimmer/shimmer_effect.dart';
 
 class BalanceCard extends StatelessWidget {
@@ -123,7 +123,7 @@ class BalanceCard extends StatelessWidget {
   }
 
   Widget _buildCardHeader(BuildContext context, bool isDarkMode) {
-    final homeProvider = context.watch<HomeScreenProvider>();
+    final homeProvider = context.watch<WaletScreenProvider>();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -170,10 +170,6 @@ class BalanceCard extends StatelessWidget {
 
   Widget _buildBalanceSection(
       BuildContext context, bool isDarkMode, Color paypalBlue) {
-    final isBalanceVisible = context.select<HomeScreenProvider, bool>(
-      (provider) => provider.isBalanceVisible,
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -294,7 +290,7 @@ class BalanceCard extends StatelessWidget {
 
   Widget _buildBalanceDisplay(
       BuildContext context, bool isDarkMode, Color paypalBlue) {
-    final isBalanceVisible = context.select<HomeScreenProvider, bool>(
+    final isBalanceVisible = context.select<WaletScreenProvider, bool>(
       (provider) => provider.isBalanceVisible,
     );
 
@@ -326,7 +322,7 @@ class BalanceCard extends StatelessWidget {
   }
 
   Widget _buildEthBalanceChip(BuildContext context, bool isDarkMode) {
-    final isBalanceVisible = context.select<HomeScreenProvider, bool>(
+    final isBalanceVisible = context.select<WaletScreenProvider, bool>(
       (provider) => provider.isBalanceVisible,
     );
 

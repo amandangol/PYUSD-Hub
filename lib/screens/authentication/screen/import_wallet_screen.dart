@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import '../../../widgets/pyusd_components.dart';
-import '../../../main.dart';
 import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';
+import '../../../providers/navigation_provider.dart';
 
 class ImportWalletScreen extends StatefulWidget {
   const ImportWalletScreen({super.key});
@@ -67,8 +67,11 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
       await authProvider.importWalletFromMnemonic(mnemonic, pin);
 
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainApp()),
+        // Set the wallet screen before navigation
+        context.read<NavigationProvider>().setWalletScreen();
+        // Navigate to main app and clear the navigation stack
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/main',
           (route) => false,
         );
       }

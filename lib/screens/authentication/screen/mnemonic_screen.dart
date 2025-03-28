@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pyusd_hub/widgets/pyusd_components.dart';
+import 'package:provider/provider.dart';
 import '../../../main.dart';
+import '../../../providers/navigation_provider.dart';
 
 class MnemonicConfirmationScreen extends StatefulWidget {
   final String mnemonic;
@@ -121,9 +123,11 @@ class _MnemonicConfirmationScreenState
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (mounted) {
-      // Navigate to the main app
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainApp()),
+      // Set the wallet screen before navigation
+      context.read<NavigationProvider>().setWalletScreen();
+      // Navigate to main app and clear the navigation stack
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/main',
         (route) => false,
       );
     }

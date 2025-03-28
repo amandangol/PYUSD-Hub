@@ -8,7 +8,7 @@ import '../authentication/widget/pin_input_widget.dart.dart';
 import 'pyusd_qa_screen.dart';
 import 'security_setting_screen.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/wallet_provider.dart';
+import '../../providers/walletstate_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/formatter_utils.dart';
@@ -43,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final walletProvider = Provider.of<WalletProvider>(context);
+    final walletProvider = Provider.of<WalletStateProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
 
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -751,7 +751,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context, WalletProvider walletProvider) {
+  void _showLogoutDialog(
+      BuildContext context, WalletStateProvider walletProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -12,6 +12,7 @@ class AmountCard extends StatelessWidget {
   final double estimatedGasFee;
   final Function(String) onAmountChanged;
   final VoidCallback onMaxPressed;
+  final FocusNode? focusNode;
 
   const AmountCard({
     super.key,
@@ -22,6 +23,7 @@ class AmountCard extends StatelessWidget {
     required this.onAmountChanged,
     required this.onMaxPressed,
     required this.estimatedGasFee,
+    this.focusNode,
   });
 
   @override
@@ -44,6 +46,7 @@ class AmountCard extends StatelessWidget {
               Expanded(
                 child: CustomTextField(
                   controller: amountController,
+                  focusNode: focusNode,
                   labelText: 'Amount',
                   hintText: 'Enter amount',
                   keyboardType:

@@ -11,7 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../widgets/pyusd_components.dart';
 import '../../../authentication/provider/auth_provider.dart';
 import '../../../../providers/network_provider.dart';
-import '../../../../providers/wallet_provider.dart';
+import '../../../../providers/walletstate_provider.dart';
 import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
 
@@ -20,7 +20,7 @@ class ReceiveScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
+    final walletProvider = Provider.of<WalletStateProvider>(context);
     final networkProvider = Provider.of<NetworkProvider>(context);
 
     final authProvider = Provider.of<AuthProvider>(context);

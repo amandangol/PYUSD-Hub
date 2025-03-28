@@ -1,38 +1,51 @@
 import 'package:firebase_core/firebase_core.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/firebase_options.dart';
-import 'package:pyusd_hub/screens/authentication/provider/session_provider.dart';
-import 'package:pyusd_hub/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Import all providers
-import 'providers/network_provider.dart';
-import 'screens/authentication/provider/auth_provider.dart';
-import 'screens/authentication/provider/security_setting_provider.dart';
-import 'screens/authentication/screen/splash_screen.dart';
-import 'screens/authentication/service/wallet_service.dart';
-import 'screens/authentication/widget/activity_aware_widget.dart';
-import 'screens/homescreen/provider/homescreen_provider.dart';
-import 'screens/transactions/provider/transaction_provider.dart';
-import 'providers/wallet_provider.dart';
-import 'providers/theme_provider.dart';
+// Firebase and App Configuration
+import 'firebase_options.dart';
 
-// Import all screens
-import 'screens/homescreen/view/home_screen.dart';
-import 'screens/network_congestion/provider/network_congestion_provider.dart';
-import 'screens/network_congestion/view/network_congestion_screen.dart';
-import 'screens/settingscreen/settings_screen.dart';
+// Providers
+import 'providers/network_provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/walletstate_provider.dart';
+import 'screens/authentication/provider/auth_provider.dart';
+import 'screens/authentication/provider/session_provider.dart';
+import 'screens/authentication/provider/security_setting_provider.dart';
+import 'screens/explore/service/news_service.dart';
+import 'screens/explore/view/news_explore_screen.dart';
+import 'screens/wallet/provider/walletscreen_provider.dart';
+import 'screens/networkcongestion/provider/network_congestion_provider.dart';
+import 'screens/transactions/provider/transaction_provider.dart';
 import 'screens/transactions/provider/transactiondetail_provider.dart';
+
+// Services
+import 'screens/authentication/service/wallet_service.dart';
 import 'services/market_service.dart';
+import 'services/notification_service.dart';
+
+// Screens
+import 'screens/authentication/screen/splash_screen.dart';
+import 'screens/authentication/widget/activity_aware_widget.dart';
+import 'screens/wallet/view/wallet_screen.dart';
+import 'screens/networkcongestion/view/network_congestion_screen.dart';
+import 'screens/settings/settings_screen.dart';
+import 'screens/explore/provider/news_provider.dart';
+import 'screens/insights/provider/insights_provider.dart';
+import 'screens/insights/view/insights_screen.dart';
+import 'services/bigquery_service.dart';
+import 'providers/navigation_provider.dart';
+import 'widgets/bottom_navigation.dart';
+
+// Theme
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Get the singleton instance
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -40,7 +53,7 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
-  // Initialize SharedPreferences with dark mode as default
+  // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool("theme") ?? true;
 
@@ -68,62 +81,61 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(),
-        ),
+        ChangeNotifierProvider.value(
+            value: themeProvider..setDarkMode(initialThemeIsDark)),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(
           create: (context) => SessionProvider(context.read<AuthProvider>()),
         ),
-        ChangeNotifierProvider(
-          create: (_) => HomeScreenProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => WaletScreenProvider()),
         ChangeNotifierProvider(
           create: (context) =>
               SecuritySettingsProvider(context.read<AuthProvider>()),
         ),
-        ChangeNotifierProvider(
-          create: (_) => NetworkProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => NetworkProvider()),
         ChangeNotifierProxyProvider2<AuthProvider, NetworkProvider,
-            WalletProvider>(
-          create: (context) => WalletProvider(
+            WalletStateProvider>(
+          create: (context) => WalletStateProvider(
             authProvider: context.read<AuthProvider>(),
             networkProvider: context.read<NetworkProvider>(),
           ),
           update: (context, authProvider, networkProvider, previous) =>
-              WalletProvider(
+              WalletStateProvider(
             authProvider: authProvider,
             networkProvider: networkProvider,
           ),
         ),
         ChangeNotifierProvider(
-          create: (context) => TransactionDetailProvider(),
-        ),
+            create: (context) => TransactionDetailProvider()),
         ChangeNotifierProvider<TransactionProvider>(
           lazy: false,
-          create: (context) {
-            final provider = TransactionProvider(
-              authProvider: context.read<AuthProvider>(),
-              networkProvider: context.read<NetworkProvider>(),
-              walletProvider: context.read<WalletProvider>(),
-              detailProvider: context.read<TransactionDetailProvider>(),
-              notificationService: NotificationService(),
-            );
-            return provider;
-          },
+          create: (context) => TransactionProvider(
+            authProvider: context.read<AuthProvider>(),
+            networkProvider: context.read<NetworkProvider>(),
+            walletProvider: context.read<WalletStateProvider>(),
+            detailProvider: context.read<TransactionDetailProvider>(),
+            notificationService: NotificationService(),
+          ),
         ),
-        Provider<MarketService>(
-          create: (_) => MarketService(),
-        ),
+        Provider<MarketService>(create: (_) => MarketService()),
         ChangeNotifierProvider<NetworkCongestionProvider>(
           create: (context) => NetworkCongestionProvider(),
         ),
-        Provider<WalletService>(
-          create: (_) => WalletService(),
+        Provider<WalletService>(create: (_) => WalletService()),
+        ChangeNotifierProvider<NewsProvider>(
+          create: (context) => NewsProvider(
+            newsService: NewsService(
+              apiKey: const String.fromEnvironment('NEWS_API_KEY'),
+            ),
+          ),
         ),
-        ChangeNotifierProvider.value(
-          value: themeProvider..setDarkMode(true),
+        Provider<BigQueryService>(create: (_) => BigQueryService()),
+        ChangeNotifierProvider<InsightsProvider>(
+          create: (context) => InsightsProvider(
+            context.read<BigQueryService>(),
+          ),
         ),
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(
         builder: (context, themeProvider, sessionProvider, child) {
@@ -133,17 +145,12 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            // Use the navigator key from SessionProvider
             navigatorKey: sessionProvider.navigatorKey,
-            // Define initial route
             initialRoute: '/',
             routes: {
-              '/': (context) => const ActivityAwareWidget(
-                    child: SplashScreen(),
-                  ),
-              '/main': (context) => const ActivityAwareWidget(
-                    child: MainApp(),
-                  ),
+              '/': (context) =>
+                  const ActivityAwareWidget(child: SplashScreen()),
+              '/main': (context) => const ActivityAwareWidget(child: MainApp()),
             },
             debugShowCheckedModeBanner: false,
           );
@@ -161,53 +168,52 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  int _currentIndex = 0;
+  // Define screens for bottom navigation with metadata
+  final List<Map<String, dynamic>> _screens = [
+    {
+      'screen': const NetworkCongestionScreen(),
+    },
+    {
+      'screen': const NewsExploreScreen(),
+    },
+    {
+      'screen': const WalletScreen(),
+    },
+    {
+      'screen': const InsightsScreen(),
+    },
+    {
+      'screen': const SettingsScreen(),
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
-    // Define all screens
-    final List<Widget> screens = [
-      const HomeScreen(),
-      const NetworkCongestionScreen(),
-      const NetworkCongestionScreen(),
-      const SettingsScreen(),
-    ];
+    final navigationProvider = context.watch<NavigationProvider>();
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor:
-            Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Wallet',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.speed),
-            label: 'Network',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Insights',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (navigationProvider.currentIndex != 0) {
+          navigationProvider.resetToHome();
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: navigationProvider.currentIndex,
+          children:
+              _screens.map((screen) => screen['screen'] as Widget).toList(),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            navigationProvider.setIndex(2);
+          },
+          backgroundColor: Colors.blue,
+          child: const Icon(Icons.account_balance_wallet, color: Colors.white),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: const AppBottomNavigation(),
       ),
     );
   }

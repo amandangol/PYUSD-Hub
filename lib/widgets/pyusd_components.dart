@@ -411,6 +411,7 @@ class PyusdTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final Icon? prefixIcon;
   final String? suffixText;
+  final FocusNode? focusNode;
 
   const PyusdTextField({
     super.key,
@@ -424,12 +425,14 @@ class PyusdTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.suffixText,
+    this.focusNode,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,

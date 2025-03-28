@@ -465,7 +465,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       }
 
       // We'll search for PYUSD transactions in the last 100,000 blocks
-      const int blocksToSearch = 100000;
+      const int blocksToSearch = 5;
 
       // Calculate start block
       int startBlock = latestBlockNumber - blocksToSearch;
@@ -518,7 +518,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         return blockNumberB.compareTo(blockNumberA);
       });
 
-      print('Processing ${logs.length} log entries');
+      // print('Processing ${logs.length} log entries');
 
       // Take the 500 most recent logs (increased from 100)
       final recentLogs = logs.take(100).toList();

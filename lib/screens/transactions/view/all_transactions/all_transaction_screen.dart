@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import '../../../../utils/snackbar_utils.dart';
 import '../../model/transaction_model.dart';
 import '../../../../providers/network_provider.dart';
-import '../../../homescreen/widgets/transaction_item.dart';
+import '../../../wallet/widgets/transaction_item.dart';
 import '../../provider/transactiondetail_provider.dart';
 import '../../../../utils/empty_state_utils.dart';
-import '../../../homescreen/provider/homescreen_provider.dart';
+import '../../../wallet/provider/walletscreen_provider.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -197,7 +197,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   List<TransactionModel> _getFilteredTransactions() {
     final homeProvider =
-        Provider.of<HomeScreenProvider>(context, listen: false);
+        Provider.of<WaletScreenProvider>(context, listen: false);
     return homeProvider.getFilteredAndSortedTransactions(
       widget.transactions,
       filterOverride: _filter,

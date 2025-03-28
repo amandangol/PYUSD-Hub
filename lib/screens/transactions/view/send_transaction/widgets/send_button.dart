@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../widgets/pyusd_components.dart';
-import '../../../../../providers/wallet_provider.dart';
+import '../../../../../providers/walletstate_provider.dart';
 
 class SendButton extends StatelessWidget {
   final String selectedAsset;
@@ -25,7 +25,7 @@ class SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
+    final walletProvider = Provider.of<WalletStateProvider>(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

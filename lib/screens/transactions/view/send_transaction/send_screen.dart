@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../providers/network_provider.dart';
-import '../../../../providers/wallet_provider.dart';
+import '../../../../providers/walletstate_provider.dart';
 import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/pyusd_components.dart';
 import '../../provider/transaction_provider.dart';
@@ -26,6 +26,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
   final _amountController = TextEditingController();
+  final _amountFocusNode = FocusNode();
 
   bool _isValidAddress = false;
   double _estimatedGasFee = 0.0;
@@ -50,6 +51,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     _mounted = false;
     _addressController.dispose();
     _amountController.dispose();
+    _amountFocusNode.dispose();
     super.dispose();
   }
 
@@ -292,7 +294,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   Future<void> _sendTransaction() async {
     if (!_mounted || !_formKey.currentState!.validate()) return;
 
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+    final walletProvider =
+        Provider.of<WalletStateProvider>(context, listen: false);
     final transactionProvider =
         Provider.of<TransactionProvider>(context, listen: false);
 
@@ -369,6 +372,9 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         );
       }
 
+      // Unfocus the amount text field
+      _amountFocusNode.unfocus();
+
       // Show a success message
       if (_mounted && context.mounted) {
         SnackbarUtil.showSnackbar(
@@ -444,7 +450,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletProvider>(context);
+    final walletProvider = Provider.of<WalletStateProvider>(context);
     final networkProvider = Provider.of<NetworkProvider>(context);
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
@@ -537,6 +543,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                         _estimateGasFee();
                       },
                       estimatedGasFee: _estimatedGasFee,
+                      focusNode: _amountFocusNode,
                     ),
 
                     const SizedBox(height: 16),

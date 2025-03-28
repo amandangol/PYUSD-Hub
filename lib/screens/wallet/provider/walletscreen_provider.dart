@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../transactions/model/transaction_model.dart';
 
-class HomeScreenProvider with ChangeNotifier {
+class WaletScreenProvider with ChangeNotifier {
   // Shared Preferences keys
   static const String _balanceVisibilityKey = 'balance_visibility';
   static const String _transactionFilterKey = 'transaction_filter';

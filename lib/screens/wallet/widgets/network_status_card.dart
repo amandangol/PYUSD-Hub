@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/network_provider.dart';
-import '../../../providers/wallet_provider.dart';
+import '../../../providers/walletstate_provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../transactions/provider/transaction_provider.dart';
 
@@ -164,7 +164,7 @@ class NetworkStatusCard extends StatelessWidget {
         final transactionProvider =
             Provider.of<TransactionProvider>(context, listen: false);
         final walletProvider =
-            Provider.of<WalletProvider>(context, listen: false);
+            Provider.of<WalletStateProvider>(context, listen: false);
 
         await Future.wait(
           [

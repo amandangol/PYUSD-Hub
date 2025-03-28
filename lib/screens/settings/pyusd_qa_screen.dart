@@ -4,13 +4,8 @@ import '../../widgets/pyusd_components.dart';
 class PyusdQAScreen extends StatefulWidget {
   const PyusdQAScreen({super.key});
 
-  @override
-  State<PyusdQAScreen> createState() => _PyusdQAScreenState();
-}
-
-class _PyusdQAScreenState extends State<PyusdQAScreen> {
-  // List of all Q&A items
-  final List<QAItem> _qaItems = [
+  // Static list of Q&A items
+  static final List<QAItem> qaItems = [
     QAItem(
       question: "What is PYUSD?",
       answer:
@@ -112,6 +107,11 @@ class _PyusdQAScreenState extends State<PyusdQAScreen> {
   ];
 
   @override
+  State<PyusdQAScreen> createState() => _PyusdQAScreenState();
+}
+
+class _PyusdQAScreenState extends State<PyusdQAScreen> {
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
@@ -178,10 +178,10 @@ class _PyusdQAScreenState extends State<PyusdQAScreen> {
             // Q&A list
             Expanded(
               child: ListView.builder(
-                itemCount: _qaItems.length,
+                itemCount: PyusdQAScreen.qaItems.length,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemBuilder: (context, index) {
-                  final item = _qaItems[index];
+                  final item = PyusdQAScreen.qaItems[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     shape: RoundedRectangleBorder(
