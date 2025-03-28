@@ -19,7 +19,7 @@ class NavigationProvider extends ChangeNotifier {
   }
 
   void setWalletScreen() {
-    _currentIndex = 2; // Set to wallet screen
+    _currentIndex = 2;
     notifyListeners();
   }
 }

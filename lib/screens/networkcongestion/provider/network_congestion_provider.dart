@@ -44,6 +44,11 @@ class NetworkCongestionProvider with ChangeNotifier {
     blocksPerHour: 0,
     averageTxPerBlock: 0,
     gasLimit: 0,
+    networkVersion: '',
+    peerCount: 0,
+    isNetworkListening: false,
+    badBlocks: const [],
+    txPoolInspection: const {},
   );
 
   NetworkCongestionData get congestionData => _congestionData;
@@ -127,9 +132,10 @@ class NetworkCongestionProvider with ChangeNotifier {
     try {
       // First fetch only critical data for initial display
       await Future.wait([
-        _fetchGasPrice(), // Only gas price for initial display
-        _fetchLatestBlock(), // Latest block info
-        _fetchPendingTransactions(), // Pending transactions count
+        _fetchGasPrice(),
+        _fetchLatestBlock(),
+        _fetchPendingTransactions(),
+        _fetchNetworkStatus(),
       ]);
 
       // Connect WebSocket after initial data is loaded
@@ -139,6 +145,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       _updateTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
         await _fetchNetworkStats();
         await _fetchLatestBlocksUpdate();
+        await _fetchNetworkStatus();
 
         // Update last refreshed timestamp
         _congestionData = _congestionData.copyWith(
@@ -152,7 +159,6 @@ class NetworkCongestionProvider with ChangeNotifier {
 
         // Periodically update PYUSD transaction data
         if (timer.tick % 4 == 0) {
-          // Every minute (15s * 4)
           await _fetchPyusdTransactionActivity();
         }
       });
@@ -1139,4 +1145,383 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   int min(int a, int b) => a < b ? a : b;
+
+  Future<Map<String, dynamic>> analyzeTransactionPatterns() async {
+    try {
+      Map<String, dynamic> patterns = {
+        'hourlyDistribution': List.filled(24, 0),
+        'dailyDistribution': List.filled(7, 0),
+        'averageTransactionValue': 0.0,
+        'topSenders': <Map<String, dynamic>>[],
+        'topReceivers': <Map<String, dynamic>>[],
+        'transactionTypes': <String, int>{},
+      };
+
+      // Analyze recent transactions
+      for (var tx in _recentPyusdTransactions) {
+        // Hourly distribution
+        if (tx['timestamp'] != null) {
+          final timestamp = FormatterUtils.parseHexSafely(tx['timestamp']);
+          if (timestamp != null) {
+            final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+            patterns['hourlyDistribution'][date.hour]++;
+            patterns['dailyDistribution'][date.weekday - 1]++;
+          }
+        }
+
+        // Transaction value
+        if (tx['value'] != null) {
+          final value = FormatterUtils.parseHexSafely(tx['value']);
+          if (value != null) {
+            patterns['averageTransactionValue'] += value.toDouble();
+          }
+        }
+
+        // Top senders and receivers
+        if (tx['from'] != null) {
+          _updateAddressStats(
+              patterns['topSenders'] as List<Map<String, dynamic>>,
+              tx['from'].toString());
+        }
+        if (tx['to'] != null) {
+          _updateAddressStats(
+              patterns['topReceivers'] as List<Map<String, dynamic>>,
+              tx['to'].toString());
+        }
+
+        // Transaction types
+        if (tx['input'] != null && tx['input'].toString().length >= 10) {
+          final methodId = tx['input'].toString().substring(0, 10);
+          patterns['transactionTypes'][methodId] =
+              (patterns['transactionTypes'][methodId] ?? 0) + 1;
+        }
+      }
+
+      // Calculate averages
+      if (_recentPyusdTransactions.isNotEmpty) {
+        patterns['averageTransactionValue'] =
+            (patterns['averageTransactionValue'] as double) /
+                _recentPyusdTransactions.length;
+      }
+
+      // Sort and limit top addresses
+      var topSenders = patterns['topSenders'] as List<Map<String, dynamic>>;
+      var topReceivers = patterns['topReceivers'] as List<Map<String, dynamic>>;
+
+      topSenders
+          .sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+      topReceivers
+          .sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+
+      patterns['topSenders'] = topSenders.take(5).toList();
+      patterns['topReceivers'] = topReceivers.take(5).toList();
+
+      return patterns;
+    } catch (e) {
+      print('Error analyzing transaction patterns: $e');
+      return {
+        'hourlyDistribution': List.filled(24, 0),
+        'dailyDistribution': List.filled(7, 0),
+        'averageTransactionValue': 0.0,
+        'topSenders': <Map<String, dynamic>>[],
+        'topReceivers': <Map<String, dynamic>>[],
+        'transactionTypes': <String, int>{},
+      };
+    }
+  }
+
+  void _updateAddressStats(List<Map<String, dynamic>> stats, String address) {
+    try {
+      final existing = stats.firstWhere(
+        (stat) => stat['address'] == address,
+        orElse: () => {'address': address, 'count': 0},
+      );
+
+      existing['count'] = (existing['count'] as int? ?? 0) + 1;
+
+      if (!stats.contains(existing)) {
+        stats.add(existing);
+      }
+    } catch (e) {
+      print('Error updating address stats: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> analyzeNetworkHealth() async {
+    try {
+      Map<String, dynamic> health = {
+        'blockProductionRate': 0,
+        'networkCongestion': 0,
+        'gasEfficiency': 0,
+        'transactionSuccessRate': 0,
+        'averageConfirmationTime': 0,
+      };
+
+      // Calculate block production rate
+      if (_congestionData.averageBlockTime > 0) {
+        health['blockProductionRate'] = 1 / _congestionData.averageBlockTime;
+      }
+
+      // Calculate network congestion
+      health['networkCongestion'] = _congestionData.gasUsagePercentage / 100;
+
+      // Calculate gas efficiency
+      if (_congestionData.averageBlockSize > 0) {
+        health['gasEfficiency'] = _congestionData.averageTxPerBlock /
+            (_congestionData.gasLimit /
+                21000); // Assuming standard transfer gas
+      }
+
+      // Calculate transaction success rate
+      int successfulTxs = 0;
+      int totalTxs = 0;
+      for (var tx in _recentPyusdTransactions) {
+        if (tx['status'] != null) {
+          totalTxs++;
+          if (tx['status'] == '0x1') {
+            successfulTxs++;
+          }
+        }
+      }
+      if (totalTxs > 0) {
+        health['transactionSuccessRate'] = successfulTxs / totalTxs;
+      }
+
+      // Calculate average confirmation time
+      if (_congestionData.blockTime > 0) {
+        health['averageConfirmationTime'] = _congestionData.blockTime *
+            12; // Assuming 12 blocks for confirmation
+      }
+
+      return health;
+    } catch (e) {
+      print('Error analyzing network health: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> predictGasPrice() async {
+    try {
+      Map<String, dynamic> prediction = {
+        'shortTerm': 0,
+        'mediumTerm': 0,
+        'confidence': 0,
+        'factors': <String, double>{},
+      };
+
+      // Calculate moving averages
+      final shortTermWindow = 5;
+      final mediumTermWindow = 20;
+
+      if (_congestionData.historicalGasPrices.length >= shortTermWindow) {
+        final shortTermAvg = _congestionData.historicalGasPrices
+                .take(shortTermWindow)
+                .reduce((a, b) => a + b) /
+            shortTermWindow;
+
+        prediction['shortTerm'] = shortTermAvg;
+        prediction['factors']['recentAverage'] = shortTermAvg;
+      }
+
+      if (_congestionData.historicalGasPrices.length >= mediumTermWindow) {
+        final mediumTermAvg = _congestionData.historicalGasPrices
+                .take(mediumTermWindow)
+                .reduce((a, b) => a + b) /
+            mediumTermWindow;
+
+        prediction['mediumTerm'] = mediumTermAvg;
+        prediction['factors']['historicalAverage'] = mediumTermAvg;
+      }
+
+      // Consider network congestion
+      prediction['factors']['networkCongestion'] =
+          _congestionData.gasUsagePercentage / 100;
+
+      // Consider pending transactions
+      prediction['factors']['pendingLoad'] =
+          _congestionData.pendingTransactions / 10000; // Normalize to 0-1
+
+      // Calculate confidence based on data points
+      prediction['confidence'] = _congestionData.historicalGasPrices.length /
+          20; // Max confidence at 20 points
+
+      return prediction;
+    } catch (e) {
+      print('Error predicting gas price: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getDetailedTransactionTrace(
+      String txHash) async {
+    try {
+      // Use trace_transaction RPC method
+      final traceResult = await _makeRpcCall('trace_transaction', [txHash]);
+      if (traceResult != null) {
+        return {
+          'gasUsed': traceResult['gasUsed'],
+          'trace': traceResult['trace'],
+          'vmTrace': traceResult['vmTrace']
+        };
+      }
+      return {};
+    } catch (e) {
+      print('Error getting transaction trace: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getBlockTrace(String blockHash) async {
+    try {
+      // Use trace_block RPC method
+      final traceResult = await _makeRpcCall('trace_block', [blockHash]);
+      return traceResult ?? {};
+    } catch (e) {
+      print('Error getting block trace: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getDetailedBlockInfo(String blockHash) async {
+    try {
+      // Use debug_traceBlockByHash
+      final traceResult =
+          await _makeRpcCall('debug_traceBlockByHash', [blockHash]);
+
+      // Use debug_getBadBlocks to check for any invalid blocks
+      final badBlocks = await _makeRpcCall('debug_getBadBlocks', []);
+
+      return {'traceResult': traceResult, 'badBlocks': badBlocks};
+    } catch (e) {
+      print('Error getting detailed block info: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getTxPoolStatus() async {
+    try {
+      // Get basic txpool status first
+      final status = await _makeRpcCall('txpool_status', []);
+
+      Map<String, dynamic> result = {
+        'status': status ?? {'pending': '0x0', 'queued': '0x0'},
+      };
+
+      // Only try txpool_inspect if available (some nodes don't support it)
+      try {
+        final inspection = await _makeRpcCall('txpool_inspect', []);
+        if (inspection != null) {
+          result['inspection'] = inspection;
+        }
+      } catch (e) {
+        // Silently handle unsupported method
+        result['inspection'] = {};
+      }
+
+      return result;
+    } catch (e) {
+      print('Error getting txpool status: $e');
+      return {
+        'status': {'pending': '0x0', 'queued': '0x0'},
+        'inspection': {}
+      };
+    }
+  }
+
+  Future<void> _fetchNetworkStatus() async {
+    try {
+      // Get network version
+      final version = await _makeRpcCall('net_version', []);
+
+      // Get peer count
+      final peerCount = await _makeRpcCall('net_peerCount', []);
+
+      // Get network listening status
+      final isListening = await _makeRpcCall('net_listening', []);
+
+      // Get txpool status and inspection
+      final txPoolStatus = await getTxPoolStatus();
+
+      // Get bad blocks with proper type casting
+      final badBlocksResult = await _makeRpcCall('debug_getBadBlocks', []);
+      final List<Map<String, dynamic>> badBlocks = badBlocksResult != null
+          ? (badBlocksResult as List)
+              .map((block) => Map<String, dynamic>.from(block))
+              .toList()
+          : [];
+
+      // Update congestion data with network status
+      _congestionData = _congestionData.copyWith(
+        networkVersion: version?.toString() ?? '',
+        peerCount: FormatterUtils.parseHexSafely(peerCount) ?? 0,
+        isNetworkListening: isListening ?? false,
+        badBlocks: badBlocks,
+        txPoolInspection: txPoolStatus['inspection'] ?? {},
+      );
+
+      notifyListeners();
+    } catch (e) {
+      print('Error fetching network status: $e');
+    }
+  }
+
+  /// Documents the data sources and update frequency for each metric
+  Map<String, String> getDataSourceInfo() {
+    return {
+      'Gas Price': 'Updated every 15 seconds via eth_gasPrice RPC call',
+      'Block Data': 'Real-time via WebSocket newHeads subscription',
+      'Transaction Count': 'Calculated from confirmed blocks and mempool',
+      'Network Status': 'Updated every 15 seconds via net_* RPC calls',
+      'PYUSD Transactions':
+          'Monitored via Transfer event logs and real-time WebSocket',
+      'Block Time':
+          'Calculated from timestamp difference between consecutive blocks',
+      'Network Congestion':
+          'Calculated from gasUsed/gasLimit ratio in latest blocks',
+      'Transaction Success Rate':
+          'Based on status of tracked PYUSD transactions',
+      'Peer Count': 'Updated every 15 seconds via net_peerCount',
+      'Historical Data': 'Maintained for last 200 transactions and 30 blocks',
+      'Update Frequency': '''
+- Real-time updates for new blocks and transactions
+- 15-second intervals for gas prices and network stats
+- 45-second intervals for pending queue details
+- 60-second intervals for PYUSD transaction activity
+      ''',
+      'Data Accuracy': '''
+- Gas prices and block data are direct from the Ethereum network
+- Transaction counts and statistics are based on observed data
+- Network health metrics are derived from multiple data points
+- All timestamps are based on block timestamps
+      '''
+    };
+  }
+
+  /// Get the timestamp of the last data update for each metric
+  Map<String, DateTime> getLastUpdateTimes() {
+    return {
+      'lastRefreshed': _congestionData.lastRefreshed,
+      'lastBlock': DateTime.fromMillisecondsSinceEpoch(
+          _congestionData.lastBlockTimestamp * 1000),
+      'lastTransaction': _recentPyusdTransactions.isNotEmpty
+          ? DateTime.fromMillisecondsSinceEpoch((FormatterUtils.parseHexSafely(
+                      _recentPyusdTransactions[0]['timestamp']) ??
+                  0) *
+              1000)
+          : DateTime.now(),
+    };
+  }
+
+  /// Get the confidence level for each metric (0-1)
+  Map<String, double> getMetricConfidence() {
+    return {
+      'gasPrice': _congestionData.historicalGasPrices.length /
+          20, // Based on historical data points
+      'networkHealth': _recentBlocks.length / 30, // Based on block sample size
+      'transactionStats': _recentPyusdTransactions.length /
+          100, // Based on transaction sample size
+      'blockTime': _congestionData.averageBlockTime > 0 ? 1.0 : 0.0,
+      'peerNetwork': _congestionData.isNetworkListening ? 1.0 : 0.0,
+    };
+  }
 }

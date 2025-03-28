@@ -5,6 +5,8 @@ import 'tabs/blocks_tab.dart';
 import 'tabs/gas_tab.dart';
 import 'tabs/overview_tab.dart';
 import 'tabs/transactions_tab.dart';
+import 'tabs/analysis_tab.dart';
+import 'widgets/data_source_info_card.dart';
 
 class NetworkCongestionScreen extends StatefulWidget {
   const NetworkCongestionScreen({super.key});
@@ -17,13 +19,13 @@ class NetworkCongestionScreen extends StatefulWidget {
 class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<bool> _loadedTabs = [false, false, false, false];
+  final List<bool> _loadedTabs = [false, false, false, false, false];
   bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
 
     // Initialize provider and load first tab
     Future.microtask(() async {
@@ -76,6 +78,7 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
             Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
             Tab(icon: Icon(Icons.storage), text: 'Blocks'),
             Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
+            Tab(icon: Icon(Icons.analytics), text: 'Analysis'),
           ],
           isScrollable: false,
           indicatorWeight: 3,
@@ -96,35 +99,50 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              await provider.refresh();
-            },
-            child: TabBarView(
-              controller: _tabController,
+          return SafeArea(
+            child: Column(
               children: [
-                // Overview Tab
-                _loadedTabs[0]
-                    ? OverviewTab(congestionData: provider.congestionData)
-                    : const Center(child: CircularProgressIndicator()),
+                // Data Source Info Card - Always visible
+                const DataSourceInfoCard(),
 
-                // Gas Tab
-                _loadedTabs[1]
-                    ? GasTab(congestionData: provider.congestionData)
-                    : const Center(child: CircularProgressIndicator()),
+                // Tab content - Takes remaining space
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Overview Tab
+                      _loadedTabs[0]
+                          ? OverviewTab(congestionData: provider.congestionData)
+                          : const Center(child: CircularProgressIndicator()),
 
-                // Blocks Tab
-                _loadedTabs[2]
-                    ? BlocksTab(provider: provider)
-                    : const Center(child: CircularProgressIndicator()),
+                      // Gas Tab
+                      _loadedTabs[1]
+                          ? GasTab(congestionData: provider.congestionData)
+                          : const Center(child: CircularProgressIndicator()),
 
-                // Transactions Tab
-                _loadedTabs[3]
-                    ? TransactionsTab(
-                        provider: provider,
-                        tabController: _tabController,
-                      )
-                    : const Center(child: CircularProgressIndicator()),
+                      // Blocks Tab
+                      _loadedTabs[2]
+                          ? BlocksTab(provider: provider)
+                          : const Center(child: CircularProgressIndicator()),
+
+                      // Transactions Tab
+                      _loadedTabs[3]
+                          ? TransactionsTab(
+                              provider: provider,
+                              tabController: _tabController,
+                            )
+                          : const Center(child: CircularProgressIndicator()),
+
+                      // Analysis Tab
+                      _loadedTabs[4]
+                          ? AnalysisTab(
+                              provider: provider,
+                              congestionData: provider.congestionData,
+                            )
+                          : const Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
+                ),
               ],
             ),
           );

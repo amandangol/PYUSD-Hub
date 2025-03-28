@@ -16,11 +16,6 @@ class OverviewTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Global status widget with refresh info
-          StatusCard(congestionData: congestionData),
-
-          const SizedBox(height: 16),
-
           // Network Status Overview
           _buildNetworkStatusSection(context),
 

@@ -188,6 +188,15 @@ class _MainAppState extends State<MainApp> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Ensure we're on the wallet screen when the app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NavigationProvider>().setWalletScreen();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final navigationProvider = context.watch<NavigationProvider>();
 
@@ -207,7 +216,7 @@ class _MainAppState extends State<MainApp> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            navigationProvider.setIndex(2);
+            navigationProvider.setWalletScreen();
           },
           backgroundColor: Colors.blue,
           child: const Icon(Icons.account_balance_wallet, color: Colors.white),

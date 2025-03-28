@@ -31,6 +31,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   String _filter = 'All';
   List<TransactionModel> _filteredTransactions = [];
   WaletScreenProvider? _homeProvider;
+  static const int _initialDisplayCount = 3;
 
   @override
   void initState() {
@@ -84,7 +85,8 @@ class _TransactionsSectionState extends State<TransactionsSection> {
       _updateFilteredTransactions();
     }
 
-    final displayTransactions = _filteredTransactions.take(3).toList();
+    final displayTransactions =
+        _filteredTransactions.take(_initialDisplayCount).toList();
     print(
         'Building TransactionSection with ${displayTransactions.length} transactions');
 
@@ -109,7 +111,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
                       cardColor: cardColor,
                     ),
                   )),
-              if (_filteredTransactions.length > 3)
+              if (_filteredTransactions.length > _initialDisplayCount)
                 _buildViewAllButton(
                     filteredTransactions: _filteredTransactions),
             ],

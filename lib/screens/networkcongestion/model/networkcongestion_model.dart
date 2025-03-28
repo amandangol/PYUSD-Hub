@@ -41,6 +41,13 @@ class NetworkCongestionData {
   final List<GasPricePoint> gasPriceHistory;
   final double currentGasPriceUSD;
 
+  // New network-related fields
+  final String networkVersion;
+  final int peerCount;
+  final bool isNetworkListening;
+  final List<Map<String, dynamic>> badBlocks;
+  final Map<String, dynamic> txPoolInspection;
+
   NetworkCongestionData({
     // General Network Metrics
     this.currentGasPrice = 0,
@@ -72,6 +79,13 @@ class NetworkCongestionData {
     this.pyusdHistoricalGasPrices = const [],
     this.gasPriceHistory = const [],
     this.currentGasPriceUSD = 0.0,
+
+    // New network-related fields
+    this.networkVersion = '',
+    this.peerCount = 0,
+    this.isNetworkListening = false,
+    this.badBlocks = const [],
+    this.txPoolInspection = const {},
   });
 
   NetworkCongestionData copyWith({
@@ -102,6 +116,11 @@ class NetworkCongestionData {
     List<double>? pyusdHistoricalGasPrices,
     List<GasPricePoint>? gasPriceHistory,
     double? currentGasPriceUSD,
+    String? networkVersion,
+    int? peerCount,
+    bool? isNetworkListening,
+    List<Map<String, dynamic>>? badBlocks,
+    Map<String, dynamic>? txPoolInspection,
   }) {
     return NetworkCongestionData(
       currentGasPrice: currentGasPrice ?? this.currentGasPrice,
@@ -139,6 +158,11 @@ class NetworkCongestionData {
           pyusdHistoricalGasPrices ?? this.pyusdHistoricalGasPrices,
       gasPriceHistory: gasPriceHistory ?? this.gasPriceHistory,
       currentGasPriceUSD: currentGasPriceUSD ?? this.currentGasPriceUSD,
+      networkVersion: networkVersion ?? this.networkVersion,
+      peerCount: peerCount ?? this.peerCount,
+      isNetworkListening: isNetworkListening ?? this.isNetworkListening,
+      badBlocks: badBlocks ?? this.badBlocks,
+      txPoolInspection: txPoolInspection ?? this.txPoolInspection,
     );
   }
 

@@ -111,6 +111,13 @@ class PyusdQAScreen extends StatefulWidget {
 }
 
 class _PyusdQAScreenState extends State<PyusdQAScreen> {
+  // Track which items are expanded
+  final Set<int> _expandedItems = {
+    0,
+    1,
+    2
+  }; // First three items expanded by default
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -172,9 +179,7 @@ class _PyusdQAScreenState extends State<PyusdQAScreen> {
               ),
             ),
 
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
             // Q&A list
             Expanded(
               child: ListView.builder(
@@ -192,6 +197,7 @@ class _PyusdQAScreenState extends State<PyusdQAScreen> {
                       data: Theme.of(context)
                           .copyWith(dividerColor: Colors.transparent),
                       child: ExpansionTile(
+                        initiallyExpanded: _expandedItems.contains(index),
                         title: Row(
                           children: [
                             CircleAvatar(
