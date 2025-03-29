@@ -150,7 +150,7 @@ class TransactionDetailsWidget extends StatelessWidget {
           ],
 
           // Transaction data (if available)
-          if (transaction.data != null && transaction.data!.length > 2) ...[
+          if (transaction.data != null) ...[
             const SizedBox(height: 16),
             TransactionSectionHeader(
               icon: Icons.code,
@@ -158,7 +158,7 @@ class TransactionDetailsWidget extends StatelessWidget {
               iconColor: textColor.withOpacity(0.7),
               textColor: textColor,
               infoMessage:
-                  'Raw transaction data and contract interaction details',
+                  'Transaction details including gas information and technical analysis',
             ),
             _buildDataSection(context),
           ],
@@ -369,6 +369,13 @@ class TransactionDetailsWidget extends StatelessWidget {
   }
 
   Widget _buildDataSection(BuildContext context) {
+    final bool isContractInteraction = transaction.data != null &&
+        transaction.data!.length >= 10 &&
+        transaction.data != '0x';
+
+    final String methodId =
+        isContractInteraction ? transaction.data!.substring(0, 10) : '';
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -379,41 +386,183 @@ class TransactionDetailsWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Transaction Type
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  'Transaction Input Data:',
+              Icon(
+                isContractInteraction ? Icons.code : Icons.currency_exchange,
+                size: 16,
+                color: primaryColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Transaction Type: ${isContractInteraction ? 'Contract Interaction' : 'ETH Transfer'}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Contract Standard Detection (only for contract interactions)
+          if (isContractInteraction) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.verified_outlined,
+                  size: 16,
+                  color: primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Contract Standard: ${_detectContractStandard()}',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: subtitleColor,
+                    color: textColor,
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Method ID and Type (only for contract interactions)
+          if (isContractInteraction) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.code,
+                  size: 16,
+                  color: primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Method ID: $methodId',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Type: ${_getTransactionType()}',
+              style: TextStyle(
+                fontSize: 14,
+                color: subtitleColor,
               ),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: transaction.data!));
-                    SnackbarUtil.showSnackbar(
-                        context: context, message: 'Data copied to clipboard');
-                  },
-                  child: Tooltip(
-                    message: 'Copy full data',
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: Icon(
-                        Icons.copy_outlined,
-                        size: 16,
-                        color: subtitleColor,
+            ),
+            const Divider(height: 24),
+          ],
+
+          // Raw Input Data (only for contract interactions)
+          if (isContractInteraction) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Input Data:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: subtitleColor,
+                    ),
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: transaction.data!));
+                      SnackbarUtil.showSnackbar(
+                          context: context,
+                          message: 'Data copied to clipboard');
+                    },
+                    child: Tooltip(
+                      message: 'Copy full data',
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.copy_outlined,
+                          size: 16,
+                          color: subtitleColor,
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
+              child: Text(
+                transaction.data ?? '0x',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  color: textColor.withOpacity(0.8),
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 3,
+              ),
+            ),
+          ],
+
+          // Decoded Function (only for contract interactions)
+          if (isContractInteraction) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Decoded Function:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: subtitleColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getDecodedFunction(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontFamily: 'monospace',
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Technical Analysis (for all transactions)
+          const SizedBox(height: 16),
+          Text(
+            'Technical Analysis:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: subtitleColor,
+            ),
           ),
           const SizedBox(height: 8),
           Container(
@@ -422,34 +571,347 @@ class TransactionDetailsWidget extends StatelessWidget {
               color: Colors.black.withOpacity(0.05),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              FormatterUtils.formatHash(transaction.data!),
-              style: TextStyle(
-                fontSize: 13,
-                fontFamily: 'monospace',
-                color: textColor.withOpacity(0.8),
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _buildTechnicalAnalysis(),
             ),
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '(This is encoded contract interaction data)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  color: subtitleColor,
-                ),
-              ),
+
+          // Security Analysis (for all transactions)
+          const SizedBox(height: 16),
+          Text(
+            'Security Analysis:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: subtitleColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _buildSecurityAnalysis(),
+            ),
+          ),
+
+          // Additional Info
+          const SizedBox(height: 12),
+          Text(
+            isContractInteraction
+                ? 'Note: This is encoded blockchain data. For security, always verify contract interactions.'
+                : 'Note: This is a direct ETH transfer transaction.',
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: subtitleColor,
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _detectContractStandard() {
+    if (transaction.data == null || transaction.data == '0x') {
+      return 'N/A';
+    }
+
+    final methodId = transaction.data!.substring(0, 10).toLowerCase();
+
+    // ERC20 Methods
+    final erc20Methods = {
+      '0xa9059cbb': 'transfer',
+      '0x095ea7b3': 'approve',
+      '0x23b872dd': 'transferFrom',
+      '0x70a08231': 'balanceOf',
+      '0x18160ddd': 'totalSupply',
+      '0xdd62ed3e': 'allowance',
+    };
+
+    // ERC721 Methods
+    final erc721Methods = {
+      '0x42842e0e': 'safeTransferFrom',
+      '0x23b872dd': 'transferFrom',
+      '0x6352211e': 'ownerOf',
+      '0x095ea7b3': 'approve',
+      '0x081812fc': 'getApproved',
+      '0xe985e9c5': 'isApprovedForAll',
+    };
+
+    // ERC1155 Methods
+    final erc1155Methods = {
+      '0xf242432a': 'safeTransferFrom',
+      '0x2eb2c2d6': 'safeBatchTransferFrom',
+      '0x00fdd58e': 'balanceOf',
+      '0x4e1273f4': 'balanceOfBatch',
+      '0xa22cb465': 'setApprovalForAll',
+      '0xe985e9c5': 'isApprovedForAll',
+    };
+
+    if (erc20Methods.containsKey(methodId)) {
+      return 'ERC20 Token Standard';
+    } else if (erc721Methods.containsKey(methodId)) {
+      return 'ERC721 NFT Standard';
+    } else if (erc1155Methods.containsKey(methodId)) {
+      return 'ERC1155 Multi Token Standard';
+    }
+
+    return 'Unknown Standard';
+  }
+
+  List<Widget> _buildSecurityAnalysis() {
+    final List<Widget> analysis = [];
+    final List<String> securityChecks = _getSecurityChecks();
+
+    for (final check in securityChecks) {
+      analysis.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text(
+            check,
+            style: TextStyle(
+              fontSize: 13,
+              color: check.startsWith('⚠️') ? Colors.orange : textColor,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (analysis.isEmpty) {
+      analysis.add(
+        Text(
+          '✓ No security concerns detected',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.green,
+          ),
+        ),
+      );
+    }
+
+    return analysis;
+  }
+
+  List<String> _getSecurityChecks() {
+    final checks = <String>[];
+
+    // Check if it's a contract creation
+    if (transaction.to.isEmpty) {
+      checks.add('⚠️ Contract Creation Transaction');
+    }
+
+    // Check for ETH transfer with contract interaction
+    if (transaction.amount > 0 &&
+        transaction.data != null &&
+        transaction.data!.length > 2) {
+      checks.add('⚠️ ETH Transfer with Contract Interaction');
+    }
+
+    // Check for high-value transaction
+    if (transaction.amount > 1.0) {
+      checks.add(
+          '⚠️ High Value Transaction (>${transaction.amount.toStringAsFixed(2)} ETH)');
+    }
+
+    // Check gas efficiency
+    final gasEfficiency = (transaction.gasUsed / transaction.gasLimit) * 100;
+    if (gasEfficiency > 90) {
+      checks.add(
+          '⚠️ High Gas Usage (${gasEfficiency.toStringAsFixed(1)}% of limit)');
+    }
+
+    // Check for contract interaction
+    if (transaction.data != null && transaction.data!.length > 10) {
+      checks.add('• Contract Interaction Detected');
+
+      // Check for known function signatures
+      final methodId = transaction.data!.substring(0, 10);
+      if (_isKnownMethod(methodId)) {
+        checks.add('✓ Verified Function Signature');
+      } else {
+        checks.add('⚠️ Unknown Function Signature');
+      }
+    }
+
+    return checks;
+  }
+
+  bool _isKnownMethod(String methodId) {
+    final knownMethods = {
+      '0xa9059cbb': 'ERC20 transfer',
+      '0x095ea7b3': 'ERC20/721 approve',
+      '0x23b872dd': 'ERC20/721 transferFrom',
+      '0x42842e0e': 'ERC721 safeTransferFrom',
+      '0x70a08231': 'ERC20 balanceOf',
+      // Add more known methods as needed
+    };
+
+    return knownMethods.containsKey(methodId.toLowerCase());
+  }
+
+  List<Widget> _buildTechnicalAnalysis() {
+    final List<Widget> analysis = [];
+
+    // Data Size Analysis
+    if (transaction.data != null) {
+      analysis.add(
+        Text(
+          '• Data Size: ${(transaction.data!.length - 2) ~/ 2} bytes',
+          style: TextStyle(
+            fontSize: 13,
+            color: textColor,
+          ),
+        ),
+      );
+    }
+
+    // Gas Efficiency
+    final gasEfficiency = (transaction.gasUsed / transaction.gasLimit) * 100;
+    analysis.add(
+      Text(
+        '• Gas Efficiency: ${gasEfficiency.toStringAsFixed(1)}% of limit used',
+        style: TextStyle(
+          fontSize: 13,
+          color: textColor,
+        ),
+      ),
+    );
+
+    // Gas Price Analysis
+    analysis.add(
+      Text(
+        '• Gas Price: ${transaction.gasPrice.toStringAsFixed(4)} Gwei',
+        style: TextStyle(
+          fontSize: 13,
+          color: textColor,
+        ),
+      ),
+    );
+
+    // Total Gas Cost
+    final gasCostEth = (transaction.gasUsed * transaction.gasPrice) / 1e9;
+    analysis.add(
+      Text(
+        '• Total Gas Cost: ${gasCostEth.toStringAsFixed(9)} ETH',
+        style: TextStyle(
+          fontSize: 13,
+          color: textColor,
+        ),
+      ),
+    );
+
+    // Contract Interaction Check
+    if (transaction.data != null && transaction.data!.length > 10) {
+      analysis.add(
+        Text(
+          '• Contract Interaction: Yes (Method ID: ${transaction.data!.substring(0, 10)})',
+          style: TextStyle(
+            fontSize: 13,
+            color: textColor,
+          ),
+        ),
+      );
+    }
+
+    // Transaction Complexity
+    analysis.add(
+      Text(
+        '• Complexity: ${_getTransactionComplexity()}',
+        style: TextStyle(
+          fontSize: 13,
+          color: textColor,
+        ),
+      ),
+    );
+
+    // Nonce Information
+    analysis.add(
+      Text(
+        '• Nonce: ${transaction.nonce}',
+        style: TextStyle(
+          fontSize: 13,
+          color: textColor,
+        ),
+      ),
+    );
+
+    return analysis;
+  }
+
+  String _getTransactionType() {
+    if (transaction.data == null || transaction.data == '0x') {
+      return 'Simple Transfer';
+    }
+
+    final methodId = transaction.data!.substring(0, 10);
+
+    // Common ERC20 method IDs
+    switch (methodId) {
+      case '0xa9059cbb':
+        return 'ERC20 Token Transfer';
+      case '0x095ea7b3':
+        return 'ERC20 Token Approval';
+      case '0x23b872dd':
+        return 'ERC20 TransferFrom';
+      case '0x70a08231':
+        return 'ERC20 Balance Check';
+      default:
+        return 'Contract Interaction';
+    }
+  }
+
+  String _getDecodedFunction() {
+    if (transaction.data == null || transaction.data == '0x') {
+      return 'No function data';
+    }
+
+    final methodId = transaction.data!.substring(0, 10);
+
+    // Decode common ERC20 functions
+    switch (methodId) {
+      case '0xa9059cbb':
+        final data = transaction.data!;
+        if (data.length >= 138) {
+          final address = '0x${data.substring(34, 74)}';
+          final amount = BigInt.parse(data.substring(74), radix: 16);
+          return 'transfer(\n  address: $address,\n  amount: $amount\n)';
+        }
+        break;
+      case '0x095ea7b3':
+        final data = transaction.data!;
+        if (data.length >= 138) {
+          final spender = '0x${data.substring(34, 74)}';
+          final amount = BigInt.parse(data.substring(74), radix: 16);
+          return 'approve(\n  spender: $spender,\n  amount: $amount\n)';
+        }
+        break;
+    }
+
+    return 'Unknown Function';
+  }
+
+  String _getTransactionComplexity() {
+    if (transaction.data == null || transaction.data == '0x') {
+      return 'Simple (Direct Transfer)';
+    }
+
+    final dataLength = transaction.data!.length;
+    final gasUsed = transaction.gasUsed;
+
+    if (dataLength <= 74 && gasUsed <= 30000) {
+      return 'Low';
+    } else if (dataLength <= 200 && gasUsed <= 100000) {
+      return 'Medium';
+    } else {
+      return 'High';
+    }
   }
 
   Widget _buildErrorSection(BuildContext context) {

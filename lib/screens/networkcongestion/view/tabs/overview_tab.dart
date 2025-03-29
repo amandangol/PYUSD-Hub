@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../model/networkcongestion_model.dart';
 import '../widgets/congestion_meter.dart';
-import '../widgets/status_card.dart';
 import '../../../../widgets/common/info_dialog.dart';
 
 class OverviewTab extends StatelessWidget {

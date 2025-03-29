@@ -21,6 +21,9 @@ class TransactionDetailProvider
   // Batch size for parallel processing
   static const int _batchSize = 5;
 
+  final Map<String, Map<String, dynamic>> _traceCache = {};
+  static const Duration _traceCacheExpiration = Duration(minutes: 30);
+
   Future<TransactionDetailModel?> getTransactionDetails({
     required String txHash,
     required String rpcUrl,
@@ -237,8 +240,42 @@ class TransactionDetailProvider
     return getCachedItem(txHash, expiration: _cacheExpiration);
   }
 
+  Future<Map<String, dynamic>?> getTransactionTrace({
+    required String txHash,
+    required String rpcUrl,
+    bool forceRefresh = false,
+  }) async {
+    if (disposed) return null;
+
+    // Check cache first if not forcing refresh
+    if (!forceRefresh && _traceCache.containsKey(txHash)) {
+      final cacheEntry = _traceCache[txHash]!;
+      final cacheTime = cacheEntry['timestamp'] as DateTime;
+      if (DateTime.now().difference(cacheTime) < _traceCacheExpiration) {
+        return cacheEntry['data'] as Map<String, dynamic>;
+      }
+    }
+
+    try {
+      final traceData = await _rpcService.getTransactionTrace(rpcUrl, txHash);
+
+      if (traceData != null) {
+        _traceCache[txHash] = {
+          'data': traceData,
+          'timestamp': DateTime.now(),
+        };
+      }
+
+      return traceData;
+    } catch (e) {
+      setError(this, 'Error fetching transaction trace: $e');
+      return null;
+    }
+  }
+
   @override
   void dispose() {
+    _traceCache.clear();
     markDisposed();
     clearOngoingOperations();
     super.dispose();

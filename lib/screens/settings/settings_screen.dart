@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/formatter_utils.dart';
 import '../../utils/snackbar_utils.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -214,9 +215,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
 
-              // Gas Price Alerts section
+              // Notifications section
               Text(
-                'GAS PRICE ALERTS',
+                'NOTIFICATIONS',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -231,82 +232,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 margin: const EdgeInsets.only(bottom: 16),
-                child: Consumer<NetworkCongestionProvider>(
-                  builder: (context, provider, child) {
-                    return Column(
-                      children: [
-                        SwitchListTile(
-                          title: const Text('Enable Gas Price Alerts'),
-                          subtitle: Text(
-                            'Get notified when gas prices are low',
-                            style: TextStyle(color: textColor.withOpacity(0.7)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      title: const Text('Notification Settings'),
+                      subtitle: Text(
+                        'Configure gas price alerts and other notifications',
+                        style: TextStyle(color: textColor.withOpacity(0.7)),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const NotificationSettingsScreen(),
                           ),
-                          secondary: Icon(
-                            Icons.notifications_active,
-                            color: primaryColor,
-                          ),
-                          value: provider.gasPriceNotificationsEnabled,
-                          onChanged: (bool value) {
-                            provider.toggleGasPriceNotifications(value);
-                          },
-                          activeColor: primaryColor,
-                          inactiveTrackColor: Colors.grey.withOpacity(0.3),
-                        ),
-                        if (provider.gasPriceNotificationsEnabled) ...[
-                          const Divider(height: 1),
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Alert Threshold',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Slider(
-                                        value: provider.gasPriceThreshold,
-                                        min: 10,
-                                        max: 200,
-                                        divisions: 38,
-                                        label:
-                                            '${provider.gasPriceThreshold.round()} Gwei',
-                                        onChanged: (value) {
-                                          provider.setGasPriceThreshold(value);
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Text(
-                                      '${provider.gasPriceThreshold.round()} Gwei',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'You will be notified when gas price drops below ${provider.gasPriceThreshold.round()} Gwei',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: textColor.withOpacity(0.7),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 

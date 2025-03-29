@@ -4,6 +4,7 @@ import '../../../../services/market_service.dart';
 import '../../model/networkcongestion_model.dart';
 import '../widgets/gasprice_chart.dart';
 import '../../provider/network_congestion_provider.dart';
+import '../../../settings/notification_settings_screen.dart';
 
 class GasTab extends StatefulWidget {
   final NetworkCongestionData congestionData;
@@ -318,8 +319,14 @@ class _GasTabState extends State<GasTab> {
                     IconButton(
                       icon: const Icon(Icons.settings),
                       onPressed: () {
-                        // Navigate to settings
-                        Navigator.pushNamed(context, '/settings');
+                        // Navigate to notification settings
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const NotificationSettingsScreen(),
+                          ),
+                        );
                       },
                       tooltip: 'Configure Alert Settings',
                     ),

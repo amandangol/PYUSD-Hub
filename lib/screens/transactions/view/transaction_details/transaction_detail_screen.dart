@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/pyusd_components.dart';
 import '../../../../providers/network_provider.dart';
 import '../../model/transaction_model.dart';
@@ -11,6 +12,7 @@ import 'widgets/gasdetails_widget.dart';
 import 'widgets/marketanalysis_widget.dart';
 import 'widgets/statuscard_widget.dart';
 import 'widgets/transaction_details_widget.dart';
+import 'widgets/trace_details_widget.dart';
 import 'dart:convert';
 
 class TransactionDetailScreen extends StatefulWidget {
@@ -42,9 +44,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   bool _isRefreshing = false;
   bool _isInitializing = true;
   bool _isLoadingMarketData = false;
+  Map<String, double> _marketPrices = {};
+  Map<String, dynamic>? _traceData;
+  bool _isLoadingTrace = false;
   late final TransactionDetailProvider _transactionDetailProvider;
   final MarketService _marketService = MarketService();
-  Map<String, double> _marketPrices = {};
 
   // TabController for the tabbed interface
   late TabController _tabController;
@@ -52,8 +56,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   @override
   void initState() {
     super.initState();
-    // Initialize TabController with 3 tabs
-    _tabController = TabController(length: 3, vsync: this);
+    // Initialize TabController with 4 tabs
+    _tabController = TabController(length: 4, vsync: this);
 
     // Get provider reference once
     _transactionDetailProvider =
@@ -99,12 +103,15 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       }
 
       // Start fetching fresh data in the background
-      _fetchTransactionDetails().then((_) {
-        // After fetching transaction details, fetch market data if needed
-        if (_detailedTransaction != null && mounted) {
-          _fetchMarketData();
-        }
-      });
+      await _fetchTransactionDetails();
+
+      // After fetching transaction details, fetch market data and trace data
+      if (_detailedTransaction != null && mounted) {
+        await Future.wait([
+          _fetchMarketData(),
+          _fetchTransactionTrace(),
+        ]);
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -170,8 +177,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       });
 
       if (forceRefresh) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction details updated')),
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Transaction details updated',
         );
       }
     } catch (e) {
@@ -187,6 +195,36 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
     }
   }
 
+  Future<void> _fetchTransactionTrace({bool forceRefresh = false}) async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingTrace = true;
+    });
+
+    try {
+      final traceData = await _transactionDetailProvider.getTransactionTrace(
+        txHash: widget.transaction.hash,
+        rpcUrl: widget.rpcUrl,
+        forceRefresh: forceRefresh,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _traceData = traceData;
+        _isLoadingTrace = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingTrace = false;
+      });
+      _showErrorSnackBar('Failed to fetch transaction trace');
+    }
+  }
+
   Future<void> _refreshTransactionDetails() async {
     if (_isRefreshing) return;
 
@@ -196,7 +234,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
     await _fetchTransactionDetails(forceRefresh: true);
 
-    await _fetchMarketData();
+    await Future.wait([
+      _fetchMarketData(),
+      _fetchTransactionTrace(forceRefresh: true),
+    ]);
   }
 
   Future<void> _openBlockExplorer() async {
@@ -286,6 +327,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                         Tab(text: "Details", icon: Icon(Icons.info_outline)),
                         Tab(text: "Gas", icon: Icon(Icons.local_gas_station)),
                         Tab(text: "Market", icon: Icon(Icons.show_chart)),
+                        Tab(
+                            text: "Trace",
+                            icon: Icon(Icons.account_tree_outlined)),
                       ],
                     ),
                   ),
@@ -330,6 +374,20 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                             primaryColor: primaryColor,
+                          ),
+                        ),
+                        // Trace Analysis Tab
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: TraceDetailsWidget(
+                            traceData: _traceData,
+                            isLoading: _isLoadingTrace,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            subtitleColor: subtitleColor,
+                            primaryColor: primaryColor,
+                            onRefresh: () =>
+                                _fetchTransactionTrace(forceRefresh: true),
                           ),
                         ),
                       ],
@@ -449,8 +507,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
               TextButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: errorDetails));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Copied to clipboard')),
+                  SnackbarUtil.showSnackbar(
+                    context: context,
+                    message: 'Copied to clipboard',
                   );
                 },
                 child: const Text('Copy'),

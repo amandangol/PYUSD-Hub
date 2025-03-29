@@ -821,6 +821,69 @@ class EthereumRpcService {
     return results.cast<Map<String, dynamic>>();
   }
 
+  Future<Map<String, dynamic>?> getTransactionTrace(
+      String rpcUrl, String txHash) async {
+    try {
+      // First check if debug namespace is available
+      final supportResponse = await _makeRpcCall(
+        rpcUrl,
+        'debug_traceTransaction',
+        [
+          txHash,
+          {"tracer": "callTracer"}
+        ],
+      );
+
+      if (supportResponse['error'] != null) {
+        final error = supportResponse['error'];
+        if (error['code'] == -32000 &&
+            error['message']
+                .toString()
+                .contains('historical state not available')) {
+          print(
+              'Node does not support historical state tracing: ${error['message']}');
+          return {
+            'error':
+                'Node does not support transaction tracing. Try using a full archive node.',
+            'details': error['message'],
+            'isNodeLimitError': true
+          };
+        } else if (error['code'] == -32601) {
+          print('Node does not support debug_traceTransaction method');
+          return {
+            'error': 'Node does not support transaction tracing.',
+            'details':
+                'The debug_traceTransaction method is not available on this node.',
+            'isNodeLimitError': true
+          };
+        }
+
+        print('Error getting transaction trace: $error');
+        return {
+          'error': 'Failed to trace transaction',
+          'details': error['message'],
+          'isNodeLimitError': false
+        };
+      }
+
+      final traceData = supportResponse['result'] as Map<String, dynamic>;
+
+      // Pretty print the trace data
+      print('\n=== Transaction Trace for $txHash ===');
+      print(const JsonEncoder.withIndent('  ').convert(traceData));
+      print('=====================================\n');
+
+      return traceData;
+    } catch (e) {
+      print('Error getting transaction trace: $e');
+      return {
+        'error': 'Failed to trace transaction',
+        'details': e.toString(),
+        'isNodeLimitError': false
+      };
+    }
+  }
+
   @override
   void dispose() {
     _clientCache.forEach((url, client) {

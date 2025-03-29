@@ -83,7 +83,7 @@ class GasDetailsWidget extends StatelessWidget {
                   icon: Icons.attach_money_outlined,
                   title: 'Gas Price',
                   value:
-                      '${transaction.gasPrice.toStringAsFixed(2)} Gwei (${(transaction.gasPrice * 0.000000001).toStringAsFixed(9)} ETH)',
+                      '${transaction.gasPrice.toStringAsFixed(4)} Gwei (${(transaction.gasPrice * 0.000000001).toStringAsFixed(9)} ETH)',
                   infoMessage:
                       'Price paid per unit of gas. Higher gas price means faster transaction processing but higher cost.',
                   textColor: textColor,
