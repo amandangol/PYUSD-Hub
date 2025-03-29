@@ -112,7 +112,10 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
                     children: [
                       // Overview Tab
                       _loadedTabs[0]
-                          ? OverviewTab(congestionData: provider.congestionData)
+                          ? SingleChildScrollView(
+                              child: OverviewTab(
+                                  congestionData: provider.congestionData),
+                            )
                           : const Center(child: CircularProgressIndicator()),
 
                       // Gas Tab
@@ -122,22 +125,28 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
 
                       // Blocks Tab
                       _loadedTabs[2]
-                          ? BlocksTab(provider: provider)
+                          ? SingleChildScrollView(
+                              child: BlocksTab(provider: provider),
+                            )
                           : const Center(child: CircularProgressIndicator()),
 
                       // Transactions Tab
                       _loadedTabs[3]
-                          ? TransactionsTab(
-                              provider: provider,
-                              tabController: _tabController,
+                          ? SingleChildScrollView(
+                              child: TransactionsTab(
+                                provider: provider,
+                                tabController: _tabController,
+                              ),
                             )
                           : const Center(child: CircularProgressIndicator()),
 
                       // Analysis Tab
                       _loadedTabs[4]
-                          ? AnalysisTab(
-                              provider: provider,
-                              congestionData: provider.congestionData,
+                          ? SingleChildScrollView(
+                              child: AnalysisTab(
+                                provider: provider,
+                                congestionData: provider.congestionData,
+                              ),
                             )
                           : const Center(child: CircularProgressIndicator()),
                     ],

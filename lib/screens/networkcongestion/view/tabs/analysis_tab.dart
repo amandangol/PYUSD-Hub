@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../../../utils/formatter_utils.dart';
 import '../../model/networkcongestion_model.dart';
 import '../../provider/network_congestion_provider.dart';
 
@@ -62,15 +63,11 @@ class _AnalysisTabState extends State<AnalysisTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTransactionVolumeChart(),
+              _buildTransactionVolumeAnalysis(),
+              const SizedBox(height: 24),
+              _buildNetworkHealthOverview(),
               const SizedBox(height: 24),
               _buildGasPriceAnalysis(),
-              const SizedBox(height: 24),
-              _buildNetworkHealthMetrics(),
-              const SizedBox(height: 24),
-              _buildTransactionPatterns(),
-              const SizedBox(height: 24),
-              _buildGasPricePrediction(),
             ],
           ),
         ),
@@ -78,7 +75,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
     );
   }
 
-  Widget _buildTransactionVolumeChart() {
+  Widget _buildTransactionVolumeAnalysis() {
     if (_transactionPatterns == null) return const SizedBox.shrink();
 
     return Card(
@@ -88,7 +85,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'PYUSD Transaction Volume',
+              'PYUSD Transaction Volume Analysis',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -104,7 +101,14 @@ class _AnalysisTabState extends State<AnalysisTab> {
                   borderData: FlBorderData(show: true),
                   lineBarsData: [
                     LineChartBarData(
-                      spots: _generateTransactionSpots(),
+                      spots: List.generate(
+                        24,
+                        (index) => FlSpot(
+                          index.toDouble(),
+                          _transactionPatterns!['hourlyDistribution'][index]
+                              .toDouble(),
+                        ),
+                      ),
                       isCurved: true,
                       color: Colors.blue,
                       barWidth: 3,
@@ -114,55 +118,21 @@ class _AnalysisTabState extends State<AnalysisTab> {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<FlSpot> _generateTransactionSpots() {
-    final hourlyDistribution =
-        _transactionPatterns?['hourlyDistribution'] as List<int>?;
-    if (hourlyDistribution == null) return [];
-
-    return List.generate(
-      hourlyDistribution.length,
-      (index) => FlSpot(
-        index.toDouble(),
-        hourlyDistribution[index].toDouble(),
-      ),
-    );
-  }
-
-  Widget _buildGasPriceAnalysis() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Gas Price Analysis',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildGasMetricCard(
-                  'Current Gas',
-                  '${widget.congestionData.currentGasPrice.toStringAsFixed(2)} Gwei',
+                _buildMetricCard(
+                  'Avg Transaction Value',
+                  '${(_transactionPatterns!['averageTransactionValue'] / 1e6).toStringAsFixed(2)} PYUSD',
                 ),
-                _buildGasMetricCard(
-                  'Average Gas',
-                  '${widget.congestionData.averageGasPrice.toStringAsFixed(2)} Gwei',
+                _buildMetricCard(
+                  'Total Transactions',
+                  widget.congestionData.pyusdTransactionCount.toString(),
                 ),
-                _buildGasMetricCard(
-                  'Network Load',
-                  '${widget.congestionData.gasUsagePercentage.toStringAsFixed(1)}%',
+                _buildMetricCard(
+                  'Pending Transactions',
+                  widget.congestionData.pendingPyusdTxCount.toString(),
                 ),
               ],
             ),
@@ -172,29 +142,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
     );
   }
 
-  Widget _buildGasMetricCard(String title, String value) {
-    return Column(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNetworkHealthMetrics() {
+  Widget _buildNetworkHealthOverview() {
     if (_networkHealth == null) return const SizedBox.shrink();
 
     return Card(
@@ -204,7 +152,7 @@ class _AnalysisTabState extends State<AnalysisTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Network Health',
+              'Network Health Analysis',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -216,10 +164,6 @@ class _AnalysisTabState extends State<AnalysisTab> {
               '${(_networkHealth!['blockProductionRate'] * 60).toStringAsFixed(2)} blocks/min',
             ),
             _buildHealthMetricRow(
-              'Network Congestion',
-              '${(_networkHealth!['networkCongestion'] * 100).toStringAsFixed(1)}%',
-            ),
-            _buildHealthMetricRow(
               'Gas Efficiency',
               '${(_networkHealth!['gasEfficiency'] * 100).toStringAsFixed(1)}%',
             ),
@@ -228,12 +172,107 @@ class _AnalysisTabState extends State<AnalysisTab> {
               '${(_networkHealth!['transactionSuccessRate'] * 100).toStringAsFixed(1)}%',
             ),
             _buildHealthMetricRow(
-              'Avg Confirmation Time',
-              '${(_networkHealth!['averageConfirmationTime'] / 60).toStringAsFixed(1)} min',
+              'Average Confirmation Time',
+              '${_networkHealth!['averageConfirmationTime'].toStringAsFixed(1)} sec',
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Historical Performance',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            _buildHealthMetricRow(
+              'Blocks per Hour',
+              widget.congestionData.blocksPerHour.toString(),
+            ),
+            _buildHealthMetricRow(
+              'Average Block Size',
+              '${(widget.congestionData.averageBlockSize / 1000).toStringAsFixed(1)} KB',
+            ),
+            _buildHealthMetricRow(
+              'Transactions per Block',
+              widget.congestionData.averageTxPerBlock.toString(),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGasPriceAnalysis() {
+    if (_gasPrediction == null) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Gas Price Analysis & Predictions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildPredictionRow(
+              'Current Gas Price',
+              '${widget.congestionData.currentGasPrice.toStringAsFixed(2)} Gwei',
+            ),
+            _buildPredictionRow(
+              'Short-term (5 blocks)',
+              '${_gasPrediction!['shortTerm'].toStringAsFixed(2)} Gwei',
+            ),
+            _buildPredictionRow(
+              'Medium-term (20 blocks)',
+              '${_gasPrediction!['mediumTerm'].toStringAsFixed(2)} Gwei',
+            ),
+            _buildPredictionRow(
+              'Prediction Confidence',
+              '${(_gasPrediction!['confidence'] * 100).toStringAsFixed(1)}%',
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Factors Affecting Gas Price',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            ..._gasPrediction!['factors'].entries.map(
+                  (entry) => _buildPredictionRow(
+                    entry.key,
+                    '${(entry.value * 100).toStringAsFixed(1)}%',
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String value) {
+    return Column(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -249,111 +288,6 @@ class _AnalysisTabState extends State<AnalysisTab> {
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionPatterns() {
-    if (_transactionPatterns == null) return const SizedBox.shrink();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Transaction Patterns',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildPatternRow(
-              'Confirmed PYUSD TX',
-              widget.congestionData.confirmedPyusdTxCount.toString(),
-            ),
-            _buildPatternRow(
-              'Pending PYUSD TX',
-              widget.congestionData.pendingPyusdTxCount.toString(),
-            ),
-            _buildPatternRow(
-              'Average Block Size',
-              '${(widget.congestionData.averageBlockSize / 1024).toStringAsFixed(2)} KB',
-            ),
-            if (_transactionPatterns!['averageTransactionValue'] > 0)
-              _buildPatternRow(
-                'Average Transaction Value',
-                '${(_transactionPatterns!['averageTransactionValue'] / 1e18).toStringAsFixed(4)} PYUSD',
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPatternRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGasPricePrediction() {
-    if (_gasPrediction == null) return const SizedBox.shrink();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Gas Price Prediction',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildPredictionRow(
-              'Short-term (5 blocks)',
-              '${_gasPrediction!['shortTerm'].toStringAsFixed(2)} Gwei',
-            ),
-            _buildPredictionRow(
-              'Medium-term (20 blocks)',
-              '${_gasPrediction!['mediumTerm'].toStringAsFixed(2)} Gwei',
-            ),
-            _buildPredictionRow(
-              'Confidence',
-              '${(_gasPrediction!['confidence'] * 100).toStringAsFixed(1)}%',
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Factors',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            ..._gasPrediction!['factors'].entries.map(
-                  (entry) => _buildPredictionRow(
-                    entry.key,
-                    '${(entry.value * 100).toStringAsFixed(1)}%',
-                  ),
-                ),
-          ],
-        ),
       ),
     );
   }

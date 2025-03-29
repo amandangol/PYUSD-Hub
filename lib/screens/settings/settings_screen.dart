@@ -9,6 +9,7 @@ import 'pyusd_qa_screen.dart';
 import 'security_setting_screen.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/walletstate_provider.dart';
+import '../../screens/networkcongestion/provider/network_congestion_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/formatter_utils.dart';
@@ -210,6 +211,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                   ],
+                ),
+              ),
+
+              // Gas Price Alerts section
+              Text(
+                'GAS PRICE ALERTS',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                color: cardColor,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Consumer<NetworkCongestionProvider>(
+                  builder: (context, provider, child) {
+                    return Column(
+                      children: [
+                        SwitchListTile(
+                          title: const Text('Enable Gas Price Alerts'),
+                          subtitle: Text(
+                            'Get notified when gas prices are low',
+                            style: TextStyle(color: textColor.withOpacity(0.7)),
+                          ),
+                          secondary: Icon(
+                            Icons.notifications_active,
+                            color: primaryColor,
+                          ),
+                          value: provider.gasPriceNotificationsEnabled,
+                          onChanged: (bool value) {
+                            provider.toggleGasPriceNotifications(value);
+                          },
+                          activeColor: primaryColor,
+                          inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                        ),
+                        if (provider.gasPriceNotificationsEnabled) ...[
+                          const Divider(height: 1),
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Alert Threshold',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Slider(
+                                        value: provider.gasPriceThreshold,
+                                        min: 10,
+                                        max: 200,
+                                        divisions: 38,
+                                        label:
+                                            '${provider.gasPriceThreshold.round()} Gwei',
+                                        onChanged: (value) {
+                                          provider.setGasPriceThreshold(value);
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Text(
+                                      '${provider.gasPriceThreshold.round()} Gwei',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'You will be notified when gas price drops below ${provider.gasPriceThreshold.round()} Gwei',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textColor.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ),
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../provider/network_congestion_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../../provider/network_congestion_provider.dart';
 
 class DataSourceInfoCard extends StatelessWidget {
-  const DataSourceInfoCard({Key? key}) : super(key: key);
+  const DataSourceInfoCard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,20 +16,37 @@ class DataSourceInfoCard extends StatelessWidget {
     return Card(
       elevation: 4,
       margin: const EdgeInsets.all(8),
-      child: ExpansionTile(
-        title: const Text(
-          'Data Sources & Accuracy',
-          style: TextStyle(fontWeight: FontWeight.bold),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          title: const Text(
+            'Data Sources & Accuracy',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            'Last updated ${timeago.format(lastUpdateTimes['lastRefreshed']!)}',
+            style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+          ),
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height *
+                    0.5, // 50% of screen height
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDataSourceSection(dataSourceInfo),
+                    _buildUpdateTimesSection(lastUpdateTimes),
+                    _buildConfidenceSection(confidenceLevels, context),
+                    const SizedBox(height: 8), // Bottom padding
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        subtitle: Text(
-          'Last updated ${timeago.format(lastUpdateTimes['lastRefreshed']!)}',
-          style: TextStyle(color: Theme.of(context).colorScheme.secondary),
-        ),
-        children: [
-          _buildDataSourceSection(dataSourceInfo),
-          _buildUpdateTimesSection(lastUpdateTimes),
-          _buildConfidenceSection(confidenceLevels, context),
-        ],
       ),
     );
   }
@@ -150,7 +167,7 @@ class DataSourceInfoCard extends StatelessWidget {
                           .secondary
                           .withOpacity(0.2),
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        _getConfidenceColor(entry.value, context),
+                        _getConfidenceColor(entry.value),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -169,7 +186,7 @@ class DataSourceInfoCard extends StatelessWidget {
     );
   }
 
-  Color _getConfidenceColor(double confidence, BuildContext context) {
+  Color _getConfidenceColor(double confidence) {
     if (confidence >= 0.8) {
       return Colors.green;
     } else if (confidence >= 0.5) {

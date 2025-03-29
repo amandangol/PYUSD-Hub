@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../config/rpc_endpoints.dart';
+import '../../../services/notification_service.dart';
 import '../model/networkcongestion_model.dart';
 
 class NetworkCongestionProvider with ChangeNotifier {
@@ -64,6 +65,24 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   // Cache for transaction receipts to reduce RPC calls
   final Map<String, Map<String, dynamic>> _transactionReceiptCache = {};
+
+  // Gas price notification settings
+  double _gasPriceThreshold = 10.0;
+  bool _gasPriceNotificationsEnabled = true;
+  final NotificationService _notificationService = NotificationService();
+
+  double get gasPriceThreshold => _gasPriceThreshold;
+  bool get gasPriceNotificationsEnabled => _gasPriceNotificationsEnabled;
+
+  void setGasPriceThreshold(double threshold) {
+    _gasPriceThreshold = threshold;
+    notifyListeners();
+  }
+
+  void toggleGasPriceNotifications(bool enabled) {
+    _gasPriceNotificationsEnabled = enabled;
+    notifyListeners();
+  }
 
   Future<dynamic> _makeRpcCall(String method, List<dynamic> params) async {
     try {
@@ -266,7 +285,7 @@ class NetworkCongestionProvider with ChangeNotifier {
           // Recalculate block statistics after fetching new blocks
           await _calculateBlockStatistics();
 
-          // Update block time if possible
+          // Update block time if we have at least 2 blocks
           if (_recentBlocks.length >= 2) {
             final currentTimestamp =
                 FormatterUtils.parseHexSafely(_recentBlocks[0]['timestamp']);
@@ -275,13 +294,13 @@ class NetworkCongestionProvider with ChangeNotifier {
 
             if (currentTimestamp != null && previousTimestamp != null) {
               final blockTime = currentTimestamp - previousTimestamp;
-              _congestionData =
-                  _congestionData.copyWith(blockTime: blockTime.toDouble());
-
-              // Update last block timestamp
-              _congestionData = _congestionData.copyWith(
-                lastBlockTimestamp: currentTimestamp,
-              );
+              if (blockTime > 0) {
+                // Only update if we have a valid block time
+                _congestionData = _congestionData.copyWith(
+                  blockTime: blockTime.toDouble(),
+                  lastBlockTimestamp: currentTimestamp,
+                );
+              }
             }
           }
         }
@@ -295,68 +314,110 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   Future<void> _fetchPendingQueueDetails() async {
     try {
-      final txpoolContentResponse = await _makeRpcCall('txpool_content', []);
+      // First try txpool_status which is more widely supported
+      final txpoolStatusResponse = await _makeRpcCall('txpool_status', []);
 
-      if (txpoolContentResponse != null) {
-        int pendingCount = 0;
-        int pyusdPendingCount = 0;
-        double totalPyusdGasPrice = 0;
-        int pyusdTxCount = 0;
+      int pendingCount = 0;
+      int queuedCount = 0;
+      int pyusdPendingCount = 0;
+      int pyusdQueuedCount = 0;
+      double totalPyusdGasPrice = 0;
+      int pyusdTxCount = 0;
 
-        if (txpoolContentResponse.containsKey('pending')) {
-          final pendingMap =
-              txpoolContentResponse['pending'] as Map<String, dynamic>;
-          for (final address in pendingMap.keys) {
-            final addressTxs = pendingMap[address] as Map<String, dynamic>;
-            pendingCount += addressTxs.length;
+      if (txpoolStatusResponse != null) {
+        // Parse pending count
+        if (txpoolStatusResponse.containsKey('pending')) {
+          final pendingHex = txpoolStatusResponse['pending'];
+          pendingCount = FormatterUtils.parseHexSafely(pendingHex) ?? 0;
+        }
 
-            // Count PYUSD transactions and calculate gas prices
-            for (var tx in addressTxs.values) {
-              if (tx['to']?.toString().toLowerCase() ==
-                  _pyusdContractAddress.toLowerCase()) {
-                pyusdPendingCount++;
-                if (tx['gasPrice'] != null) {
-                  totalPyusdGasPrice +=
-                      FormatterUtils.parseHexSafely(tx['gasPrice']) ?? 0;
-                  pyusdTxCount++;
+        // Parse queued count
+        if (txpoolStatusResponse.containsKey('queued')) {
+          final queuedHex = txpoolStatusResponse['queued'];
+          queuedCount = FormatterUtils.parseHexSafely(queuedHex) ?? 0;
+        }
+      }
+
+      // Then try to get detailed content if available
+      try {
+        final txpoolContentResponse = await _makeRpcCall('txpool_content', []);
+        if (txpoolContentResponse != null) {
+          // Process pending transactions
+          if (txpoolContentResponse.containsKey('pending')) {
+            final pendingMap =
+                txpoolContentResponse['pending'] as Map<String, dynamic>;
+            for (final address in pendingMap.keys) {
+              final addressTxs = pendingMap[address] as Map<String, dynamic>;
+              for (var tx in addressTxs.values) {
+                if (tx['to']?.toString().toLowerCase() ==
+                    _pyusdContractAddress.toLowerCase()) {
+                  pyusdPendingCount++;
+                  if (tx['gasPrice'] != null) {
+                    totalPyusdGasPrice +=
+                        FormatterUtils.parseHexSafely(tx['gasPrice']) ?? 0;
+                    pyusdTxCount++;
+                  }
+                }
+              }
+            }
+          }
+
+          // Process queued transactions
+          if (txpoolContentResponse.containsKey('queued')) {
+            final queuedMap =
+                txpoolContentResponse['queued'] as Map<String, dynamic>;
+            for (final address in queuedMap.keys) {
+              final addressTxs = queuedMap[address] as Map<String, dynamic>;
+              for (var tx in addressTxs.values) {
+                if (tx['to']?.toString().toLowerCase() ==
+                    _pyusdContractAddress.toLowerCase()) {
+                  pyusdQueuedCount++;
                 }
               }
             }
           }
         }
-
-        int queuedCount = 0;
-        int pyusdQueuedCount = 0;
-        if (txpoolContentResponse.containsKey('queued')) {
-          final queuedMap =
-              txpoolContentResponse['queued'] as Map<String, dynamic>;
-          for (final address in queuedMap.keys) {
-            final addressTxs = queuedMap[address] as Map<String, dynamic>;
-            queuedCount += addressTxs.length;
-
-            // Count PYUSD transactions
-            for (var tx in addressTxs.values) {
-              if (tx['to']?.toString().toLowerCase() ==
-                  _pyusdContractAddress.toLowerCase()) {
-                pyusdQueuedCount++;
-              }
-            }
-          }
+      } catch (e) {
+        // If txpool_content is not supported, estimate PYUSD transactions
+        // based on the ratio of total transactions
+        if (pendingCount > 0) {
+          pyusdPendingCount =
+              (pendingCount * 0.01).round(); // Estimate 1% are PYUSD
         }
-
-        // Calculate average PYUSD transaction fee
-        double averagePyusdFee =
-            pyusdTxCount > 0 ? totalPyusdGasPrice / pyusdTxCount : 0;
-
-        // Update both total and PYUSD-specific queue sizes
-        _congestionData = _congestionData.copyWith(
-          pendingQueueSize: pendingCount + queuedCount,
-          pyusdPendingQueueSize: pyusdPendingCount + pyusdQueuedCount,
-          averagePyusdTransactionFee: averagePyusdFee,
-        );
+        if (queuedCount > 0) {
+          pyusdQueuedCount =
+              (queuedCount * 0.01).round(); // Estimate 1% are PYUSD
+        }
       }
+
+      // Calculate average PYUSD transaction fee
+      double averagePyusdFee =
+          pyusdTxCount > 0 ? totalPyusdGasPrice / pyusdTxCount : 0;
+
+      // Update congestion data with both total and PYUSD-specific queue sizes
+      _congestionData = _congestionData.copyWith(
+        pendingQueueSize: pendingCount + queuedCount,
+        pyusdPendingQueueSize: pyusdPendingCount + pyusdQueuedCount,
+        averagePyusdTransactionFee: averagePyusdFee,
+        pendingPyusdTxCount: pyusdPendingCount, // Update pending count
+      );
+
+      // Log the results for debugging
+      print('Pending Queue Status:');
+      print('Total Pending: $pendingCount');
+      print('Total Queued: $queuedCount');
+      print('PYUSD Pending: $pyusdPendingCount');
+      print('PYUSD Queued: $pyusdQueuedCount');
+      print('Average PYUSD Fee: $averagePyusdFee Gwei');
     } catch (e) {
       print('Error fetching pending queue details: $e');
+      // Set fallback values
+      _congestionData = _congestionData.copyWith(
+        pendingQueueSize: 0,
+        pyusdPendingQueueSize: 0,
+        averagePyusdTransactionFee: 0,
+        pendingPyusdTxCount: 0,
+      );
     }
   }
 
@@ -385,18 +446,41 @@ class NetworkCongestionProvider with ChangeNotifier {
 
         if (currentTimestamp != null && previousTimestamp != null) {
           final blockTime = currentTimestamp - previousTimestamp;
-          blockTimes.add(blockTime.toDouble());
+          if (blockTime > 0 && blockTime < 30) {
+            // Only include reasonable block times (0-30 seconds)
+            blockTimes.add(blockTime.toDouble());
+          }
         }
       }
 
-      // Calculate average block time
-      double averageBlockTime = blockTimes.isNotEmpty
-          ? blockTimes.reduce((a, b) => a + b) / blockTimes.length
-          : 0;
+      // Calculate average block time with validation
+      double averageBlockTime = 0;
+      if (blockTimes.isNotEmpty) {
+        // Remove outliers (blocks that took more than 2x the median)
+        blockTimes.sort();
+        final median = blockTimes[blockTimes.length ~/ 2];
+        final filteredTimes =
+            blockTimes.where((time) => time <= median * 2).toList();
 
-      // Calculate blocks per hour
-      double blocksPerHour = averageBlockTime > 0 ? 3600 / averageBlockTime : 0;
+        if (filteredTimes.isNotEmpty) {
+          averageBlockTime =
+              filteredTimes.reduce((a, b) => a + b) / filteredTimes.length;
+        }
+      }
 
+      // Calculate blocks per hour with validation
+      double blocksPerHour = 0;
+      if (averageBlockTime > 0) {
+        blocksPerHour = 3600 / averageBlockTime;
+      }
+
+      // Calculate blocks per minute
+      double blocksPerMinute = 0;
+      if (averageBlockTime > 0) {
+        blocksPerMinute = 60 / averageBlockTime;
+      }
+
+      // Calculate other block statistics
       for (var block in blocksCopy) {
         if (block.containsKey('transactions') &&
             block['transactions'] is List) {
@@ -414,7 +498,6 @@ class NetworkCongestionProvider with ChangeNotifier {
               // Get transaction receipt for gas metrics
               final receipt = await _getTransactionReceipt(tx['hash']);
               if (receipt != null) {
-                // Calculate gas used and price
                 final gasUsed =
                     FormatterUtils.parseHexSafely(receipt['gasUsed']) ?? 0;
                 final gasPrice =
@@ -448,6 +531,7 @@ class NetworkCongestionProvider with ChangeNotifier {
           pyusdHistoricalGasPrices: pyusdGasPrices,
           averageBlockTime: averageBlockTime,
           blocksPerHour: blocksPerHour.round(),
+          blocksPerMinute: blocksPerMinute,
           averageTxPerBlock: avgTxPerBlock,
           gasLimit: gasLimit,
         );
@@ -716,7 +800,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       // Create a list of futures to fetch blocks in parallel
       List<Future<Map<String, dynamic>?>> blockFutures = [];
 
-      // Fetch only the last 10 blocks initially
+      // Fetch the last 10 blocks in descending order
       for (int i = 0; i < 10; i++) {
         final blockNumber = latestBlockNumber - i;
         final blockHex = '0x${blockNumber.toRadixString(16)}';
@@ -728,29 +812,9 @@ class NetworkCongestionProvider with ChangeNotifier {
 
       // Process the blocks
       List<Map<String, dynamic>> newBlocks = [];
-      int pyusdTxCount = 0;
-      int totalSize = 0;
-
       for (var blockResponse in blockResponses) {
         if (blockResponse != null) {
           newBlocks.add(blockResponse);
-
-          // Calculate block size by summing transaction data sizes
-          if (blockResponse.containsKey('transactions') &&
-              blockResponse['transactions'] is List) {
-            final txs = blockResponse['transactions'] as List;
-            totalSize +=
-                txs.length * 250; // Assume average tx size of ~250 bytes
-
-            for (var tx in txs) {
-              if (tx['to'] != null &&
-                  tx['to'].toString().toLowerCase() ==
-                      _pyusdContractAddress.toLowerCase()) {
-                _recentPyusdTransactions.add(tx);
-                pyusdTxCount++;
-              }
-            }
-          }
         }
       }
 
@@ -764,19 +828,6 @@ class NetworkCongestionProvider with ChangeNotifier {
       // Add sorted blocks to the list
       _recentBlocks.addAll(newBlocks);
 
-      // Keep only the 10 most recent blocks initially
-      if (_recentBlocks.length > 10) {
-        _recentBlocks.removeRange(10, _recentBlocks.length);
-      }
-
-      // Calculate average block size
-      if (_recentBlocks.isNotEmpty) {
-        final avgBlockSize = totalSize / _recentBlocks.length;
-        _congestionData = _congestionData.copyWith(
-          averageBlockSize: avgBlockSize,
-        );
-      }
-
       // Calculate block time if possible
       if (_recentBlocks.length >= 2) {
         final currentTimestamp =
@@ -786,19 +837,12 @@ class NetworkCongestionProvider with ChangeNotifier {
 
         if (currentTimestamp != null && previousTimestamp != null) {
           final blockTime = currentTimestamp - previousTimestamp;
-          _congestionData =
-              _congestionData.copyWith(blockTime: blockTime.toDouble());
-
-          // Update last block timestamp
           _congestionData = _congestionData.copyWith(
+            blockTime: blockTime.toDouble(),
             lastBlockTimestamp: currentTimestamp,
           );
         }
       }
-
-      // Update PYUSD transaction counts
-      _congestionData =
-          _congestionData.copyWith(confirmedPyusdTxCount: pyusdTxCount);
 
       // Update last refreshed time
       _congestionData = _congestionData.copyWith(
@@ -966,6 +1010,16 @@ class NetworkCongestionProvider with ChangeNotifier {
             currentGasPrice: gasPriceGwei,
             averageGasPrice: avgGasPrice,
             historicalGasPrices: updatedHistory);
+
+        // Check for low gas price notification
+        if (_gasPriceNotificationsEnabled &&
+            gasPriceGwei < _gasPriceThreshold) {
+          await _notificationService.showGasPriceNotification(
+            currentGasPrice: gasPriceGwei,
+            thresholdGasPrice: _gasPriceThreshold,
+            averageGasPrice: avgGasPrice,
+          );
+        }
       }
     } catch (e) {
       print('Error fetching gas price: $e');
@@ -1470,28 +1524,22 @@ class NetworkCongestionProvider with ChangeNotifier {
     return {
       'Gas Price': 'Updated every 15 seconds via eth_gasPrice RPC call',
       'Block Data': 'Real-time via WebSocket newHeads subscription',
-      'Transaction Count': 'Calculated from confirmed blocks and mempool',
       'Network Status': 'Updated every 15 seconds via net_* RPC calls',
-      'PYUSD Transactions':
-          'Monitored via Transfer event logs and real-time WebSocket',
+      'PYUSD Transactions': 'Monitored via Transfer event logs',
       'Block Time':
           'Calculated from timestamp difference between consecutive blocks',
       'Network Congestion':
           'Calculated from gasUsed/gasLimit ratio in latest blocks',
-      'Transaction Success Rate':
-          'Based on status of tracked PYUSD transactions',
       'Peer Count': 'Updated every 15 seconds via net_peerCount',
-      'Historical Data': 'Maintained for last 200 transactions and 30 blocks',
+      'Historical Data': 'Maintained for last 30 blocks',
       'Update Frequency': '''
-- Real-time updates for new blocks and transactions
+- Real-time updates for new blocks
 - 15-second intervals for gas prices and network stats
 - 45-second intervals for pending queue details
-- 60-second intervals for PYUSD transaction activity
       ''',
       'Data Accuracy': '''
 - Gas prices and block data are direct from the Ethereum network
-- Transaction counts and statistics are based on observed data
-- Network health metrics are derived from multiple data points
+- Network health metrics are derived from block data
 - All timestamps are based on block timestamps
       '''
     };
@@ -1503,23 +1551,14 @@ class NetworkCongestionProvider with ChangeNotifier {
       'lastRefreshed': _congestionData.lastRefreshed,
       'lastBlock': DateTime.fromMillisecondsSinceEpoch(
           _congestionData.lastBlockTimestamp * 1000),
-      'lastTransaction': _recentPyusdTransactions.isNotEmpty
-          ? DateTime.fromMillisecondsSinceEpoch((FormatterUtils.parseHexSafely(
-                      _recentPyusdTransactions[0]['timestamp']) ??
-                  0) *
-              1000)
-          : DateTime.now(),
     };
   }
 
   /// Get the confidence level for each metric (0-1)
   Map<String, double> getMetricConfidence() {
     return {
-      'gasPrice': _congestionData.historicalGasPrices.length /
-          20, // Based on historical data points
-      'networkHealth': _recentBlocks.length / 30, // Based on block sample size
-      'transactionStats': _recentPyusdTransactions.length /
-          100, // Based on transaction sample size
+      'gasPrice': _congestionData.historicalGasPrices.length / 20,
+      'networkHealth': _recentBlocks.length / 30,
       'blockTime': _congestionData.averageBlockTime > 0 ? 1.0 : 0.0,
       'peerNetwork': _congestionData.isNetworkListening ? 1.0 : 0.0,
     };

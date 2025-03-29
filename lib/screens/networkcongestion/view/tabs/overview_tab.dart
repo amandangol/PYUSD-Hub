@@ -59,7 +59,7 @@ class OverviewTab extends StatelessWidget {
                     context,
                     title: 'Network Status',
                     message:
-                        'Real-time overview of the Ethereum network\'s current state and performance metrics. This section shows key indicators like congestion level, gas prices, and transaction status.',
+                        'Real-time overview of the Ethereum network\'s current state and performance metrics.',
                   ),
                 ),
               ],
@@ -90,26 +90,18 @@ class OverviewTab extends StatelessWidget {
                     children: [
                       _buildStatusItemWithInfo(
                         context,
-                        'Current Gas Price',
-                        '${congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
-                        Icons.local_gas_station,
-                        'The current cost per unit of gas in Gwei. Higher gas prices indicate increased network demand.',
+                        'Network Version',
+                        congestionData.networkVersion,
+                        Icons.info,
+                        'Current version of the Ethereum network protocol.',
                       ),
                       const SizedBox(height: 8),
                       _buildStatusItemWithInfo(
                         context,
-                        'Pending Transactions',
-                        congestionData.pendingTransactions.toString(),
-                        Icons.pending_actions,
-                        'Number of transactions waiting to be processed in the network\'s mempool.',
-                      ),
-                      const SizedBox(height: 8),
-                      _buildStatusItemWithInfo(
-                        context,
-                        'Block Utilization',
-                        '${congestionData.gasUsagePercentage.toStringAsFixed(1)}%',
-                        Icons.storage,
-                        'Percentage of gas used in the latest block. Higher utilization indicates increased network activity.',
+                        'Peer Count',
+                        congestionData.peerCount.toString(),
+                        Icons.people,
+                        'Number of connected peers in the network. Higher count indicates better network connectivity.',
                       ),
                     ],
                   ),
@@ -146,7 +138,7 @@ class OverviewTab extends StatelessWidget {
                     context,
                     title: 'Queue Status',
                     message:
-                        'Current state of the network\'s transaction queue and block size metrics. This section shows how many transactions are waiting and the average block size.',
+                        'Current state of the network\'s transaction queue and block metrics.',
                   ),
                 ),
               ],
@@ -165,15 +157,15 @@ class OverviewTab extends StatelessWidget {
                       : congestionData.pendingQueueSize > 5000
                           ? Colors.orange
                           : Colors.green,
-                  'Total number of transactions waiting in the network\'s pending queue. Higher numbers indicate increased network congestion.',
+                  'Total number of transactions waiting in the network\'s pending queue.',
                 ),
                 _buildQueueStatItemWithInfo(
                   context,
-                  'Average Block Size',
-                  '${(congestionData.averageBlockSize / 1024).toStringAsFixed(2)} KB',
-                  Icons.storage,
+                  'Block Time',
+                  '${congestionData.blockTime.toStringAsFixed(1)} sec',
+                  Icons.timer,
                   Colors.blue,
-                  'Average size of recent blocks in kilobytes. Larger blocks indicate higher network throughput.',
+                  'Average time between new blocks being added to the blockchain.',
                 ),
               ],
             ),
@@ -207,7 +199,7 @@ class OverviewTab extends StatelessWidget {
                     context,
                     title: 'Performance Metrics',
                     message:
-                        'Key performance indicators showing the network\'s current health and efficiency. This section displays metrics like network latency and block time.',
+                        'Key performance indicators showing the network\'s current health and efficiency.',
                   ),
                 ),
               ],
@@ -221,51 +213,28 @@ class OverviewTab extends StatelessWidget {
                     context,
                     'Network Latency',
                     '${congestionData.networkLatency.toStringAsFixed(0)} ms',
-                    congestionData.networkLatency > 500
-                        ? Colors.orange
-                        : Colors.green,
+                    Colors.blue,
                     'Average time taken for a transaction to be processed by the network. Lower latency indicates better performance.',
                   ),
                 ),
                 Expanded(
                   child: _buildMetricItemWithInfo(
                     context,
-                    'Block Time',
-                    '${congestionData.blockTime.toStringAsFixed(1)} sec',
-                    congestionData.blockTime > 15
-                        ? Colors.orange
-                        : Colors.green,
-                    'Average time between new blocks being added to the blockchain. Target is around 12-15 seconds.',
+                    'Block Utilization',
+                    '${congestionData.gasUsagePercentage.toStringAsFixed(1)}%',
+                    Colors.green,
+                    'Percentage of gas used in the latest block. Higher utilization indicates increased network activity.',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Network Utilization',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: congestionData.gasUsagePercentage / 100,
-              backgroundColor: Colors.grey[200],
-              minHeight: 8,
-              borderRadius: BorderRadius.circular(4),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                congestionData.gasUsagePercentage > 90
-                    ? Colors.red
-                    : congestionData.gasUsagePercentage > 70
-                        ? Colors.orange
-                        : Colors.green,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${congestionData.gasUsagePercentage.toStringAsFixed(1)}%',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+            _buildMetricItemWithInfo(
+              context,
+              'Last Block Number',
+              congestionData.lastBlockNumber.toString(),
+              Colors.purple,
+              'The most recent block number in the blockchain.',
             ),
           ],
         ),

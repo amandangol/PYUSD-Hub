@@ -99,7 +99,6 @@ class _SplashScreenState extends State<SplashScreen>
                     "assets/images/pyusdlogo.png",
                     height: 80,
                     width: 80,
-                    color: theme.colorScheme.primary,
                   ),
                   const SizedBox(height: 16),
                   Text(

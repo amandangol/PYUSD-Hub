@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/material.dart';
 
 import '../screens/transactions/model/transaction_model.dart';
 
@@ -10,6 +11,9 @@ class NotificationService {
 
   late FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin;
   bool _isInitialized = false;
+  double? _lastNotifiedGasPrice;
+  DateTime? _lastGasPriceNotificationTime;
+  static const _gasPriceNotificationCooldown = Duration(minutes: 30);
 
   NotificationService._internal() {
     _initializeNotifications();
@@ -154,6 +158,88 @@ class NotificationService {
       print(e.toString());
     }
     print('=== End Notification ===\n');
+  }
+
+  // Notify about low gas price
+  Future<void> showGasPriceNotification({
+    required double currentGasPrice,
+    required double thresholdGasPrice,
+    required double averageGasPrice,
+  }) async {
+    // Check if we should show notification (cooldown period)
+    if (_lastGasPriceNotificationTime != null &&
+        DateTime.now().difference(_lastGasPriceNotificationTime!) <
+            _gasPriceNotificationCooldown) {
+      return;
+    }
+
+    // Check if gas price is significantly lower than threshold
+    if (currentGasPrice >= thresholdGasPrice) {
+      return;
+    }
+
+    // Check if we've already notified for this price
+    if (_lastNotifiedGasPrice == currentGasPrice) {
+      return;
+    }
+
+    // Ensure initialization is complete
+    if (!_isInitialized) {
+      await _initializeNotifications();
+    }
+
+    try {
+      final savings =
+          ((thresholdGasPrice - currentGasPrice) / thresholdGasPrice * 100)
+              .toStringAsFixed(1);
+
+      final androidDetails = AndroidNotificationDetails(
+        'gas_price_channel',
+        'Gas Price Alerts',
+        channelDescription: 'Notifications for low gas prices',
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: 'Gas Price Alert',
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
+        color: Colors.green,
+        enableLights: true,
+        ledColor: Colors.green,
+        ledOnMs: 1000,
+        ledOffMs: 500,
+      );
+
+      final iOSDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+      );
+
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: iOSDetails,
+      );
+
+      // Show the notification
+      await _flutterLocalNotificationsPlugin.show(
+        'gas_price_alert'.hashCode,
+        '🎉 Low Gas Price Alert!',
+        'Gas price is $savings% lower than your threshold!\nCurrent: ${currentGasPrice.toStringAsFixed(3)} Gwei',
+        details,
+        payload: 'gas_price_alert',
+      );
+
+      // Update last notification time and price
+      _lastGasPriceNotificationTime = DateTime.now();
+      _lastNotifiedGasPrice = currentGasPrice;
+
+      print('Gas price notification sent successfully');
+    } catch (e) {
+      print('Error showing gas price notification: $e');
+    }
   }
 
   // // Add a test method

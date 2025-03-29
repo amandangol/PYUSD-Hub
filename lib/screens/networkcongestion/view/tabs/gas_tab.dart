@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../services/market_service.dart';
 import '../../model/networkcongestion_model.dart';
 import '../widgets/gasprice_chart.dart';
+import '../../provider/network_congestion_provider.dart';
 
 class GasTab extends StatefulWidget {
   final NetworkCongestionData congestionData;
@@ -15,11 +17,13 @@ class GasTab extends StatefulWidget {
 class _GasTabState extends State<GasTab> {
   late NetworkCongestionData _congestionData;
   bool _isRefreshing = false;
+  late NetworkCongestionProvider _provider;
 
   @override
   void initState() {
     super.initState();
     _congestionData = widget.congestionData;
+    _provider = context.read<NetworkCongestionProvider>();
   }
 
   @override
@@ -71,6 +75,11 @@ class _GasTabState extends State<GasTab> {
 
             // Gas Price Trend Chart
             _buildGasPriceSection(),
+
+            const SizedBox(height: 16),
+
+            // Gas Price Alert Settings Card
+            _buildGasPriceAlertCard(),
 
             const SizedBox(height: 16),
 
@@ -266,6 +275,83 @@ class _GasTabState extends State<GasTab> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Update the gas price alert card to be more compact
+  Widget _buildGasPriceAlertCard() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Gas Price Alerts',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      _provider.gasPriceNotificationsEnabled
+                          ? 'Enabled'
+                          : 'Disabled',
+                      style: TextStyle(
+                        color: _provider.gasPriceNotificationsEnabled
+                            ? Colors.green
+                            : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.settings),
+                      onPressed: () {
+                        // Navigate to settings
+                        Navigator.pushNamed(context, '/settings');
+                      },
+                      tooltip: 'Configure Alert Settings',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_provider.gasPriceNotificationsEnabled) ...[
+              Text(
+                'Alert threshold: ${_provider.gasPriceThreshold.round()} Gwei',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'You will be notified when gas price drops below ${_provider.gasPriceThreshold.round()} Gwei',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ] else
+              const Text(
+                'Enable notifications in Settings to get alerts when gas prices are low',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
           ],
         ),
       ),

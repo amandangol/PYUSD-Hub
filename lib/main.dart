@@ -151,6 +151,8 @@ class MyApp extends StatelessWidget {
               '/': (context) =>
                   const ActivityAwareWidget(child: SplashScreen()),
               '/main': (context) => const ActivityAwareWidget(child: MainApp()),
+              '/settings': (context) =>
+                  const ActivityAwareWidget(child: SettingsScreen()),
             },
             debugShowCheckedModeBanner: false,
           );
@@ -171,18 +173,33 @@ class _MainAppState extends State<MainApp> {
   // Define screens for bottom navigation with metadata
   final List<Map<String, dynamic>> _screens = [
     {
+      'label': 'Network',
+      'icon': Icons.network_check,
+      'color': Colors.blue,
       'screen': const NetworkCongestionScreen(),
     },
     {
+      'label': 'Explore',
+      'icon': Icons.explore,
+      'color': Colors.green,
       'screen': const NewsExploreScreen(),
     },
     {
+      'label': 'Wallet',
+      'icon': Icons.account_balance_wallet,
+      'color': Colors.orange,
       'screen': const WalletScreen(),
     },
     {
+      'label': 'Analytics',
+      'icon': Icons.analytics,
+      'color': Colors.purple,
       'screen': const InsightsScreen(),
     },
     {
+      'label': 'Settings',
+      'icon': Icons.settings,
+      'color': Colors.grey,
       'screen': const SettingsScreen(),
     },
   ];

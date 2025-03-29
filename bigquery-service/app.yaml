@@ -1,5 +1,0 @@
-runtime: python39
-entrypoint: gunicorn -b :$PORT main:app
-
-env_variables:
-  GOOGLE_CLOUD_PROJECT: "t-bounty-433704-e4"

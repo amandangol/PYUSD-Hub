@@ -24,6 +24,7 @@ class NetworkCongestionData {
   final DateTime lastRefreshed;
   final double averageBlockTime;
   final int blocksPerHour;
+  final double blocksPerMinute;
   final int averageTxPerBlock;
   final int gasLimit;
 
@@ -47,6 +48,8 @@ class NetworkCongestionData {
   final bool isNetworkListening;
   final List<Map<String, dynamic>> badBlocks;
   final Map<String, dynamic> txPoolInspection;
+  final Map<String, dynamic> blockTraces;
+  final Map<String, dynamic> blockTraceAnalysis;
 
   NetworkCongestionData({
     // General Network Metrics
@@ -64,6 +67,7 @@ class NetworkCongestionData {
     required this.lastRefreshed,
     this.averageBlockTime = 0,
     this.blocksPerHour = 0,
+    this.blocksPerMinute = 0,
     this.averageTxPerBlock = 0,
     this.gasLimit = 0,
 
@@ -86,6 +90,8 @@ class NetworkCongestionData {
     this.isNetworkListening = false,
     this.badBlocks = const [],
     this.txPoolInspection = const {},
+    this.blockTraces = const {},
+    this.blockTraceAnalysis = const {},
   });
 
   NetworkCongestionData copyWith({
@@ -103,6 +109,7 @@ class NetworkCongestionData {
     DateTime? lastRefreshed,
     double? averageBlockTime,
     int? blocksPerHour,
+    double? blocksPerMinute,
     int? averageTxPerBlock,
     int? gasLimit,
     int? pyusdTransactionCount,
@@ -121,6 +128,8 @@ class NetworkCongestionData {
     bool? isNetworkListening,
     List<Map<String, dynamic>>? badBlocks,
     Map<String, dynamic>? txPoolInspection,
+    Map<String, dynamic>? blockTraces,
+    Map<String, dynamic>? blockTraceAnalysis,
   }) {
     return NetworkCongestionData(
       currentGasPrice: currentGasPrice ?? this.currentGasPrice,
@@ -137,6 +146,7 @@ class NetworkCongestionData {
       lastRefreshed: lastRefreshed ?? this.lastRefreshed,
       averageBlockTime: averageBlockTime ?? this.averageBlockTime,
       blocksPerHour: blocksPerHour ?? this.blocksPerHour,
+      blocksPerMinute: blocksPerMinute ?? this.blocksPerMinute,
       averageTxPerBlock: averageTxPerBlock ?? this.averageTxPerBlock,
       gasLimit: gasLimit ?? this.gasLimit,
       pyusdTransactionCount:
@@ -163,6 +173,8 @@ class NetworkCongestionData {
       isNetworkListening: isNetworkListening ?? this.isNetworkListening,
       badBlocks: badBlocks ?? this.badBlocks,
       txPoolInspection: txPoolInspection ?? this.txPoolInspection,
+      blockTraces: blockTraces ?? this.blockTraces,
+      blockTraceAnalysis: blockTraceAnalysis ?? this.blockTraceAnalysis,
     );
   }
 
