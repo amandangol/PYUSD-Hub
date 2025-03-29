@@ -6,6 +6,12 @@ import '../service/auth_service.dart';
 import '../service/wallet_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  static AuthProvider? _instance;
+  static AuthProvider get instance {
+    assert(_instance != null, 'AuthProvider not initialized');
+    return _instance!;
+  }
+
   final WalletService _walletService = WalletService();
   final AuthService _authService = AuthService();
 
@@ -27,6 +33,12 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   bool get isBiometricsAvailable => _isBiometricsAvailable;
   WalletService get walletService => _walletService;
+
+  // Constructor with dependency injection
+  AuthProvider() {
+    _instance = this;
+    initWallet();
+  }
 
   // Get current address (wallet or walletconnect)
   String? getCurrentAddress() {

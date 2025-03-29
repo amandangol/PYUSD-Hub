@@ -46,6 +46,13 @@ class TraceDetailsWidget extends StatelessWidget {
       final String errorMessage = traceData!['error'] ?? 'Unknown error';
       final String details = traceData!['details'] ?? '';
 
+      // Check specifically for historical state tracing error
+      if (errorMessage
+              .contains('Node does not support historical state tracing') ||
+          details.contains('historical state not available')) {
+        return _buildHistoricalTraceErrorState(context);
+      }
+
       return _buildErrorState(
         errorMessage,
         details,
@@ -59,6 +66,94 @@ class TraceDetailsWidget extends StatelessWidget {
         children: [
           _buildTraceCard(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHistoricalTraceErrorState(BuildContext context) {
+    final transactionAge = "older"; // This could be dynamic based on actual age
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Sympathetic illustration
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: subtitleColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.history, size: 64, color: primaryColor),
+            ),
+            const SizedBox(height: 24),
+
+            // Primary message - clear and direct
+            Text(
+              'This transaction is too old',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Secondary explanation - simple language
+            Text(
+              'Detailed transaction analysis is only available for most recent transactions.',
+              style: TextStyle(color: subtitleColor, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            // Primary action - what most users would want
+            ElevatedButton.icon(
+              onPressed: () {
+                // Navigate to recent transactions list
+                Navigator.of(context).pop();
+              },
+              icon: const Icon(Icons.update),
+              label: const Text('View Recent Transactions'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                minimumSize: const Size(240, 48),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Optional details for technically-inclined users
+            ExpansionTile(
+              tilePadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              title: Text(
+                'Why is this happening?',
+                style: TextStyle(
+                  color: subtitleColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    'Blockchain nodes only keep detailed analysis data (traces) for recent transactions to save storage space. This transaction from $transactionAge is beyond the available history range on the current network.',
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

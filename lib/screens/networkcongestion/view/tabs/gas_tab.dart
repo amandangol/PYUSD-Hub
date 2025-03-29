@@ -537,7 +537,7 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
                       padding: EdgeInsets.symmetric(vertical: 12.0),
                       child: Text('Low', style: TextStyle(color: Colors.green)),
                     ),
-                    Text('${lowGwei.toStringAsFixed(1)} Gwei'),
+                    Text('${lowGwei.toStringAsFixed(2)} Gwei'),
                     const Text('~5 min'),
                     Text('\$${lowCostUsd.toStringAsFixed(4)}'),
                   ],
@@ -554,7 +554,7 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
                       child:
                           Text('Medium', style: TextStyle(color: Colors.blue)),
                     ),
-                    Text('${mediumGwei.toStringAsFixed(1)} Gwei'),
+                    Text('${mediumGwei.toStringAsFixed(2)} Gwei'),
                     const Text('~2 min'),
                     Text('\$${mediumCostUsd.toStringAsFixed(4)}'),
                   ],
@@ -566,7 +566,7 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
                       child:
                           Text('High', style: TextStyle(color: Colors.orange)),
                     ),
-                    Text('${highGwei.toStringAsFixed(1)} Gwei'),
+                    Text('${highGwei.toStringAsFixed(2)} Gwei'),
                     const Text('<1 min'),
                     Text('\$${highCostUsd.toStringAsFixed(4)}'),
                   ],
