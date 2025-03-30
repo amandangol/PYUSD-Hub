@@ -30,8 +30,6 @@ class _TransactionsTabState extends State<TransactionsTab> {
           // Transaction Activity Overview
           // _buildTransactionOverview(),
 
-          const SizedBox(height: 16),
-
           // Recent PYUSD Transactions (expanded view)
           _buildPyusdActivitySection(expandedView: true),
         ],

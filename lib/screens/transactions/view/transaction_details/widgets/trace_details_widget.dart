@@ -79,7 +79,6 @@ class TraceDetailsWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Sympathetic illustration
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -89,8 +88,6 @@ class TraceDetailsWidget extends StatelessWidget {
               child: Icon(Icons.history, size: 64, color: primaryColor),
             ),
             const SizedBox(height: 24),
-
-            // Primary message - clear and direct
             Text(
               'This transaction is too old',
               style: TextStyle(
@@ -100,16 +97,12 @@ class TraceDetailsWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Secondary explanation - simple language
             Text(
               'Detailed transaction analysis is only available for most recent transactions.',
               style: TextStyle(color: subtitleColor, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-
-            // Primary action - what most users would want
             ElevatedButton.icon(
               onPressed: () {
                 // Navigate to recent transactions list
@@ -126,8 +119,6 @@ class TraceDetailsWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Optional details for technically-inclined users
             ExpansionTile(
               tilePadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 0),

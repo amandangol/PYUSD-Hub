@@ -13,7 +13,6 @@ import 'widgets/marketanalysis_widget.dart';
 import 'widgets/statuscard_widget.dart';
 import 'widgets/transaction_details_widget.dart';
 import 'widgets/trace_details_widget.dart';
-import 'dart:convert';
 
 class TransactionDetailScreen extends StatefulWidget {
   final TransactionModel transaction;

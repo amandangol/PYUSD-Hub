@@ -210,8 +210,12 @@ class SessionProvider extends ChangeNotifier {
             // Close dialog using the dialog's context
             Navigator.of(dialogContext).pop();
 
-            Future.delayed(const Duration(milliseconds: 100), () {
+            // Use a post-frame callback to ensure proper widget lifecycle
+            WidgetsBinding.instance.addPostFrameCallback((_) {
               if (navigatorKey.currentState != null) {
+                // Lock wallet first
+                _lockWallet();
+                // Then navigate
                 navigatorKey.currentState!.pushNamedAndRemoveUntil(
                   '/',
                   (route) => false,
@@ -223,8 +227,11 @@ class SessionProvider extends ChangeNotifier {
       );
     } else {
       // If can't show dialog for some reason, still navigate to login
-      Future.delayed(const Duration(milliseconds: 100), () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (navigatorKey.currentState != null) {
+          // Lock wallet first
+          _lockWallet();
+          // Then navigate
           navigatorKey.currentState!.pushNamedAndRemoveUntil(
             '/',
             (route) => false,
@@ -245,10 +252,14 @@ class SessionProvider extends ChangeNotifier {
   void lockWallet() {
     _lockWallet();
     if (navigatorKey.currentState != null) {
-      navigatorKey.currentState!.pushNamedAndRemoveUntil(
-        '/',
-        (route) => false,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (navigatorKey.currentState != null) {
+          navigatorKey.currentState!.pushNamedAndRemoveUntil(
+            '/',
+            (route) => false,
+          );
+        }
+      });
     }
   }
 

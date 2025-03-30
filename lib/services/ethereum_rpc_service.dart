@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/rpc_endpoints.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
@@ -321,6 +322,38 @@ class EthereumRpcService {
     }
   }
 
+  Future<NetworkType> detectNetworkFromTxHash(String txHash) async {
+    // Try mainnet first
+    try {
+      final mainnetTx = await _makeRpcCall(
+        RpcEndpoints.mainnetHttpRpcUrl,
+        'eth_getTransactionByHash',
+        [txHash],
+      );
+      if (mainnetTx != null && mainnetTx['result'] != null) {
+        return NetworkType.ethereumMainnet;
+      }
+    } catch (e) {
+      print('Error checking mainnet: $e');
+    }
+
+    // Try Sepolia testnet
+    try {
+      final sepoliaTx = await _makeRpcCall(
+        RpcEndpoints.sepoliaTestnetHttpRpcUrl,
+        'eth_getTransactionByHash',
+        [txHash],
+      );
+      if (sepoliaTx != null && sepoliaTx['result'] != null) {
+        return NetworkType.sepoliaTestnet;
+      }
+    } catch (e) {
+      print('Error checking Sepolia: $e');
+    }
+
+    throw Exception('Transaction not found on any supported network');
+  }
+
   Future<TransactionDetailModel?> getTransactionDetails(
     String rpcUrl,
     String txHash,
@@ -328,13 +361,21 @@ class EthereumRpcService {
     String userAddress,
   ) async {
     try {
+      // First detect the actual network of the transaction
+      final actualNetwork = await detectNetworkFromTxHash(txHash);
+
+      // Use the appropriate RPC URL based on the detected network
+      final actualRpcUrl = actualNetwork == NetworkType.ethereumMainnet
+          ? RpcEndpoints.mainnetHttpRpcUrl
+          : RpcEndpoints.sepoliaTestnetHttpRpcUrl;
+
       final batchCalls = [
         ('eth_getTransactionByHash', [txHash]),
         ('eth_getTransactionReceipt', [txHash]),
         ('eth_blockNumber', []),
       ];
 
-      final responses = await batchRpcCalls(rpcUrl, batchCalls);
+      final responses = await batchRpcCalls(actualRpcUrl, batchCalls);
       final txResponse = responses[0];
       final receiptResponse = responses[1];
 
@@ -377,7 +418,7 @@ class EthereumRpcService {
               ? TransactionDirection.outgoing
               : TransactionDirection.incoming,
           confirmations: 0,
-          network: networkType,
+          network: actualNetwork,
           blockNumber: 'Pending',
           nonce: txData['nonce'] != null
               ? int.parse(txData['nonce'].substring(2), radix: 16)
@@ -389,9 +430,9 @@ class EthereumRpcService {
       }
 
       final blockFutures = await Future.wait([
-        _makeRpcCall(
-            rpcUrl, 'eth_getBlockByHash', [receiptData!['blockHash'], false]),
-        _makeRpcCall(rpcUrl, 'eth_blockNumber', []),
+        _makeRpcCall(actualRpcUrl, 'eth_getBlockByHash',
+            [receiptData!['blockHash'], false]),
+        _makeRpcCall(actualRpcUrl, 'eth_blockNumber', []),
       ]);
 
       final blockResponse = blockFutures[0];
@@ -420,7 +461,7 @@ class EthereumRpcService {
               ? TransactionDirection.outgoing
               : TransactionDirection.incoming,
           confirmations: 0,
-          network: networkType,
+          network: actualNetwork,
           blockNumber: receiptData!['blockNumber'] != null
               ? FormatterUtils.parseBigInt(receiptData!['blockNumber'])
                   .toString()
@@ -454,13 +495,13 @@ class EthereumRpcService {
       if (isTokenTransfer) {
         try {
           tokenContractAddress = toAddress;
-          final tokenDetails = await getTokenDetails(rpcUrl, toAddress);
+          final tokenDetails = await getTokenDetails(actualRpcUrl, toAddress);
           tokenName = tokenDetails['name'];
           tokenSymbol = tokenDetails['symbol'];
           tokenDecimals = tokenDetails['decimals'];
 
           final (actualTo, tokenValue, decimals) =
-              await _extractTokenTransferData(rpcUrl, txData, toAddress);
+              await _extractTokenTransferData(actualRpcUrl, txData, toAddress);
           toAddress = actualTo;
           amount = tokenValue;
           tokenDecimals = decimals;
@@ -514,7 +555,7 @@ class EthereumRpcService {
         tokenName: tokenName,
         tokenDecimals: tokenDecimals,
         tokenContractAddress: tokenContractAddress,
-        network: networkType,
+        network: actualNetwork,
         blockNumber: receiptData['blockNumber'] != null
             ? FormatterUtils.parseBigInt(receiptData['blockNumber']).toString()
             : '0',

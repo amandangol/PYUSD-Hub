@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pyusd_hub/screens/authentication/screen/onboarding_screen.dart';
-import 'package:pyusd_hub/widgets/pyusd_components.dart';
-import '../authentication/model/wallet.dart';
-import '../authentication/provider/auth_provider.dart';
-import '../authentication/widget/pin_input_widget.dart.dart';
-import 'pyusd_qa_screen.dart';
-import 'security_setting_screen.dart';
+import '../../widgets/pyusd_components.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/walletstate_provider.dart';
-import '../../screens/networkcongestion/provider/network_congestion_provider.dart';
+import '../authentication/provider/auth_provider.dart';
+import '../authentication/model/wallet.dart';
+import '../authentication/widget/pin_input_widget.dart.dart';
+import '../../utils/snackbar_utils.dart';
+import 'notification_settings_screen.dart';
+import '../../routes/app_routes.dart';
+import 'pyusd_qa_screen.dart';
+import 'security_setting_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/formatter_utils.dart';
-import '../../utils/snackbar_utils.dart';
-import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -795,9 +794,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showLogoutDialog(
       BuildContext context, WalletStateProvider walletProvider) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
         title: const Row(
           children: [
             Icon(
@@ -814,22 +816,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.of(dialogContext).pop();
             },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
-              final authProvider =
-                  Provider.of<AuthProvider>(context, listen: false);
+              // Close the dialog first
+              Navigator.of(dialogContext).pop();
 
-              // Log out the user first (clear authentication state)
+              // Log out the user
               await authProvider.logout();
+
+              // Navigate to onboarding screen
               if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const OnboardingScreen()),
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRoutes.onboarding,
                   (route) => false,
                 );
               }

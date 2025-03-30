@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import 'package:provider/provider.dart';
-import '../../../main.dart';
 import '../../../providers/navigation_provider.dart';
+import '../../../routes/app_routes.dart';
 
 class MnemonicConfirmationScreen extends StatefulWidget {
   final String mnemonic;
@@ -127,7 +127,7 @@ class _MnemonicConfirmationScreenState
       context.read<NavigationProvider>().setWalletScreen();
       // Navigate to main app and clear the navigation stack
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/main',
+        AppRoutes.main,
         (route) => false,
       );
     }

@@ -397,6 +397,9 @@ class AuthProvider extends ChangeNotifier {
       // Clear saved auth state
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isAuthenticated', false);
+
+      // Notify listeners after all cleanup is done
+      notifyListeners();
     } catch (e) {
       _setError('Failed to logout: $e');
     } finally {

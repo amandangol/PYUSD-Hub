@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'providers/network_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/walletstate_provider.dart';
+import 'providers/gemini_provider.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
@@ -27,8 +28,6 @@ import 'services/market_service.dart';
 import 'services/notification_service.dart';
 
 // Screens
-import 'screens/authentication/screen/splash_screen.dart';
-import 'screens/authentication/widget/activity_aware_widget.dart';
 import 'screens/wallet/view/wallet_screen.dart';
 import 'screens/networkcongestion/view/network_congestion_screen.dart';
 import 'screens/settings/settings_screen.dart';
@@ -38,6 +37,8 @@ import 'screens/insights/view/insights_screen.dart';
 import 'services/bigquery_service.dart';
 import 'providers/navigation_provider.dart';
 import 'widgets/bottom_navigation.dart';
+import 'widgets/floating_chat_bubble.dart';
+import 'routes/app_routes.dart';
 
 // Theme
 import 'theme/app_theme.dart';
@@ -107,13 +108,27 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
             create: (context) => TransactionDetailProvider()),
-        ChangeNotifierProvider<TransactionProvider>(
+        ChangeNotifierProxyProvider4<
+            AuthProvider,
+            NetworkProvider,
+            WalletStateProvider,
+            TransactionDetailProvider,
+            TransactionProvider>(
           lazy: false,
           create: (context) => TransactionProvider(
             authProvider: context.read<AuthProvider>(),
             networkProvider: context.read<NetworkProvider>(),
             walletProvider: context.read<WalletStateProvider>(),
             detailProvider: context.read<TransactionDetailProvider>(),
+            notificationService: NotificationService(),
+          ),
+          update: (context, authProvider, networkProvider, walletProvider,
+                  detailProvider, previous) =>
+              TransactionProvider(
+            authProvider: authProvider,
+            networkProvider: networkProvider,
+            walletProvider: walletProvider,
+            detailProvider: detailProvider,
             notificationService: NotificationService(),
           ),
         ),
@@ -136,6 +151,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        ChangeNotifierProvider(create: (_) => GeminiProvider()),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(
         builder: (context, themeProvider, sessionProvider, child) {
@@ -146,14 +162,8 @@ class MyApp extends StatelessWidget {
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             navigatorKey: sessionProvider.navigatorKey,
-            initialRoute: '/',
-            routes: {
-              '/': (context) =>
-                  const ActivityAwareWidget(child: SplashScreen()),
-              '/main': (context) => const ActivityAwareWidget(child: MainApp()),
-              '/settings': (context) =>
-                  const ActivityAwareWidget(child: SettingsScreen()),
-            },
+            initialRoute: AppRoutes.splash,
+            onGenerateRoute: AppRoutes.generateRoute,
             debugShowCheckedModeBanner: false,
           );
         },
@@ -191,9 +201,9 @@ class _MainAppState extends State<MainApp> {
       'screen': const WalletScreen(),
     },
     {
-      'label': 'Analytics',
-      'icon': Icons.analytics,
-      'color': Colors.purple,
+      'label': 'Insights',
+      'icon': Icons.receipt_long,
+      'color': Colors.indigo,
       'screen': const InsightsScreen(),
     },
     {
@@ -225,21 +235,28 @@ class _MainAppState extends State<MainApp> {
         }
         return true;
       },
-      child: Scaffold(
-        body: IndexedStack(
-          index: navigationProvider.currentIndex,
-          children:
-              _screens.map((screen) => screen['screen'] as Widget).toList(),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            navigationProvider.setWalletScreen();
-          },
-          backgroundColor: Colors.blue,
-          child: const Icon(Icons.account_balance_wallet, color: Colors.white),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        bottomNavigationBar: const AppBottomNavigation(),
+      child: Stack(
+        children: [
+          Scaffold(
+            body: IndexedStack(
+              index: navigationProvider.currentIndex,
+              children:
+                  _screens.map((screen) => screen['screen'] as Widget).toList(),
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () {
+                navigationProvider.setWalletScreen();
+              },
+              backgroundColor: Colors.blue,
+              child:
+                  const Icon(Icons.account_balance_wallet, color: Colors.white),
+            ),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerDocked,
+            bottomNavigationBar: const AppBottomNavigation(),
+          ),
+          const FloatingChatBubble(),
+        ],
       ),
     );
   }

@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
-import 'mnemonic_screen.dart';
 import '../widget/pin_input_widget.dart.dart';
-import '../../../providers/navigation_provider.dart';
+import '../../../routes/app_routes.dart';
 
 class CreateWalletScreen extends StatefulWidget {
   const CreateWalletScreen({super.key});
@@ -46,13 +45,12 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
 
       if (mounted && authProvider.wallet != null) {
         // Navigate to mnemonic confirmation screen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => MnemonicConfirmationScreen(
-              mnemonic: authProvider.wallet!.mnemonic,
-              pin: _pinController.text,
-            ),
-          ),
+        Navigator.of(context).pushNamed(
+          AppRoutes.mnemonic,
+          arguments: {
+            'mnemonic': authProvider.wallet!.mnemonic,
+            'pin': _pinController.text,
+          },
         );
       }
     } catch (e) {

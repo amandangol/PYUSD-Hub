@@ -4,8 +4,9 @@ import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';
-import 'onboarding_screen.dart';
 import '../../../providers/navigation_provider.dart';
+import '../../../routes/app_routes.dart';
+import '../../../screens/authentication/screen/onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -45,15 +46,19 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _authenticateWithPIN() async {
+    if (!mounted) return;
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (_pinController.text.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Please enter your PIN';
       });
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -62,24 +67,32 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       bool success =
           await authProvider.authenticateWithPIN(_pinController.text);
+      if (!mounted) return;
+
       if (success) {
         await authProvider.saveAuthState();
-        if (mounted) {
-          // Set the wallet screen before navigation
-          context.read<NavigationProvider>().setWalletScreen();
-          // Navigate to main app and clear the navigation stack
+        if (!mounted) return;
+
+        // Set the wallet screen before navigation
+        context.read<NavigationProvider>().setWalletScreen();
+
+        // Use a post-frame callback to ensure the widget is still mounted
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
           Navigator.of(context).pushNamedAndRemoveUntil(
-            '/main',
+            AppRoutes.main,
             (route) => false,
           );
-        }
+        });
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'Invalid PIN';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Authentication failed: ${e.toString()}';
         _isLoading = false;
@@ -88,8 +101,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _authenticateWithBiometrics() async {
+    if (!mounted) return;
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -97,24 +113,32 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       bool success = await authProvider.authenticateWithBiometrics();
+      if (!mounted) return;
+
       if (success) {
         await authProvider.saveAuthState();
-        if (mounted) {
-          // Set the wallet screen before navigation
-          context.read<NavigationProvider>().setWalletScreen();
-          // Navigate to main app and clear the navigation stack
+        if (!mounted) return;
+
+        // Set the wallet screen before navigation
+        context.read<NavigationProvider>().setWalletScreen();
+
+        // Use a post-frame callback to ensure the widget is still mounted
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
           Navigator.of(context).pushNamedAndRemoveUntil(
-            '/main',
+            AppRoutes.main,
             (route) => false,
           );
-        }
+        });
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'Biometric authentication failed';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Authentication failed: ${e.toString()}';
         _isLoading = false;
@@ -141,15 +165,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _navigateToOnboarding() {
+    if (!mounted) return;
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     authProvider.logout().then((_) {
+      if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushAndRemoveUntil(
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-              builder: (context) =>
-                  const OnboardingScreen(forceOnboarding: true)),
-          (route) => false,
+            builder: (_) => const OnboardingScreen(forceOnboarding: true),
+          ),
         );
       });
     });

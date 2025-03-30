@@ -19,30 +19,61 @@ class NetworkCongestionScreen extends StatefulWidget {
 class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<bool> _loadedTabs = [false, false, false, false, false];
+  final List<bool> _loadedTabs = [false, false, false, false, false, false];
   bool _isInitialLoading = true;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
+    print('NetworkCongestionScreen: initState called');
     _tabController = TabController(length: 5, vsync: this);
 
     // Initialize provider and load first tab
-    Future.microtask(() async {
-      final provider =
-          Provider.of<NetworkCongestionProvider>(context, listen: false);
-      await provider.initialize();
-      setState(() => _isInitialLoading = false);
-      _loadTab(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _initializeScreen();
     });
 
     // Listen for tab changes
     _tabController.addListener(() {
-      _loadTab(_tabController.index);
+      if (!mounted) return;
+      _handleTabChange();
     });
   }
 
+  Future<void> _initializeScreen() async {
+    if (!mounted) return;
+
+    print('NetworkCongestionScreen: Initializing screen');
+    final provider =
+        Provider.of<NetworkCongestionProvider>(context, listen: false);
+
+    try {
+      // Initialize both providers
+      await Future.wait([
+        provider.initialize(),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() => _isInitialLoading = false);
+      _loadTab(0);
+    } catch (e) {
+      print('NetworkCongestionScreen: Error during initialization: $e');
+    }
+  }
+
+  void _handleTabChange() {
+    if (!mounted) return;
+    print('NetworkCongestionScreen: Tab changed to ${_tabController.index}');
+    _loadTab(_tabController.index);
+  }
+
   void _loadTab(int index) {
+    if (!mounted) return;
+    print('NetworkCongestionScreen: _loadTab called for index $index');
+
     if (!_loadedTabs[index]) {
       setState(() => _loadedTabs[index] = true);
     }
@@ -50,113 +81,132 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
 
   @override
   void dispose() {
+    print('NetworkCongestionScreen: dispose called');
+    _isDisposed = true;
+
+    // Clean up provider before disposing the screen
+    if (!_isDisposed) {
+      final provider =
+          Provider.of<NetworkCongestionProvider>(context, listen: false);
+      provider.dispose();
+    }
+
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/images/pyusdlogo.png',
-              height: 24,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.paid, size: 24);
-              },
-            ),
-            const SizedBox(width: 8),
-            const Text('ETH/PYUSD Network Activity'),
-          ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (!_isDisposed) {
+          final provider =
+              Provider.of<NetworkCongestionProvider>(context, listen: false);
+          provider.dispose();
+        }
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            children: [
+              Image.asset(
+                'assets/images/pyusdlogo.png',
+                height: 24,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(Icons.paid, size: 24);
+                },
+              ),
+              const SizedBox(width: 8),
+              const Text('ETH/PYUSD Network Activity'),
+            ],
+          ),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
+              Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
+              Tab(icon: Icon(Icons.storage), text: 'Blocks'),
+              Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
+              Tab(icon: Icon(Icons.analytics), text: 'Analysis'),
+            ],
+            isScrollable: false,
+            indicatorWeight: 3,
+          ),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
-            Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
-            Tab(icon: Icon(Icons.storage), text: 'Blocks'),
-            Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
-            Tab(icon: Icon(Icons.analytics), text: 'Analysis'),
-          ],
-          isScrollable: false,
-          indicatorWeight: 3,
-        ),
-      ),
-      body: Consumer<NetworkCongestionProvider>(
-        builder: (context, provider, child) {
-          if (_isInitialLoading) {
-            return const Center(
+        body: Consumer<NetworkCongestionProvider>(
+          builder: (context, provider, child) {
+            if (_isInitialLoading) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading network data...'),
+                  ],
+                ),
+              );
+            }
+
+            return SafeArea(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading network data...'),
+                  const DataSourceInfoCard(),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildTabContent(0, provider),
+                        _buildTabContent(1, provider),
+                        _buildTabContent(2, provider),
+                        _buildTabContent(3, provider),
+                        _buildTabContent(4, provider),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             );
-          }
-
-          return SafeArea(
-            child: Column(
-              children: [
-                // Data Source Info Card - Always visible
-                const DataSourceInfoCard(),
-
-                // Tab content - Takes remaining space
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      // Overview Tab
-                      _loadedTabs[0]
-                          ? SingleChildScrollView(
-                              child: OverviewTab(
-                                  congestionData: provider.congestionData),
-                            )
-                          : const Center(child: CircularProgressIndicator()),
-
-                      // Gas Tab
-                      _loadedTabs[1]
-                          ? GasTab(congestionData: provider.congestionData)
-                          : const Center(child: CircularProgressIndicator()),
-
-                      // Blocks Tab
-                      _loadedTabs[2]
-                          ? SingleChildScrollView(
-                              child: BlocksTab(provider: provider),
-                            )
-                          : const Center(child: CircularProgressIndicator()),
-
-                      // Transactions Tab
-                      _loadedTabs[3]
-                          ? SingleChildScrollView(
-                              child: TransactionsTab(
-                                provider: provider,
-                                tabController: _tabController,
-                              ),
-                            )
-                          : const Center(child: CircularProgressIndicator()),
-
-                      // Analysis Tab
-                      _loadedTabs[4]
-                          ? SingleChildScrollView(
-                              child: AnalysisTab(
-                                provider: provider,
-                                congestionData: provider.congestionData,
-                              ),
-                            )
-                          : const Center(child: CircularProgressIndicator()),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
+  }
+
+  Widget _buildTabContent(int index, NetworkCongestionProvider provider) {
+    if (!_loadedTabs[index]) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    switch (index) {
+      case 0:
+        return SingleChildScrollView(
+          child: OverviewTab(congestionData: provider.congestionData),
+        );
+      case 1:
+        return GasTab(congestionData: provider.congestionData);
+      case 2:
+        return SingleChildScrollView(
+          child: BlocksTab(provider: provider),
+        );
+      case 3:
+        return SingleChildScrollView(
+          child: TransactionsTab(
+            provider: provider,
+            tabController: _tabController,
+          ),
+        );
+      case 4:
+        return SingleChildScrollView(
+          child: AnalysisTab(
+            provider: provider,
+            congestionData: provider.congestionData,
+          ),
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

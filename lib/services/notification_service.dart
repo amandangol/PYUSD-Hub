@@ -13,7 +13,7 @@ class NotificationService {
   bool _isInitialized = false;
   double? _lastNotifiedGasPrice;
   DateTime? _lastGasPriceNotificationTime;
-  static const _gasPriceNotificationCooldown = Duration(minutes: 30);
+  static const _gasPriceNotificationCooldown = Duration(minutes: 15);
 
   NotificationService._internal() {
     _initializeNotifications();

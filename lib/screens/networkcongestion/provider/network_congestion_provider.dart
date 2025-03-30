@@ -16,6 +16,8 @@ class NetworkCongestionProvider with ChangeNotifier {
   WebSocketChannel? _wsChannel;
   Timer? _updateTimer;
   int _requestId = 1;
+  bool _isDisposed = false;
+  bool _isInitializing = false;
 
   // PYUSD Contract address on Ethereum mainnet
   final String _pyusdContractAddress =
@@ -75,13 +77,15 @@ class NetworkCongestionProvider with ChangeNotifier {
   bool get gasPriceNotificationsEnabled => _gasPriceNotificationsEnabled;
 
   void setGasPriceThreshold(double threshold) {
+    if (_isDisposed) return;
     _gasPriceThreshold = threshold;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void toggleGasPriceNotifications(bool enabled) {
+    if (_isDisposed) return;
     _gasPriceNotificationsEnabled = enabled;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<dynamic> _makeRpcCall(String method, List<dynamic> params) async {
@@ -115,8 +119,10 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    if (_isDisposed) return;
+
     _isLoading = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     // Clear existing data
     _recentBlocks.clear();
@@ -132,6 +138,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         _fetchPendingQueueDetails(),
       ]);
 
+      if (_isDisposed) return;
+
       // Update last refreshed time
       _congestionData = _congestionData.copyWith(
         lastRefreshed: DateTime.now(),
@@ -140,13 +148,17 @@ class NetworkCongestionProvider with ChangeNotifier {
       print('Error during refresh: $e');
     }
 
+    if (_isDisposed) return;
     _isLoading = false;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<void> initialize() async {
+    if (_isDisposed || _isInitializing) return;
+
+    _isInitializing = true;
     _isLoading = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       // First fetch only critical data for initial display
@@ -157,14 +169,27 @@ class NetworkCongestionProvider with ChangeNotifier {
         _fetchNetworkStatus(),
       ]);
 
+      if (_isDisposed) return;
+
       // Connect WebSocket after initial data is loaded
       _connectWebSocket();
 
       // Setup periodic updates with longer intervals
+      _updateTimer?.cancel();
       _updateTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+        if (_isDisposed) {
+          timer.cancel();
+          return;
+        }
+
         await _fetchNetworkStats();
+        if (_isDisposed) return;
+
         await _fetchLatestBlocksUpdate();
+        if (_isDisposed) return;
+
         await _fetchNetworkStatus();
+        if (_isDisposed) return;
 
         // Update last refreshed timestamp
         _congestionData = _congestionData.copyWith(
@@ -186,12 +211,16 @@ class NetworkCongestionProvider with ChangeNotifier {
       _fetchInitialBlocks();
       _fetchPyusdTransactionActivity();
 
+      if (_isDisposed) return;
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
-      print('Initialization error: $e');
+      print('NetworkCongestionProvider: Initialization error: $e');
+      if (_isDisposed) return;
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -386,7 +415,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
         if (queuedCount > 0) {
           pyusdQueuedCount =
-              (queuedCount * 0.01).round(); // Estimate 1% are PYUSD
+              (queuedCount * 0.1).round(); // Estimate 10% are PYUSD
         }
       }
 
@@ -864,7 +893,10 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   void _connectWebSocket() {
+    if (_isDisposed) return;
+
     try {
+      _wsChannel?.sink.close();
       _wsChannel = WebSocketChannel.connect(Uri.parse(_wsRpcUrl));
 
       // Subscribe to new blocks
@@ -883,28 +915,45 @@ class NetworkCongestionProvider with ChangeNotifier {
         "params": ["pendingTransactions"]
       }));
 
-      _wsChannel!.stream.listen((message) {
-        final data = json.decode(message);
-        if (data['method'] == 'eth_subscription') {
-          _handleSubscriptionUpdate(data['params']);
-        }
-      }, onError: (error) {
-        print('WebSocket error: $error');
-        _reconnectWebSocket();
-      }, onDone: () {
-        print('WebSocket connection closed');
-        _reconnectWebSocket();
-      });
+      _wsChannel!.stream.listen(
+        (message) {
+          if (_isDisposed) return;
+          final data = json.decode(message);
+          if (data['method'] == 'eth_subscription') {
+            _handleSubscriptionUpdate(data['params']);
+          }
+        },
+        onError: (error) {
+          print('WebSocket error: $error');
+          if (!_isDisposed) {
+            _reconnectWebSocket();
+          }
+        },
+        onDone: () {
+          print('WebSocket connection closed');
+          if (!_isDisposed) {
+            _reconnectWebSocket();
+          }
+        },
+      );
     } catch (e) {
       print('WebSocket connection error: $e');
-      // Try to reconnect after a delay
+      if (!_isDisposed) {
+        _reconnectWebSocket();
+      }
     }
   }
 
   void _reconnectWebSocket() {
+    if (_isDisposed) return;
+
     _wsChannel?.sink.close();
     _wsChannel = null;
-    Future.delayed(const Duration(seconds: 5), _connectWebSocket);
+    Future.delayed(const Duration(seconds: 5), () {
+      if (!_isDisposed) {
+        _connectWebSocket();
+      }
+    });
   }
 
   void _handleSubscriptionUpdate(Map<String, dynamic> params) {
@@ -1193,6 +1242,8 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    print('NetworkCongestionProvider: dispose called');
+    _isDisposed = true;
     _updateTimer?.cancel();
     _wsChannel?.sink.close();
     super.dispose();
@@ -1504,6 +1555,8 @@ class NetworkCongestionProvider with ChangeNotifier {
               .toList()
           : [];
 
+      if (_isDisposed) return;
+
       // Update congestion data with network status
       _congestionData = _congestionData.copyWith(
         networkVersion: version?.toString() ?? '',
@@ -1513,7 +1566,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         txPoolInspection: txPoolStatus['inspection'] ?? {},
       );
 
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       print('Error fetching network status: $e');
     }
@@ -1562,5 +1615,16 @@ class NetworkCongestionProvider with ChangeNotifier {
       'blockTime': _congestionData.averageBlockTime > 0 ? 1.0 : 0.0,
       'peerNetwork': _congestionData.isNetworkListening ? 1.0 : 0.0,
     };
+  }
+
+  // Helper method to safely notify listeners
+  void _safeNotifyListeners() {
+    if (!_isDisposed) {
+      print('NetworkCongestionProvider: Notifying listeners (safe)');
+      notifyListeners();
+    } else {
+      print(
+          'NetworkCongestionProvider: Skipping notifyListeners - provider disposed');
+    }
   }
 }

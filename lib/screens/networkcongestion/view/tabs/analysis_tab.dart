@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../../utils/formatter_utils.dart';
 import '../../model/networkcongestion_model.dart';
 import '../../provider/network_congestion_provider.dart';
 

@@ -48,8 +48,6 @@ class NetworkCongestionData {
   final bool isNetworkListening;
   final List<Map<String, dynamic>> badBlocks;
   final Map<String, dynamic> txPoolInspection;
-  final Map<String, dynamic> blockTraces;
-  final Map<String, dynamic> blockTraceAnalysis;
 
   NetworkCongestionData({
     // General Network Metrics
@@ -90,8 +88,6 @@ class NetworkCongestionData {
     this.isNetworkListening = false,
     this.badBlocks = const [],
     this.txPoolInspection = const {},
-    this.blockTraces = const {},
-    this.blockTraceAnalysis = const {},
   });
 
   NetworkCongestionData copyWith({
@@ -128,8 +124,6 @@ class NetworkCongestionData {
     bool? isNetworkListening,
     List<Map<String, dynamic>>? badBlocks,
     Map<String, dynamic>? txPoolInspection,
-    Map<String, dynamic>? blockTraces,
-    Map<String, dynamic>? blockTraceAnalysis,
   }) {
     return NetworkCongestionData(
       currentGasPrice: currentGasPrice ?? this.currentGasPrice,
@@ -173,8 +167,6 @@ class NetworkCongestionData {
       isNetworkListening: isNetworkListening ?? this.isNetworkListening,
       badBlocks: badBlocks ?? this.badBlocks,
       txPoolInspection: txPoolInspection ?? this.txPoolInspection,
-      blockTraces: blockTraces ?? this.blockTraces,
-      blockTraceAnalysis: blockTraceAnalysis ?? this.blockTraceAnalysis,
     );
   }
 
