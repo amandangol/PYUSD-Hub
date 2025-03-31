@@ -11,6 +11,12 @@ import '../../../services/notification_service.dart';
 import '../model/networkcongestion_model.dart';
 
 class NetworkCongestionProvider with ChangeNotifier {
+  // Add these constants at the top of the class
+  static const int MAX_RECENT_BLOCKS = 10;
+  static const int MAX_RECENT_TRANSACTIONS = 50;
+  static const int MAX_HISTORICAL_GAS_PRICES = 20;
+  static const int MAX_TRANSACTION_RECEIPT_CACHE_SIZE = 100;
+
   // RPC endpoints
   final String _httpRpcUrl = RpcEndpoints.mainnetHttpRpcUrl;
   final String _wsRpcUrl = RpcEndpoints.mainnetWssRpcUrl;
@@ -63,10 +69,10 @@ class NetworkCongestionProvider with ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
-  final List<Map<String, dynamic>> _recentBlocks = [];
+  late List<Map<String, dynamic>> _recentBlocks = [];
   List<Map<String, dynamic>> get recentBlocks => _recentBlocks;
 
-  final List<Map<String, dynamic>> _recentPyusdTransactions = [];
+  late List<Map<String, dynamic>> _recentPyusdTransactions = [];
   List<Map<String, dynamic>> get recentPyusdTransactions =>
       _recentPyusdTransactions;
 
@@ -151,6 +157,9 @@ class NetworkCongestionProvider with ChangeNotifier {
       _congestionData = _congestionData.copyWith(
         lastRefreshed: DateTime.now(),
       );
+
+      // Clean up transaction receipt cache
+      _cleanupTransactionReceiptCache();
     } catch (e) {
       print('Error during refresh: $e');
     }
@@ -700,7 +709,7 @@ class NetworkCongestionProvider with ChangeNotifier {
 
           // Add to recent transactions
           _recentPyusdTransactions.insert(0, enrichedTx);
-          if (_recentPyusdTransactions.length > 200) {
+          if (_recentPyusdTransactions.length > MAX_RECENT_TRANSACTIONS) {
             _recentPyusdTransactions.removeLast();
           }
 
@@ -785,7 +794,8 @@ class NetworkCongestionProvider with ChangeNotifier {
         _transactionReceiptCache[txHash] = receipt;
 
         // Limit cache size to reduce memory usage
-        if (_transactionReceiptCache.length > 100) {
+        if (_transactionReceiptCache.length >
+            MAX_TRANSACTION_RECEIPT_CACHE_SIZE) {
           final oldestKey = _transactionReceiptCache.keys.first;
           _transactionReceiptCache.remove(oldestKey);
         }
@@ -883,8 +893,8 @@ class NetworkCongestionProvider with ChangeNotifier {
       });
 
       // Keep only the most recent blocks
-      if (_recentBlocks.length > 30) {
-        _recentBlocks.length = 30;
+      if (_recentBlocks.length > MAX_RECENT_BLOCKS) {
+        _recentBlocks.length = MAX_RECENT_BLOCKS;
       }
 
       // Calculate block statistics after fetching blocks
@@ -1005,7 +1015,7 @@ class NetworkCongestionProvider with ChangeNotifier {
               _pyusdContractAddress.toLowerCase()) {
         // This is a PYUSD transaction
         _recentPyusdTransactions.insert(0, response);
-        if (_recentPyusdTransactions.length > 200) {
+        if (_recentPyusdTransactions.length > MAX_RECENT_TRANSACTIONS) {
           _recentPyusdTransactions.removeLast();
         }
 
@@ -1060,7 +1070,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         List<double> updatedHistory =
             List.from(_congestionData.historicalGasPrices);
         updatedHistory.add(gasPriceGwei);
-        if (updatedHistory.length > 20) {
+        if (updatedHistory.length > MAX_HISTORICAL_GAS_PRICES) {
           updatedHistory.removeAt(0);
         }
 
@@ -1165,7 +1175,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       if (response != null) {
         // Add to recent blocks
         _recentBlocks.insert(0, response);
-        if (_recentBlocks.length > 10) {
+        if (_recentBlocks.length > MAX_RECENT_BLOCKS) {
           _recentBlocks.removeLast();
         }
 
@@ -1270,7 +1280,7 @@ class NetworkCongestionProvider with ChangeNotifier {
             // Add to recent transactions if not already there
             if (!_recentPyusdTransactions.any((t) => t['hash'] == tx['hash'])) {
               _recentPyusdTransactions.insert(0, enrichedTx);
-              if (_recentPyusdTransactions.length > 200) {
+              if (_recentPyusdTransactions.length > MAX_RECENT_TRANSACTIONS) {
                 _recentPyusdTransactions.removeLast();
               }
             }
@@ -1564,5 +1574,37 @@ class NetworkCongestionProvider with ChangeNotifier {
     // based on the current implementation.
     // For now, we'll keep this method empty as the original implementation
     // did not include this method.
+  }
+
+  // Add a method to clean up transaction receipt cache
+  void _cleanupTransactionReceiptCache() {
+    if (_transactionReceiptCache.length > MAX_TRANSACTION_RECEIPT_CACHE_SIZE) {
+      // Remove oldest entries (first 20% of the cache)
+      final keysToRemove = _transactionReceiptCache.keys
+          .take((_transactionReceiptCache.length * 0.2).ceil());
+      for (final key in keysToRemove) {
+        _transactionReceiptCache.remove(key);
+      }
+    }
+  }
+
+  // Add methods to trim data when not needed
+  void trimBlocksData() {
+    // Keep only the most recent blocks when not on the blocks tab
+    if (_recentBlocks.length > 5) {
+      _recentBlocks = _recentBlocks.take(5).toList();
+    }
+  }
+
+  void trimTransactionsData() {
+    // Keep only the most recent transactions when not on the transactions tab
+    if (_recentPyusdTransactions.length > 20) {
+      _recentPyusdTransactions = _recentPyusdTransactions.take(20).toList();
+    }
+
+    // Clear transaction receipt cache
+    if (_transactionReceiptCache.length > 20) {
+      _transactionReceiptCache.clear();
+    }
   }
 }

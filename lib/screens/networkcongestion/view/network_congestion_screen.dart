@@ -70,8 +70,27 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
 
   void _handleTabChange() {
     if (!mounted) return;
-    print('NetworkCongestionScreen: Tab changed to ${_tabController.index}');
-    _loadTab(_tabController.index);
+    final currentIndex = _tabController.index;
+
+    // Mark the current tab as loaded
+    setState(() {
+      _loadedTabs[currentIndex] = true;
+    });
+
+    // Force data cleanup when switching tabs
+    final provider =
+        Provider.of<NetworkCongestionProvider>(context, listen: false);
+
+    // Only keep data relevant to the current tab
+    if (currentIndex != 2) {
+      // Not on Blocks tab
+      provider.trimBlocksData();
+    }
+
+    if (currentIndex != 3) {
+      // Not on Transactions tab
+      provider.trimTransactionsData();
+    }
   }
 
   void _loadTab(int index) {

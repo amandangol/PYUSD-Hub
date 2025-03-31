@@ -263,18 +263,29 @@ class _TransactionsTabState extends State<TransactionsTab> {
                 ),
               )
             else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemCount: transactions.length,
-                itemBuilder: (context, index) {
-                  final transaction = transactions[index];
-                  return TransactionListItem(
-                    transaction: transaction,
-                    onTap: () {},
-                  );
-                },
+              SizedBox(
+                height: 400,
+                child: ListView.builder(
+                  itemCount: transactions.length,
+                  itemBuilder: (context, index) {
+                    final transaction = transactions[index];
+                    if (index > 0) {
+                      return Column(
+                        children: [
+                          const Divider(height: 1),
+                          TransactionListItem(
+                            transaction: transaction,
+                            onTap: () {},
+                          ),
+                        ],
+                      );
+                    }
+                    return TransactionListItem(
+                      transaction: transaction,
+                      onTap: () {},
+                    );
+                  },
+                ),
               ),
           ],
         ),

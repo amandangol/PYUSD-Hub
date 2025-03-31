@@ -223,7 +223,7 @@ class _TraceScreenState extends State<TraceScreen>
                   Text(
                     'Use specialized Ethereum tracing methods for detailed analysis.',
                     style: TextStyle(
-                      color: Colors.grey.shade700,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ],
@@ -691,7 +691,7 @@ class _TraceScreenState extends State<TraceScreen>
               decoration: BoxDecoration(
                 color: Colors.grey.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade800),
+                border: Border.all(color: Colors.grey.withOpacity(0.1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -700,7 +700,7 @@ class _TraceScreenState extends State<TraceScreen>
                     'Result Preview',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade700,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -882,7 +882,7 @@ class _TraceScreenState extends State<TraceScreen>
                   Text(
                     'Enter a transaction hash to trace its execution and analyze PYUSD transfers.',
                     style: TextStyle(
-                      color: Colors.grey.shade700,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ],
@@ -1077,7 +1077,7 @@ class _TraceScreenState extends State<TraceScreen>
                   Text(
                     'Enter a block number to trace all transactions in that block and find PYUSD transactions.',
                     style: TextStyle(
-                      color: Colors.grey.shade700,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1325,7 +1325,7 @@ class _TraceScreenState extends State<TraceScreen>
             Text(
               description,
               style: TextStyle(
-                color: Colors.grey.shade700,
+                color: Colors.grey.shade600,
               ),
             ),
             if (additionalWidget != null) ...[

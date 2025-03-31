@@ -270,7 +270,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
             label + ':',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
+              color: Colors.grey.shade600,
             ),
           ),
         ),
@@ -331,7 +331,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              color: Colors.grey.shade600,
             ),
           ),
         ],
@@ -513,7 +513,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade800,
+                    color: Colors.grey.shade600,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   height: 300,

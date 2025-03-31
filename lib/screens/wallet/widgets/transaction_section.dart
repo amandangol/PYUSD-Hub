@@ -145,7 +145,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
             size: 20,
             color: widget.isDarkMode ? Colors.white70 : Colors.black87,
           ),
-          underline: const SizedBox(), // Remove default underline
+          underline: const SizedBox(),
           dropdownColor:
               widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
           style: TextStyle(

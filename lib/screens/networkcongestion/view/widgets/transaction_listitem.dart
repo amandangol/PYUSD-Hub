@@ -62,22 +62,26 @@ class TransactionListItem extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Transaction Hash with Copy Button
+              // Header row with type, time and value
               Row(
                 children: [
-                  Chip(
-                    label: Text(
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isTransfer ? Colors.green : Colors.blue,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
                       isTransfer ? 'Transfer' : 'Contract',
                       style: const TextStyle(fontSize: 12, color: Colors.white),
                     ),
-                    backgroundColor: isTransfer ? Colors.green : Colors.blue,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -86,7 +90,6 @@ class TransactionListItem extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
                       ),
                     ),
                   ),
@@ -100,169 +103,137 @@ class TransactionListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const Divider(height: 1),
+
               const SizedBox(height: 8),
 
-              // Transaction Hash with Copy Button
+              // From address
               Row(
                 children: [
-                  const Text(
-                    'Tx: ',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      _formatAddress(txHash),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontFamily: 'monospace',
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Copy transaction hash',
-                    onPressed: () =>
-                        _copyToClipboard(context, txHash, 'Transaction hash'),
-                  ),
-                ],
-              ),
-
-              // From Address with Copy Button
-              Row(
-                children: [
-                  const Text(
+                  Text(
                     'From: ',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.grey,
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       _formatAddress(fromAddress),
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 12,
                         fontFamily: 'monospace',
+                        color: Colors.grey.shade600,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Copy from address',
-                    onPressed: () =>
+                  InkWell(
+                    onTap: () =>
                         _copyToClipboard(context, fromAddress, 'From address'),
+                    child:
+                        Icon(Icons.copy, size: 16, color: Colors.grey.shade600),
                   ),
                 ],
               ),
 
-              // To Address with Copy Button
+              const SizedBox(height: 4),
+
+              // To address
               Row(
                 children: [
-                  const Text(
-                    'To: ',
+                  Text(
+                    'To:     ',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.grey,
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       _formatAddress(toAddress),
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 12,
                         fontFamily: 'monospace',
+                        color: Colors.grey.shade600,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Copy to address',
-                    onPressed: () =>
+                  InkWell(
+                    onTap: () =>
                         _copyToClipboard(context, toAddress, 'To address'),
+                    child:
+                        Icon(Icons.copy, size: 16, color: Colors.grey.shade600),
                   ),
                 ],
               ),
 
-              // Action Buttons
               const SizedBox(height: 8),
+
+              // Bottom row with hash and action buttons
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _buildActionButton(
-                    context,
-                    'View Trace',
-                    Icons.account_tree_outlined,
-                    Colors.orange,
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            TransactionTraceScreen(txHash: txHash),
-                      ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          'Tx: ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            _formatAddress(txHash),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                              color: Colors.grey.shade400,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => _copyToClipboard(
+                              context, txHash, 'Transaction hash'),
+                          child: Icon(Icons.copy,
+                              size: 16, color: Colors.grey.shade600),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildActionButton(
-                    context,
-                    'Etherscan',
-                    Icons.open_in_new,
-                    Colors.blue,
-                    () => _launchEtherscan(context, txHash),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.account_tree_outlined, size: 20),
+                        color: Colors.orange,
+                        tooltip: 'Trace Transaction',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                TransactionTraceScreen(txHash: txHash),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.open_in_new, size: 20),
+                        color: Colors.blue,
+                        tooltip: 'View on Etherscan',
+                        onPressed: () => _launchEtherscan(context, txHash),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // Helper widget for action buttons
-  Widget _buildActionButton(
-    BuildContext context,
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: color),
-            ),
-          ],
         ),
       ),
     );
@@ -299,7 +270,7 @@ class TransactionListItem extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$description copied to clipboard'),
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 1),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.green,
           action: SnackBarAction(

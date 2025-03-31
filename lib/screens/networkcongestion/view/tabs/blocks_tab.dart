@@ -297,15 +297,20 @@ class _BlocksTabState extends State<BlocksTab> {
                 ),
               )
             else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemCount: blocks.length,
-                itemBuilder: (context, index) {
-                  final block = blocks[index];
-                  return _buildBlockListItem(context, block, expandedView);
-                },
+              SizedBox(
+                height: 400,
+                child: ListView.builder(
+                  itemCount: blocks.length,
+                  itemBuilder: (context, index) {
+                    final block = blocks[index];
+                    return Column(
+                      children: [
+                        if (index > 0) const Divider(height: 1),
+                        _buildBlockListItem(context, block, expandedView),
+                      ],
+                    );
+                  },
+                ),
               ),
           ],
         ),
