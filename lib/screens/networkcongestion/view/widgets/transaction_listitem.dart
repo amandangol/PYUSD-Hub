@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:pyusd_hub/screens/networkcongestion/view/widgets/transaction_trace_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
-import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../trace/view/transaction_trace_screen.dart';
 
 class TransactionListItem extends StatelessWidget {
   final Map<String, dynamic> transaction;
@@ -15,358 +17,216 @@ class TransactionListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Extract transaction data
-    final String hash = transaction['hash'] ?? '';
-    final String from = transaction['from'] ?? '';
-    final String to = transaction['to'] ?? '';
-    final String tokenRecipient = transaction['tokenRecipient'] ?? to;
+    final String txHash = transaction['hash'] ?? 'Unknown';
+    final String fromAddress = transaction['from'] ?? 'Unknown';
+    final String toAddress = transaction['to'] ?? 'Unknown';
+    final DateTime timestamp = transaction.containsKey('timeStamp')
+        ? DateTime.fromMillisecondsSinceEpoch(
+            int.parse(transaction['timeStamp']) * 1000)
+        : DateTime.now();
 
-    // Determine if transaction is incoming based on the token recipient
-    // This logic needs fixing - incoming should be when the current user is receiving tokens
-    final bool isIncoming = tokenRecipient.toLowerCase() == from.toLowerCase();
+    // Determine if this is a transfer transaction
+    bool isTransfer = transaction['input'] != null &&
+        transaction['input'].toString().startsWith('0xa9059cbb');
 
-    // Get timestamp from transaction
-    DateTime? timestamp;
-    if (transaction['timestamp'] != null) {
-      final int timestampValue =
-          FormatterUtils.parseHexSafely(transaction['timestamp']) ?? 0;
-      if (timestampValue > 0) {
-        timestamp = DateTime.fromMillisecondsSinceEpoch(timestampValue * 1000);
-      }
-    }
-
-    // Format timestamp
-    final String timeString = timestamp != null
-        ? DateFormat('MMM dd, HH:mm').format(timestamp)
-        : 'Pending';
-
-    // Calculate relative time
-    final String relativeTime =
-        timestamp != null ? _getRelativeTime(timestamp) : 'Pending';
-
-    // Get PYUSD amount with improved error handling
-    double amount = 0.0;
-    if (transaction.containsKey('tokenValue') &&
-        transaction['tokenValue'] != null) {
-      // Try to parse as double first
-      if (transaction['tokenValue'] is double) {
-        amount = transaction['tokenValue'];
-      } else if (transaction['tokenValue'] is int) {
-        amount = transaction['tokenValue'].toDouble();
-      } else if (transaction['tokenValue'] is String) {
-        amount = double.tryParse(transaction['tokenValue']) ?? 0.0;
-      }
-    } else if (transaction['input'] != null &&
-        transaction['input'].toString().length >= 138 &&
-        transaction['input'].toString().startsWith('0xa9059cbb')) {
+    // Get token value if available
+    double tokenValue = 0.0;
+    if (transaction.containsKey('tokenValue')) {
+      tokenValue = transaction['tokenValue'];
+    } else if (isTransfer) {
       try {
         final String valueHex = transaction['input'].toString().substring(74);
         final BigInt tokenValueBigInt =
             FormatterUtils.parseBigInt("0x$valueHex");
-        amount =
+        tokenValue =
             tokenValueBigInt / BigInt.from(10).pow(6); // PYUSD has 6 decimals
       } catch (e) {
         print('Error parsing token value: $e');
       }
     }
 
-    // Format amount with commas for thousands
-    final formattedAmount = NumberFormat('#,##0.00').format(amount);
-
-    // Shorten addresses for display
-    final String shortFrom = FormatterUtils.formatAddress(from);
-    final String shortTo = FormatterUtils.formatAddress(tokenRecipient);
-
-    final transactionStatus = timestamp != null ? 'Completed' : 'Pending';
-    final statusColor =
-        timestamp != null ? Colors.green.shade600 : Colors.orange.shade600;
-
-    // Determine transaction type icon and color
-    IconData transactionIcon;
-    Color iconColor;
-    Color iconBackgroundColor;
-
-    if (isIncoming) {
-      transactionIcon = Icons.call_received;
-      iconColor = Colors.green.shade600;
-      iconBackgroundColor = Colors.green.withOpacity(0.1);
-    } else {
-      transactionIcon = Icons.call_made;
-      iconColor = Colors.blue.shade600;
-      iconBackgroundColor = Colors.blue.withOpacity(0.1);
+    // Format token value
+    String formattedValue = '${tokenValue.toStringAsFixed(2)} PYUSD';
+    if (tokenValue >= 1000000) {
+      formattedValue = '${(tokenValue / 1000000).toStringAsFixed(2)}M PYUSD';
+    } else if (tokenValue >= 1000) {
+      formattedValue = '${(tokenValue / 1000).toStringAsFixed(2)}K PYUSD';
     }
 
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade200),
       ),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: Status, Hash and Time
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          transactionStatus,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          // Add functionality to copy hash to clipboard
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text('Transaction hash copied to clipboard'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        child: Row(
-                          children: [
-                            Text(
-                              FormatterUtils.formatHash(hash),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.copy_outlined,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    relativeTime,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Middle row: Amount and direction icon
+              // Transaction Hash with Copy Button
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: iconBackgroundColor,
-                      borderRadius: BorderRadius.circular(12),
+                  Chip(
+                    label: Text(
+                      isTransfer ? 'Transfer' : 'Contract',
+                      style: const TextStyle(fontSize: 12, color: Colors.white),
                     ),
-                    child: Icon(
-                      transactionIcon,
-                      color: iconColor,
-                      size: 22,
-                    ),
+                    backgroundColor: isTransfer ? Colors.green : Colors.blue,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isIncoming ? 'Received' : 'Sent',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: isIncoming
-                                ? Colors.green.shade600
-                                : Colors.blue.shade600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          timeString,
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      _formatTimestamp(timestamp),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
                   Text(
-                    '$formattedAmount',
-                    style: TextStyle(
-                      color: Colors.grey.shade800,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'PYUSD',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
+                    formattedValue,
+                    style: const TextStyle(
                       fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
 
-              const SizedBox(height: 16),
-
-              // Bottom row: From/To addresses
+              // Transaction Hash with Copy Button
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'From',
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: () {
-                            // Add functionality to copy address to clipboard
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Address copied to clipboard'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            children: [
-                              Text(
-                                shortFrom,
-                                style: TextStyle(
-                                  color: Colors.grey.shade800,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.copy_outlined,
-                                size: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  const Text(
+                    'Tx: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.grey,
                     ),
                   ),
-                  Icon(
-                    Icons.arrow_forward,
-                    size: 16,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'To',
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: () {
-                            // Add functionality to copy address to clipboard
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Address copied to clipboard'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            children: [
-                              Text(
-                                shortTo,
-                                style: TextStyle(
-                                  color: Colors.grey.shade800,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.copy_outlined,
-                                size: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      _formatAddress(txHash),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'monospace',
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Copy transaction hash',
+                    onPressed: () =>
+                        _copyToClipboard(context, txHash, 'Transaction hash'),
                   ),
                 ],
               ),
 
-              // Add a "View Trace" button
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
+              // From Address with Copy Button
+              Row(
+                children: [
+                  const Text(
+                    'From: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _formatAddress(fromAddress),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'monospace',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Copy from address',
+                    onPressed: () =>
+                        _copyToClipboard(context, fromAddress, 'From address'),
+                  ),
+                ],
+              ),
+
+              // To Address with Copy Button
+              Row(
+                children: [
+                  const Text(
+                    'To: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _formatAddress(toAddress),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'monospace',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    tooltip: 'Copy to address',
+                    onPressed: () =>
+                        _copyToClipboard(context, toAddress, 'To address'),
+                  ),
+                ],
+              ),
+
+              // Action Buttons
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _buildActionButton(
+                    context,
+                    'View Trace',
+                    Icons.account_tree_outlined,
+                    Colors.orange,
+                    () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            TransactionTraceScreen(txHash: hash),
+                            TransactionTraceScreen(txHash: txHash),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.analytics, size: 16),
-                  label: const Text('View Trace'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.blue,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(color: Colors.blue.shade200),
                     ),
-                    backgroundColor: Colors.blue.withOpacity(0.05),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  _buildActionButton(
+                    context,
+                    'Etherscan',
+                    Icons.open_in_new,
+                    Colors.blue,
+                    () => _launchEtherscan(context, txHash),
+                  ),
+                ],
               ),
             ],
           ),
@@ -375,31 +235,101 @@ class TransactionListItem extends StatelessWidget {
     );
   }
 
-  // String _shortenAddress(String address) {
-  //   if (address.isEmpty) return 'Unknown';
-  //   if (address.length < 10) return address;
-  //   return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
-  // }
+  // Helper widget for action buttons
+  Widget _buildActionButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-  // String _shortenHash(String hash) {
-  //   if (hash.isEmpty) return 'Unknown';
-  //   if (hash.length < 10) return hash;
-  //   return '${hash.substring(0, 6)}...${address.substring(hash.length - 4)}';
-  // }
+  // Helper method to format address for display
+  String _formatAddress(String address) {
+    if (address.length < 10) return address;
+    return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+  }
 
-  String _getRelativeTime(DateTime timestamp) {
-    final Duration difference = DateTime.now().difference(timestamp);
+  // Helper method to format timestamp
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
 
     if (difference.inSeconds < 60) {
-      return 'Just now';
+      return '${difference.inSeconds}s ago';
     } else if (difference.inMinutes < 60) {
       return '${difference.inMinutes}m ago';
     } else if (difference.inHours < 24) {
       return '${difference.inHours}h ago';
-    } else if (difference.inDays < 7) {
+    } else if (difference.inDays < 30) {
       return '${difference.inDays}d ago';
     } else {
-      return DateFormat('MMM dd').format(timestamp);
+      // Format with month and day
+      return '${timestamp.month}/${timestamp.day}/${timestamp.year}';
+    }
+  }
+
+  // Helper method to copy text to clipboard
+  void _copyToClipboard(BuildContext context, String text, String description) {
+    Clipboard.setData(ClipboardData(text: text)).then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$description copied to clipboard'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+    });
+  }
+
+  // Launch the transaction trace
+  void _launchEtherscan(BuildContext context, String txHash) async {
+    if (txHash.isEmpty) return;
+
+    // Etherscan transaction trace URL
+    final url = Uri.parse('https://etherscan.io/tx/$txHash');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not launch transaction trace'),
+        ),
+      );
     }
   }
 }

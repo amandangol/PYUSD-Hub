@@ -17,6 +17,8 @@ import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/explore/service/news_service.dart';
 import 'screens/explore/view/news_explore_screen.dart';
+import 'screens/trace/provider/transaction_trace_provider.dart';
+import 'screens/trace/view/trace_screen.dart';
 import 'screens/wallet/provider/walletscreen_provider.dart';
 import 'screens/networkcongestion/provider/network_congestion_provider.dart';
 import 'screens/transactions/provider/transaction_provider.dart';
@@ -93,6 +95,7 @@ class MyApp extends StatelessWidget {
           create: (context) =>
               SecuritySettingsProvider(context.read<AuthProvider>()),
         ),
+        ChangeNotifierProvider(create: (_) => TraceProvider()),
         ChangeNotifierProvider(create: (_) => NetworkProvider()),
         ChangeNotifierProxyProvider2<AuthProvider, NetworkProvider,
             WalletStateProvider>(
@@ -201,10 +204,10 @@ class _MainAppState extends State<MainApp> {
       'screen': const WalletScreen(),
     },
     {
-      'label': 'Insights',
-      'icon': Icons.receipt_long,
-      'color': Colors.indigo,
-      'screen': const InsightsScreen(),
+      'label': 'Tracer',
+      'icon': Icons.analytics,
+      'color': Colors.purple,
+      'screen': const TraceScreen(),
     },
     {
       'label': 'Settings',

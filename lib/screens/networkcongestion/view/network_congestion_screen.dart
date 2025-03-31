@@ -4,7 +4,6 @@ import '../provider/network_congestion_provider.dart';
 import 'tabs/blocks_tab.dart';
 import 'tabs/gas_tab.dart';
 import 'tabs/overview_tab.dart';
-import 'tabs/tracing_tab.dart';
 import 'tabs/transactions_tab.dart';
 import 'widgets/data_source_info_card.dart';
 
@@ -19,7 +18,12 @@ class NetworkCongestionScreen extends StatefulWidget {
 class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<bool> _loadedTabs = [false, false, false, false, false, false];
+  final List<bool> _loadedTabs = [
+    false,
+    false,
+    false,
+    false,
+  ];
   bool _isInitialLoading = true;
   bool _isDisposed = false;
 
@@ -27,7 +31,7 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
   void initState() {
     super.initState();
     print('NetworkCongestionScreen: initState called');
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
 
     // Initialize provider and load first tab
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -128,7 +132,6 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
               Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
               Tab(icon: Icon(Icons.storage), text: 'Blocks'),
               Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
-              Tab(icon: Icon(Icons.bug_report), text: 'Tracing'),
             ],
             isScrollable: false,
             indicatorWeight: 3,
@@ -161,7 +164,6 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
                         _buildTabContent(1, provider),
                         _buildTabContent(2, provider),
                         _buildTabContent(3, provider),
-                        _buildTabContent(4, provider),
                       ],
                     ),
                   ),
@@ -197,9 +199,6 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
             tabController: _tabController,
           ),
         );
-
-      case 4:
-        return TracingTab(provider: provider);
 
       default:
         return const SizedBox.shrink();

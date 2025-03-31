@@ -7,7 +7,6 @@ import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/common/info_dialog.dart';
 import '../../provider/network_congestion_provider.dart';
-import '../widgets/transaction_trace_viewer.dart';
 
 class BlocksTab extends StatefulWidget {
   final NetworkCongestionProvider provider;

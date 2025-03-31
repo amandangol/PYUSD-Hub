@@ -23,8 +23,8 @@ class AppBottomNavigation extends StatelessWidget {
       'color': Colors.blue,
     },
     {
-      'icon': Icons.analytics,
-      'label': 'Analytics',
+      'icon': Icons.account_tree_outlined,
+      'label': 'Trace',
       'color': Colors.orange,
     },
     {

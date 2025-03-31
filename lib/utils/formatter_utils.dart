@@ -4,6 +4,10 @@ import 'package:web3dart/web3dart.dart';
 class FormatterUtils {
   static final _numberFormat = NumberFormat('#,##0.####');
   static final _addressFormat = NumberFormat('0.000');
+  static final _currencyFormat =
+      NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+  static final _compactCurrencyFormat =
+      NumberFormat.compactCurrency(symbol: '\$', decimalDigits: 2);
 
   /// Formats an Ethereum address to a shorter, readable version (e.g., "0x1234...abcd")
   static String formatAddress(String address) {
@@ -145,6 +149,78 @@ class FormatterUtils {
       return gasValue.toString();
     } catch (e) {
       return '0';
+    }
+  }
+
+  /// Format currency value with appropriate suffix (K, M, B)
+  static String formatCurrencyWithSuffix(double value) {
+    if (value >= 1000000000) {
+      return '\$${(value / 1000000000).toStringAsFixed(2)}B';
+    } else if (value >= 1000000) {
+      return '\$${(value / 1000000).toStringAsFixed(2)}M';
+    } else if (value >= 1000) {
+      return '\$${(value / 1000).toStringAsFixed(2)}K';
+    } else {
+      return '\$${value.toStringAsFixed(2)}';
+    }
+  }
+
+  /// Format a timestamp (in seconds) to a readable date/time
+  static String formatTimestamp(int timestamp) {
+    if (timestamp <= 0) return 'Unknown time';
+
+    final DateTime dateTime =
+        DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    return DateFormat('MMM d, yyyy HH:mm').format(dateTime);
+  }
+
+  /// Format a timestamp (in seconds) to a relative time (e.g., "2 minutes ago")
+  static String formatRelativeTime(int timestamp) {
+    if (timestamp <= 0) return 'Unknown time';
+
+    final DateTime dateTime =
+        DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final Duration difference = DateTime.now().difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds} seconds ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays < 30) {
+      return '${difference.inDays} days ago';
+    } else {
+      return DateFormat('MMM d, yyyy').format(dateTime);
+    }
+  }
+
+  /// Format ETH value from hex string
+  static String formatEthFromHex(String hexValue) {
+    final value = parseHexSafely(hexValue) ?? 0;
+    final ethValue = value / 1e18;
+
+    if (ethValue == 0) {
+      return '0 ETH';
+    } else if (ethValue < 0.000001) {
+      return '< 0.000001 ETH';
+    } else {
+      return '${ethValue.toStringAsFixed(6)} ETH';
+    }
+  }
+
+  /// Format a block number with commas
+  static String formatBlockNumber(int blockNumber) {
+    return formatLargeNumber(blockNumber);
+  }
+
+  /// Format gas price in Gwei
+  static String formatGasPrice(int gasPriceWei) {
+    final gweiValue = gasPriceWei / 1e9;
+    if (gweiValue < 0.01) {
+      return '< 0.01 Gwei';
+    } else {
+      return '${gweiValue.toStringAsFixed(2)} Gwei';
     }
   }
 }

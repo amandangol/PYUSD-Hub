@@ -27,11 +27,13 @@ class _TransactionsTabState extends State<TransactionsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // // Transaction Activity Overview
-          // _buildTransactionOverview(),
+          // Transaction Activity Overview
+          _buildTransactionOverview(),
 
-          // Recent PYUSD Transactions (expanded view)
-          _buildPyusdActivitySection(expandedView: true),
+          const SizedBox(height: 16),
+
+          // Recent PYUSD Transactions
+          _buildPyusdActivitySection(),
         ],
       ),
     );
@@ -42,33 +44,18 @@ class _TransactionsTabState extends State<TransactionsTab> {
     final data = widget.provider.congestionData;
     final transactions = widget.provider.recentPyusdTransactions;
 
-    // Calculate total volume in the last 24 hours from transactions
-    double totalVolume24h = 0;
-    if (transactions.isNotEmpty) {
-      final DateTime now = DateTime.now();
-      final DateTime yesterday = now.subtract(const Duration(hours: 24));
-
-      for (var tx in transactions) {
-        // Check if transaction has timestamp
-        if (tx.containsKey('timeStamp')) {
-          final int timestamp = int.parse(tx['timeStamp']);
-          final DateTime txTime =
-              DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-          if (txTime.isAfter(yesterday)) {
-            // Add value to total volume if transaction is within last 24 hours
-            final String value = tx['value'] ?? '0';
-            if (value.isNotEmpty) {
-              totalVolume24h +=
-                  double.parse(value) / 1e18; // Convert from wei to ETH
-            }
-          }
-        }
-      }
+    // Only calculate metrics if we have transactions
+    if (transactions.isEmpty) {
+      return const SizedBox.shrink();
     }
 
-    // Format volume in millions with 2 decimal places
-    final String formattedVolume =
-        '\$${(totalVolume24h / 1000000).toStringAsFixed(2)}M';
+    // Calculate total volume and format with appropriate suffix
+    double totalVolume = _calculateTotalVolume(transactions);
+    String formattedVolume =
+        FormatterUtils.formatCurrencyWithSuffix(totalVolume);
+
+    // Calculate unique addresses
+    int uniqueAddresses = _calculateUniqueAddresses(transactions);
 
     return Card(
       elevation: 3,
@@ -87,54 +74,56 @@ class _TransactionsTabState extends State<TransactionsTab> {
             ),
             const SizedBox(height: 16),
 
-            // Transaction statistics with real values
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            // Transaction statistics in a grid
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                Expanded(
-                  child: StatsCard(
-                    title: 'Last 24h',
-                    value: '${data.confirmedPyusdTxCount}',
-                    icon: Icons.swap_horiz,
-                    color: Colors.blue,
-                    description: 'PYUSD txs',
+                if (data.confirmedPyusdTxCount > 0)
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    child: StatsCard(
+                      title: 'Transactions',
+                      value: FormatterUtils.formatLargeNumber(
+                          data.confirmedPyusdTxCount),
+                      icon: Icons.swap_horiz,
+                      color: Colors.blue,
+                      description: 'PYUSD txs',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: StatsCard(
-                    title: 'Volume 24h',
-                    value: formattedVolume,
-                    icon: Icons.attach_money,
-                    color: Colors.green,
-                    description: 'PYUSD transferred',
+                if (totalVolume > 0)
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    child: StatsCard(
+                      title: 'Volume',
+                      value: formattedVolume,
+                      icon: Icons.attach_money,
+                      color: Colors.green,
+                      description: 'PYUSD transferred',
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Expanded(
-                  child: StatsCard(
-                    title: 'Avg Confirmation',
-                    value: '${data.blockTime.toStringAsFixed(1)}s',
-                    icon: Icons.access_time,
-                    color: Colors.orange,
-                    description: 'For PYUSD txs',
+                if (data.blockTime > 0)
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    child: StatsCard(
+                      title: 'Avg Confirmation',
+                      value: '${data.blockTime.toStringAsFixed(1)}s',
+                      icon: Icons.access_time,
+                      color: Colors.orange,
+                      description: 'Per block',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: StatsCard(
-                    title: 'Active Users',
-                    value: '${_calculateUniqueAddresses(transactions)}',
-                    icon: Icons.people,
-                    color: Colors.purple,
-                    description: 'Unique wallets',
+                if (uniqueAddresses > 0)
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    child: StatsCard(
+                      title: 'Active Users',
+                      value: FormatterUtils.formatLargeNumber(uniqueAddresses),
+                      icon: Icons.people,
+                      color: Colors.purple,
+                      description: 'Unique wallets',
+                    ),
                   ),
-                ),
               ],
             ),
           ],
@@ -143,7 +132,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
     );
   }
 
-// Helper method to calculate unique addresses involved in transactions
+  // Helper method to calculate unique addresses involved in transactions
   int _calculateUniqueAddresses(List<Map<String, dynamic>> transactions) {
     final Set<String> uniqueAddresses = {};
 
@@ -159,16 +148,8 @@ class _TransactionsTabState extends State<TransactionsTab> {
     return uniqueAddresses.length;
   }
 
-  // PYUSD Activity Section
-  Widget _buildPyusdActivitySection({bool expandedView = false}) {
-    final transactions = widget.provider.recentPyusdTransactions;
-    final latestBlockNumber = widget.provider.congestionData.lastBlockNumber;
-    final oldestBlockNumber = widget.provider.recentBlocks.isNotEmpty
-        ? FormatterUtils.parseHexSafely(
-            widget.provider.recentBlocks.last['number'])
-        : null;
-
-    // Calculate total volume from transactions
+  // Calculate total volume from transactions
+  double _calculateTotalVolume(List<Map<String, dynamic>> transactions) {
     double totalVolume = 0;
     for (var tx in transactions) {
       double amount = 0.0;
@@ -189,18 +170,17 @@ class _TransactionsTabState extends State<TransactionsTab> {
       }
       totalVolume += amount;
     }
+    return totalVolume;
+  }
 
-    // Format volume with appropriate suffix (K, M, B)
-    String formattedVolume = '\$0.00';
-    if (totalVolume >= 1000000000) {
-      formattedVolume = '\$${(totalVolume / 1000000000).toStringAsFixed(2)}B';
-    } else if (totalVolume >= 1000000) {
-      formattedVolume = '\$${(totalVolume / 1000000).toStringAsFixed(2)}M';
-    } else if (totalVolume >= 1000) {
-      formattedVolume = '\$${(totalVolume / 1000).toStringAsFixed(2)}K';
-    } else {
-      formattedVolume = '\$${totalVolume.toStringAsFixed(2)}';
-    }
+  // PYUSD Activity Section
+  Widget _buildPyusdActivitySection() {
+    final transactions = widget.provider.recentPyusdTransactions;
+    final latestBlockNumber = widget.provider.congestionData.lastBlockNumber;
+    final oldestBlockNumber = widget.provider.recentBlocks.isNotEmpty
+        ? FormatterUtils.parseHexSafely(
+            widget.provider.recentBlocks.last['number'])
+        : null;
 
     return Card(
       elevation: 3,
@@ -230,33 +210,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                   ),
               ],
             ),
-            if (transactions.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: StatsCard(
-                      title: 'Total Volume',
-                      value: formattedVolume,
-                      icon: Icons.attach_money,
-                      color: Colors.green,
-                      description: 'PYUSD transferred',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: StatsCard(
-                      title: 'Unique Addresses',
-                      value: '${_calculateUniqueAddresses(transactions)}',
-                      icon: Icons.people,
-                      color: Colors.purple,
-                      description: 'Unique wallets',
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (oldestBlockNumber != null) ...[
+            if (oldestBlockNumber != null && latestBlockNumber > 0) ...[
               const SizedBox(height: 8),
               Container(
                 padding:
@@ -273,7 +227,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Showing transactions from blocks ${oldestBlockNumber} to ${latestBlockNumber}',
+                        'Showing transactions from blocks ${FormatterUtils.formatBlockNumber(oldestBlockNumber)} to ${FormatterUtils.formatBlockNumber(latestBlockNumber)}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.blue,
@@ -285,84 +239,46 @@ class _TransactionsTabState extends State<TransactionsTab> {
               ),
             ],
             const SizedBox(height: 16),
-            transactions.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 48,
-                            color: Colors.grey,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No recent PYUSD transactions detected',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
-                  )
-                : Column(
+            if (transactions.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
                     children: [
-                      const Divider(),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        separatorBuilder: (context, index) =>
-                            const Divider(height: 1),
-                        itemCount: transactions.length,
-                        itemBuilder: (context, index) {
-                          final transaction = transactions[index];
-                          return TransactionListItem(
-                            onTap: () async {
-                              final String txHash = transaction['hash'] ?? '';
-
-                              if (txHash.isEmpty) return;
-
-                              final url =
-                                  Uri.parse('https://etherscan.io/tx/$txHash');
-                              try {
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url);
-                                }
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Could not launch explorer'),
-                                  ),
-                                );
-                              }
-                            },
-                            transaction: transaction,
-                          );
-                        },
+                      Icon(
+                        Icons.search_off,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No recent PYUSD transactions detected',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ],
                   ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemCount: transactions.length,
+                itemBuilder: (context, index) {
+                  final transaction = transactions[index];
+                  return TransactionListItem(
+                    transaction: transaction,
+                    onTap: () {},
+                  );
+                },
+              ),
           ],
         ),
       ),
     );
-  }
-
-  // Helper method to format ETH value
-  String _formatEthValue(String hexValue) {
-    final value = FormatterUtils.parseHexSafely(hexValue) ?? 0;
-    final ethValue = value / 1e18;
-
-    if (ethValue == 0) {
-      return '0 ETH';
-    } else if (ethValue < 0.000001) {
-      return '< 0.000001 ETH';
-    } else {
-      return '${ethValue.toStringAsFixed(6)} ETH';
-    }
   }
 }
