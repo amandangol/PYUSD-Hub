@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../widgets/pyusd_components.dart';
 import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/common/info_dialog.dart';
+import '../../../trace/provider/trace_provider.dart';
+import '../../../trace/view/transaction_trace_screen.dart';
 import '../../provider/network_congestion_provider.dart';
+import '../widgets/block_trace_screen.dart';
 
 class BlocksTab extends StatefulWidget {
   final NetworkCongestionProvider provider;
@@ -241,6 +244,8 @@ class _BlocksTabState extends State<BlocksTab> {
 
   // Recent Blocks List
   Widget _buildRecentBlocksSection({bool expandedView = false}) {
+    final blocks = widget.provider.recentBlocks;
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -251,1064 +256,210 @@ class _BlocksTabState extends State<BlocksTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Recent Blocks',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Recent Blocks',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (blocks.isNotEmpty)
+                  Text(
+                    'Showing ${blocks.length} blocks',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
-            widget.provider.recentBlocks.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        'No recent blocks detected',
+            if (blocks.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading recent blocks...',
                         style: TextStyle(
                           color: Colors.grey,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
-                    ),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemCount: expandedView
-                        ? widget.provider.recentBlocks.length
-                        : (widget.provider.recentBlocks.length > 3
-                            ? 3
-                            : widget.provider.recentBlocks.length),
-                    itemBuilder: (context, index) {
-                      final block = widget.provider.recentBlocks[index];
-
-                      // Parse block data
-                      final blockNumberHex =
-                          block['number'] as String? ?? '0x0';
-                      final blockNumber =
-                          int.parse(blockNumberHex.substring(2), radix: 16);
-
-                      // Parse timestamp
-                      final timestampHex =
-                          block['timestamp'] as String? ?? '0x0';
-                      final timestamp =
-                          int.parse(timestampHex.substring(2), radix: 16);
-                      final blockTime =
-                          DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-
-                      // Parse transactions
-                      final transactions =
-                          block['transactions'] as List<dynamic>? ?? [];
-
-                      // Parse gas used and gas limit
-                      final gasUsedHex = block['gasUsed'] as String? ?? '0x0';
-                      final gasLimitHex = block['gasLimit'] as String? ?? '0x0';
-                      final gasUsed =
-                          int.parse(gasUsedHex.substring(2), radix: 16);
-                      final gasLimit =
-                          int.parse(gasLimitHex.substring(2), radix: 16);
-
-                      // Calculate utilization
-                      final utilization = (gasUsed / gasLimit) * 100;
-
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 4),
-                        title: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '#$blockNumber',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              DateFormat('HH:mm:ss').format(blockTime),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${transactions.length} txs',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: expandedView
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        'Miner: ',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                      Text(
-                                        FormatterUtils.formatAddress(
-                                            '${(block['miner'] as String?)}'),
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Gas Usage',
-                                              style: TextStyle(fontSize: 12),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            LinearProgressIndicator(
-                                              value: utilization / 100,
-                                              backgroundColor: Colors.grey[200],
-                                              minHeight: 6,
-                                              borderRadius:
-                                                  BorderRadius.circular(3),
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                utilization > 90
-                                                    ? Colors.red
-                                                    : utilization > 70
-                                                        ? Colors.orange
-                                                        : Colors.green,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '${utilization.toStringAsFixed(1)}% (${(gasUsed / 1000000).toStringAsFixed(2)}M/${(gasLimit / 1000000).toStringAsFixed(2)}M)',
-                                              style:
-                                                  const TextStyle(fontSize: 10),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              )
-                            : null,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.open_in_new, size: 18),
-                          onPressed: () async {
-                            // Open block explorer to view block details
-                            final url = Uri.parse(
-                                'https://etherscan.io/block/$blockNumber');
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(url);
-                            } else {
-                              throw 'Could not launch $url';
-                            }
-                          },
-                        ),
-                        onTap: () {
-                          // Show block details
-                          _showBlockDetailsBottomSheet(context, block);
-                        },
-                      );
-                    },
+                    ],
                   ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemCount: blocks.length,
+                itemBuilder: (context, index) {
+                  final block = blocks[index];
+                  return _buildBlockListItem(context, block, expandedView);
+                },
+              ),
           ],
         ),
       ),
     );
   }
 
-  void _showBlockDetailsBottomSheet(
-      BuildContext context, Map<String, dynamic> block) {
+  // Block List Item
+  Widget _buildBlockListItem(
+      BuildContext context, Map<String, dynamic> block, bool expandedView) {
     // Parse block data
-    final blockNumberHex = block['number'] as String? ?? '0x0';
-    final blockNumber = int.parse(blockNumberHex.substring(2), radix: 16);
+    final blockNumber = FormatterUtils.parseHexSafely(block['number']) ?? 0;
+    final timestamp = FormatterUtils.parseHexSafely(block['timestamp']) ?? 0;
+    final gasUsed = FormatterUtils.parseHexSafely(block['gasUsed']) ?? 0;
+    final gasLimit = FormatterUtils.parseHexSafely(block['gasLimit']) ?? 0;
+    final txCount = block['transactions'] != null
+        ? (block['transactions'] as List).length
+        : 0;
+    final miner = block['miner'] as String? ?? '';
+    final size = FormatterUtils.parseHexSafely(block['size']) ?? 0;
 
-    // Parse timestamp
-    final timestampHex = block['timestamp'] as String? ?? '0x0';
-    final timestamp = int.parse(timestampHex.substring(2), radix: 16);
-    final blockTime = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    // Calculate gas usage percentage
+    final gasUsagePercentage =
+        gasLimit > 0 ? (gasUsed / gasLimit * 100).toStringAsFixed(1) : '0';
 
-    // Parse gas and size information
-    final gasUsedHex = block['gasUsed'] as String? ?? '0x0';
-    final gasLimitHex = block['gasLimit'] as String? ?? '0x0';
-    final gasUsed = int.parse(gasUsedHex.substring(2), radix: 16);
-    final gasLimit = int.parse(gasLimitHex.substring(2), radix: 16);
-    final utilization = (gasUsed / gasLimit) * 100;
+    // Format timestamp
+    final DateTime blockTime =
+        DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final String timeAgo = FormatterUtils.formatRelativeTime(timestamp);
 
-    // Get the miner (validator)
-    final miner = block['miner'] as String? ?? '0x0';
-
-    // Get transaction list
-    final transactions = block['transactions'] as List<dynamic>? ?? [];
-
-    // Theme colors
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final cardColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final dividerColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    const accentColor = Colors.blue;
-    final utilColor = utilization > 90
-        ? Colors.red
-        : utilization > 70
-            ? Colors.orange
-            : Colors.green;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Draggable handle indicator
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 8),
-                    child: Container(
-                      width: 40,
-                      height: 5,
+    return InkWell(
+      onTap: () => _showBlockOptions(context, block, blockNumber),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: dividerColor,
-                        borderRadius: BorderRadius.circular(2.5),
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: const Icon(Icons.storage, color: Colors.blue),
                     ),
-                  ),
-
-                  // Header with block number and time
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                    child: Row(
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: accentColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.dashboard_rounded,
-                                size: 16,
-                                color: accentColor,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Block #$blockNumber',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: accentColor,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          'Block #${(blockNumber)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            DateFormat('yyyy-MM-dd HH:mm:ss').format(blockTime),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: subtitleColor,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                          visualDensity: VisualDensity.compact,
-                          tooltip: 'Close',
-                          style: IconButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        const SizedBox(height: 4),
+                        Text(
+                          timeAgo,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
                           ),
                         ),
                       ],
                     ),
-                  ),
-
-                  // Divider
-                  Divider(height: 1, thickness: 1, color: dividerColor),
-
-                  // Content - Scrollable
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
+                  ],
+                ),
+                Row(
+                  children: [
+                    Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
-                      children: [
-                        // Quick stats cards
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildEnhancedStatCard(
-                                context: context,
-                                title: 'Transactions',
-                                value: '${transactions.length}',
-                                icon: Icons.sync_alt_rounded,
-                                color: accentColor,
-                                isDark: isDark,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildEnhancedStatCard(
-                                context: context,
-                                title: 'Gas Used',
-                                value: '${utilization.toStringAsFixed(1)}%',
-                                icon: Icons.local_gas_station_rounded,
-                                color: utilColor,
-                                isDark: isDark,
-                              ),
-                            ),
-                          ],
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '$txCount txs',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 20),
-
-                        // Block hash with copyable field
-                        _buildEnhancedDetailRow(
-                          context: context,
-                          label: 'Block Hash',
-                          value: FormatterUtils.formatHash(block['hash'] ?? ''),
-                          icon: Icons.tag_rounded,
-                          isMonospace: true,
-                          canCopy: true,
-                          valueToCopy: block['hash'] ?? '',
-                          isDark: isDark,
-                        ),
-                        Divider(height: 24, color: dividerColor),
-
-                        // Parent hash with copyable field
-                        _buildEnhancedDetailRow(
-                          context: context,
-                          label: 'Parent Hash',
-                          value: FormatterUtils.formatHash(
-                              block['parentHash'] ?? ''),
-                          icon: Icons.link_rounded,
-                          isMonospace: true,
-                          canCopy: true,
-                          valueToCopy: block['parentHash'] ?? '',
-                          isDark: isDark,
-                        ),
-                        Divider(height: 24, color: dividerColor),
-
-                        // Miner address with copyable field
-                        _buildEnhancedDetailRow(
-                          context: context,
-                          label: 'Miner (Validator)',
-                          value: FormatterUtils.formatAddress(miner),
-                          icon: Icons.account_balance_wallet_rounded,
-                          isMonospace: true,
-                          canCopy: true,
-                          valueToCopy: miner,
-                          isDark: isDark,
-                          onTap: () async {
-                            final url = Uri.parse(
-                                'https://etherscan.io/address/$miner');
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(url);
-                            }
-                          },
-                        ),
-                        Divider(height: 24, color: dividerColor),
-
-                        // Gas information with progress bar
-                        _buildEnhancedDetailRow(
-                          context: context,
-                          label: 'Gas Used / Gas Limit',
-                          value:
-                              '${(gasUsed / 1000000).toStringAsFixed(2)}M / ${(gasLimit / 1000000).toStringAsFixed(2)}M',
-                          icon: Icons.local_gas_station_rounded,
-                          isDark: isDark,
-                          additionalWidget: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      height: 12,
-                                      width: double.infinity,
-                                      color: isDark
-                                          ? Colors.grey[800]
-                                          : Colors.grey[200],
-                                    ),
-                                    FractionallySizedBox(
-                                      widthFactor: utilization / 100,
-                                      child: Container(
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: utilColor,
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Utilization: ${utilization.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: utilColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                          ),
-                        ),
-                        Divider(height: 24, color: dividerColor),
-
-                        // Additional block details - Expandable section
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            dividerColor: Colors.transparent,
-                            listTileTheme: ListTileThemeData(
-                              dense: true,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.grey[900]
-                                    : Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: ExpansionTile(
-                                title: Text(
-                                  'Additional Block Details',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
-                                ),
-                                leading: const Icon(
-                                  Icons.info_outline_rounded,
-                                  color: accentColor,
-                                ),
-                                childrenPadding:
-                                    const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                expandedCrossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  _buildEnhancedDetailRow(
-                                    context: context,
-                                    label: 'Difficulty',
-                                    value: block['difficulty'] != null
-                                        ? _formatBigNumber(int.parse(
-                                            block['difficulty']
-                                                    .toString()
-                                                    .startsWith('0x')
-                                                ? block['difficulty']
-                                                    .toString()
-                                                    .substring(2)
-                                                : block['difficulty']
-                                                    .toString(),
-                                            radix: 16))
-                                        : 'N/A',
-                                    icon: Icons.trending_up_rounded,
-                                    isDark: isDark,
-                                    iconSize: 16,
-                                    noBackground: true,
-                                  ),
-                                  Divider(
-                                      height: 16,
-                                      color: dividerColor.withOpacity(0.5)),
-                                  _buildEnhancedDetailRow(
-                                    context: context,
-                                    label: 'Size',
-                                    value: block['size'] != null
-                                        ? '${(int.parse(block['size'].toString().substring(2), radix: 16) / 1024).toStringAsFixed(2)} KB'
-                                        : 'N/A',
-                                    icon: Icons.data_usage_rounded,
-                                    isDark: isDark,
-                                    iconSize: 16,
-                                    noBackground: true,
-                                  ),
-                                  Divider(
-                                      height: 16,
-                                      color: dividerColor.withOpacity(0.5)),
-                                  _buildEnhancedDetailRow(
-                                    context: context,
-                                    label: 'Base Fee',
-                                    value: block['baseFeePerGas'] != null
-                                        ? '${(int.parse(block['baseFeePerGas'].toString().substring(2), radix: 16) / 1e9).toStringAsFixed(2)} Gwei'
-                                        : 'N/A',
-                                    icon: Icons.attach_money_rounded,
-                                    isDark: isDark,
-                                    iconSize: 16,
-                                    noBackground: true,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Transactions section header
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.receipt_long_rounded,
-                              color: accentColor,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Transactions',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: accentColor.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${transactions.length}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: accentColor,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Show transactions or empty state
-                        transactions.isEmpty
-                            ? Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.grey[900]
-                                      : Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? Colors.grey[800]!
-                                        : Colors.grey[300]!,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.hourglass_empty_rounded,
-                                      size: 48,
-                                      color: isDark
-                                          ? Colors.grey[700]
-                                          : Colors.grey[400],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No transactions in this block',
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? Colors.grey[500]
-                                            : Colors.grey[600],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : Column(
-                                children: [
-                                  // Show first 5 transactions
-                                  ...transactions.take(3).map((tx) {
-                                    final txHash = tx['hash'] as String? ?? '';
-                                    final from = tx['from'] as String? ?? '';
-                                    final to = tx['to'] as String? ?? '';
-
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      decoration: BoxDecoration(
-                                        color: cardColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.05),
-                                            blurRadius: 5,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                        border: Border.all(
-                                          color: isDark
-                                              ? Colors.grey[800]!
-                                              : Colors.grey[200]!,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: InkWell(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          onTap: () async {
-                                            // Close this sheet and show transaction details
-                                            Navigator.pop(context);
-                                            // Future implementation for showing transaction details
-                                            _showAllTransactionsDialog(context,
-                                                transactions, blockNumber);
-
-                                            // For now, just launch etherscan
-                                            final url = Uri.parse(
-                                                'https://etherscan.io/tx/$txHash');
-                                            if (await canLaunchUrl(url)) {
-                                              await launchUrl(url);
-                                            }
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(12.0),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.paid_rounded,
-                                                      size: 16,
-                                                      color: accentColor,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      child: Text(
-                                                        FormatterUtils
-                                                            .formatHash(txHash),
-                                                        style: TextStyle(
-                                                          fontFamily:
-                                                              'monospace',
-                                                          fontSize: 14,
-                                                          color: textColor,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                    IconButton(
-                                                      icon: Icon(
-                                                        Icons
-                                                            .open_in_new_rounded,
-                                                        size: 16,
-                                                        color: subtitleColor,
-                                                      ),
-                                                      onPressed: () async {
-                                                        final url = Uri.parse(
-                                                            'https://etherscan.io/tx/$txHash');
-                                                        if (await canLaunchUrl(
-                                                            url)) {
-                                                          await launchUrl(url);
-                                                        }
-                                                      },
-                                                      visualDensity:
-                                                          VisualDensity.compact,
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(),
-                                                      tooltip:
-                                                          'View on Etherscan',
-                                                    ),
-                                                  ],
-                                                ),
-                                                if (from.isNotEmpty ||
-                                                    to.isNotEmpty)
-                                                  Container(
-                                                    margin:
-                                                        const EdgeInsets.only(
-                                                            top: 8),
-                                                    padding:
-                                                        const EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      color: isDark
-                                                          ? Colors.grey[850]
-                                                          : Colors.grey[100],
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
-                                                    ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        if (from.isNotEmpty)
-                                                          Row(
-                                                            children: [
-                                                              Text(
-                                                                'From: ',
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontSize: 12,
-                                                                  color:
-                                                                      subtitleColor,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                ),
-                                                              ),
-                                                              Expanded(
-                                                                child: Text(
-                                                                  FormatterUtils
-                                                                      .formatAddress(
-                                                                          from),
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontFamily:
-                                                                        'monospace',
-                                                                    fontSize:
-                                                                        12,
-                                                                    color:
-                                                                        textColor,
-                                                                  ),
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ),
-                                                              IconButton(
-                                                                icon: Icon(
-                                                                  Icons
-                                                                      .copy_rounded,
-                                                                  size: 14,
-                                                                  color:
-                                                                      subtitleColor,
-                                                                ),
-                                                                onPressed: () {
-                                                                  Clipboard.setData(
-                                                                      ClipboardData(
-                                                                          text:
-                                                                              from));
-                                                                  SnackbarUtil.showSnackbar(
-                                                                      context:
-                                                                          context,
-                                                                      message:
-                                                                          "Address copied to clipboard");
-                                                                },
-                                                                visualDensity:
-                                                                    VisualDensity
-                                                                        .compact,
-                                                                padding:
-                                                                    EdgeInsets
-                                                                        .zero,
-                                                                constraints:
-                                                                    const BoxConstraints(),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        if (from.isNotEmpty &&
-                                                            to.isNotEmpty)
-                                                          Divider(
-                                                            height: 10,
-                                                            color: dividerColor
-                                                                .withOpacity(
-                                                                    0.5),
-                                                          ),
-                                                        if (to.isNotEmpty)
-                                                          Row(
-                                                            children: [
-                                                              Text(
-                                                                'To:   ',
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontSize: 12,
-                                                                  color:
-                                                                      subtitleColor,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                ),
-                                                              ),
-                                                              Expanded(
-                                                                child: Text(
-                                                                  FormatterUtils
-                                                                      .formatAddress(
-                                                                          to),
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontFamily:
-                                                                        'monospace',
-                                                                    fontSize:
-                                                                        12,
-                                                                    color:
-                                                                        textColor,
-                                                                  ),
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                ),
-                                                              ),
-                                                              IconButton(
-                                                                icon: Icon(
-                                                                  Icons
-                                                                      .copy_rounded,
-                                                                  size: 14,
-                                                                  color:
-                                                                      subtitleColor,
-                                                                ),
-                                                                onPressed: () {
-                                                                  Clipboard.setData(
-                                                                      ClipboardData(
-                                                                          text:
-                                                                              to));
-                                                                  SnackbarUtil.showSnackbar(
-                                                                      context:
-                                                                          context,
-                                                                      message:
-                                                                          "Address copied to clipboard");
-                                                                },
-                                                                visualDensity:
-                                                                    VisualDensity
-                                                                        .compact,
-                                                                padding:
-                                                                    EdgeInsets
-                                                                        .zero,
-                                                                constraints:
-                                                                    const BoxConstraints(),
-                                                                tooltip:
-                                                                    'Copy address',
-                                                              ),
-                                                            ],
-                                                          ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-
-                                  // "View all" button if more than 5 transactions
-                                  if (transactions.length > 5)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12.0),
-                                      child: PyusdButton(
-                                        onPressed: () {
-                                          // Close current sheet and show all transactions
-                                          Navigator.pop(context);
-                                          _showAllTransactionsDialog(context,
-                                              transactions, blockNumber);
-                                        },
-                                        text:
-                                            'View all ${transactions.length} transactions',
-                                        icon:
-                                            const Icon(Icons.list_alt_rounded),
-                                        backgroundColor: accentColor,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                      ],
-                    ),
-                  ),
-
-                  // Footer with action buttons
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[900] : Colors.grey[100],
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 5,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
-                      border: Border(
-                        top: BorderSide(color: dividerColor),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.copy_rounded),
-                            label: const Text('Copy Block Hash'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: accentColor,
-                              side: const BorderSide(color: accentColor),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () {
-                              final hash = block['hash'] as String? ?? '';
-                              Clipboard.setData(ClipboardData(text: hash));
-                              SnackbarUtil.showSnackbar(
-                                  context: context,
-                                  message: 'Block hash copied to clipboard');
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.open_in_new_rounded),
-                            label: const Text('View on Etherscan'),
-                            style: ElevatedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: accentColor,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () async {
-                              final url = Uri.parse(
-                                  'https://etherscan.io/block/$blockNumber');
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(url);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Colors.grey.shade400,
                     ),
+                  ],
+                ),
+              ],
+            ),
+            if (expandedView) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _buildBlockDetailChip(
+                    'Gas: $gasUsagePercentage%',
+                    Icons.local_gas_station,
+                    Colors.orange,
+                  ),
+                  _buildBlockDetailChip(
+                    'Size: ${(size / 1024).toStringAsFixed(1)} KB',
+                    Icons.data_usage,
+                    Colors.purple,
+                  ),
+                  _buildBlockDetailChip(
+                    'Miner: ${FormatterUtils.formatAddress(miner)}',
+                    Icons.account_balance,
+                    Colors.blue,
+                  ),
+                  _buildBlockDetailChip(
+                    DateFormat('MMM d, HH:mm:ss').format(blockTime),
+                    Icons.access_time,
+                    Colors.green,
                   ),
                 ],
               ),
-            );
-          },
-        );
-      },
+            ],
+          ],
+        ),
+      ),
     );
   }
 
-// Enhanced stat card for quick overview
-  Widget _buildEnhancedStatCard({
-    required BuildContext context,
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-    required bool isDark,
-  }) {
+  // Block Detail Chip
+  Widget _buildBlockDetailChip(String label, IconData icon, Color color) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
-      padding: const EdgeInsets.all(16),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
             ),
           ),
         ],
@@ -1316,494 +467,401 @@ class _BlocksTabState extends State<BlocksTab> {
     );
   }
 
-// Enhanced detail row for block information
-  Widget _buildEnhancedDetailRow({
-    required BuildContext context,
-    required String label,
-    required String value,
-    required IconData icon,
-    required bool isDark,
-    bool isMonospace = false,
-    bool canCopy = false,
-    String valueToCopy = '',
-    double iconSize = 20,
-    bool noBackground = false,
-    VoidCallback? onTap,
-    Widget? additionalWidget,
-  }) {
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    const accentColor = Colors.blue;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!noBackground)
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(icon, color: accentColor, size: iconSize),
-                  )
-                else
-                  Icon(icon, color: accentColor, size: iconSize),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: subtitleColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: textColor,
-                          fontFamily: isMonospace ? 'monospace' : null,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                if (canCopy)
-                  IconButton(
-                    icon: Icon(
-                      Icons.copy_rounded,
-                      size: 18,
-                      color: subtitleColor,
-                    ),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: valueToCopy));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Copied to clipboard'),
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: accentColor,
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Copy to clipboard',
-                  ),
-              ],
-            ),
-            if (additionalWidget != null) additionalWidget,
-          ],
-        ),
+  // Show Block Options Dialog
+  void _showBlockOptions(
+      BuildContext context, Map<String, dynamic> block, int blockNumber) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-    );
-  }
-
-// Format large numbers with commas
-  String _formatBigNumber(int number) {
-    final formatter = NumberFormat.decimalPattern();
-    return formatter.format(number);
-  }
-
-// Show all transactions in a full-screen dialog
-  void _showAllTransactionsDialog(
-    BuildContext context,
-    List<dynamic> transactions,
-    int blockNumber,
-  ) {
-    // Theme colors
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
-    final dividerColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
-    const accentColor = Colors.blue;
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => Scaffold(
-          backgroundColor: bgColor,
-          appBar: AppBar(
-            title: Text('Block #$blockNumber Transactions'),
-            backgroundColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-            elevation: 0,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.open_in_new),
-                onPressed: () async {
-                  final url =
-                      Uri.parse('https://etherscan.io/block/$blockNumber');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
-                  }
-                },
-                tooltip: 'View on Etherscan',
-              ),
-            ],
-          ),
-          body: Column(
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Transactions count header
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: isDark ? Colors.grey[900] : Colors.grey[100],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    const Icon(Icons.receipt_long_rounded, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Transactions (${transactions.length})',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: const Icon(Icons.storage, color: Colors.blue),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Block #${FormatterUtils.formatLargeNumber(blockNumber)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        Text(
+                          'Options',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-
-              // Transactions list
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: transactions.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final tx = transactions[index];
-                    final txHash = tx['hash'] as String? ?? '';
-                    final from = tx['from'] as String? ?? '';
-                    final to = tx['to'] as String? ?? '';
-
-                    // Parse gas price and value if available
-                    final gasPrice = tx['gasPrice'] != null
-                        ? '${(int.parse(tx['gasPrice'].toString().substring(2), radix: 16) / 1e9).toStringAsFixed(2)} Gwei'
-                        : 'N/A';
-
-                    final value = tx['value'] != null
-                        ? '${(int.parse(tx['value'].toString().substring(2), radix: 16) / 1e18).toStringAsFixed(6)} ETH'
-                        : '0 ETH';
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                          width: 1,
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () async {
-                            final url =
-                                Uri.parse('https://etherscan.io/tx/$txHash');
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(url);
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Transaction hash
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: accentColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.receipt_rounded,
-                                          color: accentColor, size: 18),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Transaction Hash',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: subtitleColor,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  FormatterUtils.formatHash(
-                                                      txHash),
-                                                  style: TextStyle(
-                                                    fontFamily: 'monospace',
-                                                    fontSize: 14,
-                                                    color: textColor,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.copy,
-                                                    size: 16),
-                                                onPressed: () {
-                                                  Clipboard.setData(
-                                                      ClipboardData(
-                                                          text: txHash));
-                                                  SnackbarUtil.showSnackbar(
-                                                    context: context,
-                                                    message:
-                                                        "Transaction hash copied to clipboard",
-                                                  );
-                                                },
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                padding: EdgeInsets.zero,
-                                                constraints:
-                                                    const BoxConstraints(),
-                                                tooltip:
-                                                    'Copy transaction hash',
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 12),
-                                Divider(height: 1, color: dividerColor),
-                                const SizedBox(height: 12),
-
-                                // From address
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 40,
-                                      child: Text(
-                                        'From',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: subtitleColor,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        FormatterUtils.formatAddress(from),
-                                        style: TextStyle(
-                                          fontFamily: 'monospace',
-                                          fontSize: 14,
-                                          color: textColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.copy, size: 16),
-                                      onPressed: () {
-                                        Clipboard.setData(
-                                            ClipboardData(text: from));
-                                        SnackbarUtil.showSnackbar(
-                                          context: context,
-                                          message:
-                                              "Address copied to clipboard",
-                                        );
-                                      },
-                                      visualDensity: VisualDensity.compact,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      tooltip: 'Copy address',
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                // To address
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 40,
-                                      child: Text(
-                                        'To',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: subtitleColor,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        to.isEmpty
-                                            ? '(Contract Creation)'
-                                            : FormatterUtils.formatAddress(to),
-                                        style: TextStyle(
-                                          fontFamily:
-                                              to.isEmpty ? null : 'monospace',
-                                          fontSize: 14,
-                                          fontStyle: to.isEmpty
-                                              ? FontStyle.italic
-                                              : FontStyle.normal,
-                                          color: textColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (to.isNotEmpty)
-                                      IconButton(
-                                        icon: const Icon(Icons.copy, size: 16),
-                                        onPressed: () {
-                                          Clipboard.setData(
-                                              ClipboardData(text: to));
-                                          SnackbarUtil.showSnackbar(
-                                            context: context,
-                                            message:
-                                                "Address copied to clipboard",
-                                          );
-                                        },
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        tooltip: 'Copy address',
-                                      ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 12),
-                                Divider(height: 1, color: dividerColor),
-                                const SizedBox(height: 12),
-
-                                // Transaction details
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Value',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: subtitleColor,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            value,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: textColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Gas Price',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: subtitleColor,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            gasPrice,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: textColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                // View on Etherscan button
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton.icon(
-                                      icon: const Icon(Icons.open_in_new,
-                                          size: 16),
-                                      label: const Text('View on Etherscan'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: accentColor,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12),
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                      onPressed: () async {
-                                        final url = Uri.parse(
-                                            'https://etherscan.io/tx/$txHash');
-                                        if (await canLaunchUrl(url)) {
-                                          await launchUrl(url);
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.analytics, color: Colors.purple),
+                title: const Text('Trace Block'),
+                subtitle:
+                    const Text('View detailed execution trace of this block'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _traceBlock(context, blockNumber);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.search, color: Colors.blue),
+                title: const Text('Find PYUSD Transactions'),
+                subtitle:
+                    const Text('Search for PYUSD transactions in this block'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _findPyusdTransactions(context, blockNumber);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.content_copy, color: Colors.grey),
+                title: const Text('Copy Block Number'),
+                onTap: () {
+                  Clipboard.setData(
+                      ClipboardData(text: blockNumber.toString()));
+                  Navigator.pop(context);
+                  SnackbarUtil.showSnackbar(
+                    context: context,
+                    message: 'Block number copied to clipboard',
+                    icon: Icons.check_circle,
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.open_in_new, color: Colors.green),
+                title: const Text('View on Etherscan'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final url = 'https://etherscan.io/block/$blockNumber';
+                  if (await canLaunchUrl(Uri.parse(url))) {
+                    await launchUrl(Uri.parse(url));
+                  } else {
+                    if (context.mounted) {
+                      SnackbarUtil.showSnackbar(
+                        context: context,
+                        message: 'Could not open Etherscan',
+                        icon: Icons.error,
+                        isError: true,
+                      );
+                    }
+                  }
+                },
               ),
             ],
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  // Trace Block
+  void _traceBlock(BuildContext context, int blockNumber) {
+    final traceProvider = Provider.of<TraceProvider>(context, listen: false);
+
+    // Navigate to block trace screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BlockTraceScreen(blockNumber: blockNumber),
       ),
     );
+  }
+
+  // Find PYUSD Transactions in Block
+  void _findPyusdTransactions(BuildContext context, int blockNumber) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('PYUSD Transactions'),
+        content: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _getPyusdTransactionsInBlock(blockNumber),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 100,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return SizedBox(
+                height: 100,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: Colors.red, size: 40),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error: ${snapshot.error}',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const SizedBox(
+                height: 100,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off, color: Colors.grey, size: 40),
+                      SizedBox(height: 16),
+                      Text(
+                        'No PYUSD transactions found in this block',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else {
+              final transactions = snapshot.data!;
+              return SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: transactions.length,
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    final from = tx['from'] as String? ?? '';
+                    final to = tx['to'] as String? ?? '';
+                    final hash = tx['hash'] as String? ?? '';
+
+                    return ListTile(
+                      title: Text(
+                        'Tx: ${FormatterUtils.formatHash(hash)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('From: ${FormatterUtils.formatAddress(from)}'),
+                          Text('To: ${FormatterUtils.formatAddress(to)}'),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.open_in_new),
+                        onPressed: () async {
+                          final url = 'https://etherscan.io/tx/$hash';
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url));
+                          }
+                        },
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showTransactionDetails(context, tx);
+                      },
+                    );
+                  },
+                ),
+              );
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Get PYUSD Transactions in Block
+  Future<List<Map<String, dynamic>>> _getPyusdTransactionsInBlock(
+      int blockNumber) async {
+    try {
+      // This would typically call your provider method to get PYUSD transactions
+      // For now, we'll simulate this with a delay
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Get transactions from the block
+      final block = widget.provider.recentBlocks.firstWhere(
+        (b) => FormatterUtils.parseHexSafely(b['number']) == blockNumber,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (block.isEmpty) {
+        return [];
+      }
+
+      final transactions = block['transactions'] as List<dynamic>? ?? [];
+
+      // Filter for PYUSD transactions (this is simplified)
+      // In a real implementation, you would check for transactions to/from the PYUSD contract
+      // or transactions with specific method signatures
+      final pyusdContractAddress =
+          '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase();
+
+      final pyusdTransactions = transactions.where((tx) {
+        if (tx is Map<String, dynamic>) {
+          final to = (tx['to'] as String? ?? '').toLowerCase();
+          return to == pyusdContractAddress;
+        }
+        return false;
+      }).toList();
+
+      return pyusdTransactions.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Error getting PYUSD transactions: $e');
+      return [];
+    }
+  }
+
+  // Show Transaction Details
+  void _showTransactionDetails(
+      BuildContext context, Map<String, dynamic> transaction) {
+    // This would navigate to a transaction detail screen
+    // For now, we'll just show a dialog with basic info
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Transaction Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Hash: ${transaction['hash'] ?? 'Unknown'}'),
+            const SizedBox(height: 8),
+            Text('From: ${transaction['from'] ?? 'Unknown'}'),
+            const SizedBox(height: 8),
+            Text('To: ${transaction['to'] ?? 'Unknown'}'),
+            const SizedBox(height: 8),
+            Text(
+                'Value: ${FormatterUtils.formatEthFromHex(transaction['value'] ?? '0x0')}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to transaction trace screen
+              final traceProvider =
+                  Provider.of<TraceProvider>(context, listen: false);
+              final hash = transaction['hash'] as String? ?? '';
+              if (hash.isNotEmpty) {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TransactionTraceScreen(
+                        txHash: transaction['hash'] ?? '',
+                      ),
+                    ));
+              }
+            },
+            child: const Text('Trace Transaction'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Format block timestamp
+  String _formatBlockTimestamp(String? timestamp) {
+    if (timestamp == null) return 'Unknown';
+
+    try {
+      final timestampInt = FormatterUtils.parseHexSafely(timestamp) ?? 0;
+      if (timestampInt == 0) return 'Unknown';
+
+      final dateTime = DateTime.fromMillisecondsSinceEpoch(timestampInt * 1000);
+      return DateFormat('MMM d, yyyy HH:mm:ss').format(dateTime);
+    } catch (e) {
+      return 'Invalid timestamp';
+    }
+  }
+
+  // Format gas used percentage
+  String _formatGasUsedPercentage(String? gasUsed, String? gasLimit) {
+    if (gasUsed == null || gasLimit == null) return '0%';
+
+    try {
+      final used = FormatterUtils.parseHexSafely(gasUsed) ?? 0;
+      final limit = FormatterUtils.parseHexSafely(gasLimit) ?? 1;
+
+      if (limit == 0) return '0%';
+
+      final percentage = (used / limit) * 100;
+      return '${percentage.toStringAsFixed(1)}%';
+    } catch (e) {
+      return '0%';
+    }
+  }
+
+  // Get block difficulty
+  String _formatBlockDifficulty(String? difficulty) {
+    if (difficulty == null) return 'N/A';
+
+    try {
+      final difficultyInt = FormatterUtils.parseHexSafely(difficulty) ?? 0;
+      if (difficultyInt == 0) return 'N/A';
+
+      if (difficultyInt > 1000000000000) {
+        return '${(difficultyInt / 1000000000000).toStringAsFixed(2)} T';
+      } else if (difficultyInt > 1000000000) {
+        return '${(difficultyInt / 1000000000).toStringAsFixed(2)} G';
+      } else if (difficultyInt > 1000000) {
+        return '${(difficultyInt / 1000000).toStringAsFixed(2)} M';
+      } else {
+        return difficultyInt.toString();
+      }
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  // Format transaction count
+  String _formatTransactionCount(dynamic transactions) {
+    if (transactions == null) return '0';
+
+    try {
+      if (transactions is String) {
+        final count = FormatterUtils.parseHexSafely(transactions) ?? 0;
+        return count.toString();
+      } else if (transactions is List) {
+        return transactions.length.toString();
+      }
+      return '0';
+    } catch (e) {
+      return '0';
+    }
   }
 }

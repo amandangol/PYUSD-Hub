@@ -17,7 +17,7 @@ import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/explore/service/news_service.dart';
 import 'screens/explore/view/news_explore_screen.dart';
-import 'screens/trace/provider/transaction_trace_provider.dart';
+import 'screens/trace/provider/trace_provider.dart';
 import 'screens/trace/view/trace_screen.dart';
 import 'screens/wallet/provider/walletscreen_provider.dart';
 import 'screens/networkcongestion/provider/network_congestion_provider.dart';

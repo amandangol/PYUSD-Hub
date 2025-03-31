@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
+import 'package:pyusd_hub/utils/snackbar_utils.dart';
 
-import '../provider/transaction_trace_provider.dart';
+import '../provider/trace_provider.dart';
 
 class TransactionTraceScreen extends StatefulWidget {
   final String txHash;
@@ -288,8 +289,9 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
             constraints: const BoxConstraints(),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: value));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$label copied to clipboard')),
+              SnackbarUtil.showSnackbar(
+                context: context,
+                message: '$label copied to clipboard',
               );
             },
           ),
@@ -491,10 +493,9 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                         final jsonString = const JsonEncoder.withIndent('  ')
                             .convert(_traceData);
                         Clipboard.setData(ClipboardData(text: jsonString));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('Raw trace data copied to clipboard')),
+                        SnackbarUtil.showSnackbar(
+                          context: context,
+                          message: 'Raw trace data copied to clipboard',
                         );
                       },
                       icon: const Icon(Icons.copy, size: 16),
