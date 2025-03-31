@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/networkcongestion/model/networkcongestion_model.dart';
 import '../services/gemini_service.dart';
-import '../screens/networkcongestion/provider/network_congestion_provider.dart';
-import '../providers/network_provider.dart';
 
 class GeminiProvider with ChangeNotifier {
   final GeminiService _service = GeminiService();

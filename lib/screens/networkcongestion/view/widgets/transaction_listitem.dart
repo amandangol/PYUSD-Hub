@@ -1,220 +1,372 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../../utils/formatter_utils.dart';
-import '../../../../utils/snackbar_utils.dart';
+import 'package:pyusd_hub/screens/networkcongestion/view/widgets/transaction_trace_screen.dart';
+import 'package:pyusd_hub/utils/formatter_utils.dart';
+import 'package:intl/intl.dart';
 
 class TransactionListItem extends StatelessWidget {
   final Map<String, dynamic> transaction;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   const TransactionListItem({
-    super.key,
+    Key? key,
     required this.transaction,
-    this.onTap,
-  });
-
-  // Helper method to safely parse hex values
-  BigInt? _parseHexValue(String? value) {
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    try {
-      // Remove '0x' prefix if present and any whitespace
-      final cleanValue = value.trim().toLowerCase();
-      final hexValue =
-          cleanValue.startsWith('0x') ? cleanValue.substring(2) : cleanValue;
-
-      // Handle special case for "0x0" or "0"
-      if (hexValue == '0' || hexValue.isEmpty) {
-        // print('Zero value detected');
-        return BigInt.zero;
-      }
-
-      // Ensure the hex value is properly formatted
-      final formattedHex =
-          hexValue.padLeft(hexValue.length + (hexValue.length % 2), '0');
-      // print('Formatted hex: $formattedHex');
-
-      final result = BigInt.parse(formattedHex, radix: 16);
-      // print('Parsed result: $result');
-      return result;
-    } catch (e) {
-      print('Error parsing hex value: $e for input: $value');
-      return null;
-    }
-  }
+    required this.onTap,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     // Extract transaction data
-    final String txHash = transaction['hash'] ?? '';
+    final String hash = transaction['hash'] ?? '';
     final String from = transaction['from'] ?? '';
     final String to = transaction['to'] ?? '';
-    final String? blockNumber = transaction['blockNumber'];
-    final String? gasPrice = transaction['gasPrice'];
+    final String tokenRecipient = transaction['tokenRecipient'] ?? to;
 
-    // Determine if pending or confirmed
-    final isPending = blockNumber == null;
+    // Determine if transaction is incoming based on the token recipient
+    // This logic needs fixing - incoming should be when the current user is receiving tokens
+    final bool isIncoming = tokenRecipient.toLowerCase() == from.toLowerCase();
 
-    final gasPriceBigInt = _parseHexValue(gasPrice);
-    final formattedGasPrice = gasPriceBigInt != null
-        ? '${(gasPriceBigInt / BigInt.from(1e9)).toStringAsFixed(2)} Gwei'
-        : 'N/A';
+    // Get timestamp from transaction
+    DateTime? timestamp;
+    if (transaction['timestamp'] != null) {
+      final int timestampValue =
+          FormatterUtils.parseHexSafely(transaction['timestamp']) ?? 0;
+      if (timestampValue > 0) {
+        timestamp = DateTime.fromMillisecondsSinceEpoch(timestampValue * 1000);
+      }
+    }
 
-    // Format block number with proper hex parsing
-    final blockNumberBigInt = _parseHexValue(blockNumber);
-    final formattedBlockNumber =
-        blockNumberBigInt != null ? blockNumberBigInt.toString() : 'Pending';
+    // Format timestamp
+    final String timeString = timestamp != null
+        ? DateFormat('MMM dd, HH:mm').format(timestamp)
+        : 'Pending';
+
+    // Calculate relative time
+    final String relativeTime =
+        timestamp != null ? _getRelativeTime(timestamp) : 'Pending';
+
+    // Get PYUSD amount with improved error handling
+    double amount = 0.0;
+    if (transaction.containsKey('tokenValue') &&
+        transaction['tokenValue'] != null) {
+      // Try to parse as double first
+      if (transaction['tokenValue'] is double) {
+        amount = transaction['tokenValue'];
+      } else if (transaction['tokenValue'] is int) {
+        amount = transaction['tokenValue'].toDouble();
+      } else if (transaction['tokenValue'] is String) {
+        amount = double.tryParse(transaction['tokenValue']) ?? 0.0;
+      }
+    } else if (transaction['input'] != null &&
+        transaction['input'].toString().length >= 138 &&
+        transaction['input'].toString().startsWith('0xa9059cbb')) {
+      try {
+        final String valueHex = transaction['input'].toString().substring(74);
+        final BigInt tokenValueBigInt =
+            FormatterUtils.parseBigInt("0x$valueHex");
+        amount =
+            tokenValueBigInt / BigInt.from(10).pow(6); // PYUSD has 6 decimals
+      } catch (e) {
+        print('Error parsing token value: $e');
+      }
+    }
+
+    // Format amount with commas for thousands
+    final formattedAmount = NumberFormat('#,##0.00').format(amount);
+
+    // Shorten addresses for display
+    final String shortFrom = FormatterUtils.formatAddress(from);
+    final String shortTo = FormatterUtils.formatAddress(tokenRecipient);
+
+    final transactionStatus = timestamp != null ? 'Completed' : 'Pending';
+    final statusColor =
+        timestamp != null ? Colors.green.shade600 : Colors.orange.shade600;
+
+    // Determine transaction type icon and color
+    IconData transactionIcon;
+    Color iconColor;
+    Color iconBackgroundColor;
+
+    if (isIncoming) {
+      transactionIcon = Icons.call_received;
+      iconColor = Colors.green.shade600;
+      iconBackgroundColor = Colors.green.withOpacity(0.1);
+    } else {
+      transactionIcon = Icons.call_made;
+      iconColor = Colors.blue.shade600;
+      iconBackgroundColor = Colors.blue.withOpacity(0.1);
+    }
 
     return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isPending
-              ? Colors.orange.withOpacity(0.3)
-              : Colors.green.withOpacity(0.3),
-        ),
       ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header row with transaction hash and status
+              // Top row: Status, Hash and Time
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Transaction hash with copy button
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            FormatterUtils.formatHash(txHash),
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.copy, size: 16),
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: txHash));
-                            SnackbarUtil.showSnackbar(
-                                context: context,
-                                message: "Transaction hash copied");
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Status badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isPending
-                          ? Colors.orange.withOpacity(0.1)
-                          : Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isPending ? Icons.pending : Icons.check_circle,
-                          size: 12,
-                          color: isPending ? Colors.orange : Colors.green,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isPending ? 'Pending' : 'Confirmed',
+                        child: Text(
+                          transactionStatus,
                           style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
                             fontSize: 12,
-                            color: isPending ? Colors.orange : Colors.green,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          // Add functionality to copy hash to clipboard
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Transaction hash copied to clipboard'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              FormatterUtils.formatHash(hash),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.copy_outlined,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    relativeTime,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
 
-              // Transaction details
+              const SizedBox(height: 16),
+
+              // Middle row: Amount and direction icon
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // From/To addresses
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: iconBackgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      transactionIcon,
+                      color: iconColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildAddressRow('From', from),
+                        Text(
+                          isIncoming ? 'Received' : 'Sent',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isIncoming
+                                ? Colors.green.shade600
+                                : Colors.blue.shade600,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        _buildAddressRow('To', to),
+                        Text(
+                          timeString,
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-
-                  // Gas info
                   Text(
-                    'Gas: $formattedGasPrice',
+                    '$formattedAmount',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                      color: Colors.grey.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'PYUSD',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
 
-              // Block info and timestamp
+              const SizedBox(height: 16),
+
+              // Bottom row: From/To addresses
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (blockNumber != null)
-                    Text(
-                      'Block: $formattedBlockNumber',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'From',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () {
+                            // Add functionality to copy address to clipboard
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Address copied to clipboard'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                shortFrom,
+                                style: TextStyle(
+                                  color: Colors.grey.shade800,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.copy_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final url = Uri.parse('https://etherscan.io/tx/$txHash');
-                      try {
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url);
-                        }
-                      } catch (e) {
-                        SnackbarUtil.showSnackbar(
-                            context: context,
-                            message: "Could not launch explorer");
-                      }
-                    },
-                    icon: const Icon(Icons.open_in_new, size: 16),
-                    label: const Text('View on Etherscan'),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  Icon(
+                    Icons.arrow_forward,
+                    size: 16,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'To',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () {
+                            // Add functionality to copy address to clipboard
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Address copied to clipboard'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                shortTo,
+                                style: TextStyle(
+                                  color: Colors.grey.shade800,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.copy_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
+              ),
+
+              // Add a "View Trace" button
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            TransactionTraceScreen(txHash: hash),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.analytics, size: 16),
+                  label: const Text('View Trace'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: Colors.blue.shade200),
+                    ),
+                    backgroundColor: Colors.blue.withOpacity(0.05),
+                  ),
+                ),
               ),
             ],
           ),
@@ -223,27 +375,31 @@ class TransactionListItem extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressRow(String label, String address) {
-    return Row(
-      children: [
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-        Expanded(
-          child: Text(
-            FormatterUtils.formatHash(address),
-            style: const TextStyle(
-              fontSize: 12,
-              fontFamily: 'monospace',
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
+  // String _shortenAddress(String address) {
+  //   if (address.isEmpty) return 'Unknown';
+  //   if (address.length < 10) return address;
+  //   return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+  // }
+
+  // String _shortenHash(String hash) {
+  //   if (hash.isEmpty) return 'Unknown';
+  //   if (hash.length < 10) return hash;
+  //   return '${hash.substring(0, 6)}...${address.substring(hash.length - 4)}';
+  // }
+
+  String _getRelativeTime(DateTime timestamp) {
+    final Duration difference = DateTime.now().difference(timestamp);
+
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return DateFormat('MMM dd').format(timestamp);
+    }
   }
 }

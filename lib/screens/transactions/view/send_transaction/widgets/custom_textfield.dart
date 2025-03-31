@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pyusd_hub/widgets/pyusd_components.dart';
 
-class CustomTextField extends StatelessWidget {
+class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
   final String labelText;
   final String? hintText;
@@ -31,19 +31,53 @@ class CustomTextField extends StatelessWidget {
   });
 
   @override
+  State<CustomTextField> createState() => _CustomTextFieldState();
+}
+
+class _CustomTextFieldState extends State<CustomTextField> {
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_validateInput);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_validateInput);
+    super.dispose();
+  }
+
+  void _validateInput() {
+    if (widget.validator != null) {
+      final error = widget.validator!(widget.controller.text);
+      setState(() {
+        _errorText = error;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PyusdTextField(
-      controller: controller,
-      labelText: labelText,
-      hintText: hintText,
-      validator: validator,
-      onChanged: onChanged,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      suffixIcon: suffixIcon,
-      prefixIcon: prefixIcon,
-      suffixText: suffixText,
-      focusNode: focusNode,
+      controller: widget.controller,
+      labelText: widget.labelText,
+      hintText: widget.hintText,
+      validator: widget.validator,
+      onChanged: (value) {
+        if (widget.onChanged != null) {
+          widget.onChanged!(value);
+        }
+        _validateInput();
+      },
+      keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
+      suffixIcon: widget.suffixIcon,
+      prefixIcon: widget.prefixIcon,
+      suffixText: widget.suffixText,
+      focusNode: widget.focusNode,
+      errorText: _errorText,
     );
   }
 }

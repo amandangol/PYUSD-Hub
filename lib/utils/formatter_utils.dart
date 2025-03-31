@@ -138,4 +138,13 @@ class FormatterUtils {
       return '0.000';
     }
   }
+
+  static String formatGas(String gasHex) {
+    try {
+      final gasValue = parseBigInt(gasHex);
+      return gasValue.toString();
+    } catch (e) {
+      return '0';
+    }
+  }
 }

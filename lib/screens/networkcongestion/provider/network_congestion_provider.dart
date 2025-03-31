@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pyusd_hub/utils/formatter_utils.dart';
@@ -174,6 +176,10 @@ class NetworkCongestionProvider with ChangeNotifier {
       // Connect WebSocket after initial data is loaded
       _connectWebSocket();
 
+      // Immediately calculate block statistics to show avg block time and blocks/hour
+      await _fetchInitialBlocks();
+      await _calculateBlockStatistics();
+
       // Setup periodic updates with longer intervals
       _updateTimer?.cancel();
       _updateTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
@@ -208,7 +214,6 @@ class NetworkCongestionProvider with ChangeNotifier {
       });
 
       // Start fetching additional data in the background
-      _fetchInitialBlocks();
       _fetchPyusdTransactionActivity();
 
       if (_isDisposed) return;
@@ -573,130 +578,144 @@ class NetworkCongestionProvider with ChangeNotifier {
   // Main method to fetch PYUSD transactions using RPC
   Future<void> _fetchPyusdTransactionActivity() async {
     try {
-      // First, get the latest block number
+      // Get the latest block number
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
       final latestBlockNumber =
           FormatterUtils.parseHexSafely(latestBlockResponse);
 
       if (latestBlockNumber == null) {
-        print('Could not get latest block number');
+        print('Could not get latest block number for PYUSD activity');
         return;
       }
 
-      // We'll search for PYUSD transactions in the last 100,000 blocks
-      const int blocksToSearch = 5;
-
-      // Calculate start block
-      int startBlock = latestBlockNumber - blocksToSearch;
-      if (startBlock < 0) startBlock = 0;
-
-      // Convert block numbers to hex
-      final fromBlockHex = '0x${startBlock.toRadixString(16)}';
+      // Calculate the block range to search for PYUSD transactions
+      // Look back about 10,000 blocks (approximately 1-2 days)
+      final fromBlock = max(0, latestBlockNumber - 10000);
+      final fromBlockHex = '0x${fromBlock.toRadixString(16)}';
       final toBlockHex = '0x${latestBlockNumber.toRadixString(16)}';
 
-      // Use eth_getLogs to find all Transfer events related to PYUSD contract
+      // Get logs for PYUSD Transfer events
       final logsResponse = await _makeRpcCall('eth_getLogs', [
         {
+          'fromBlock': fromBlockHex,
+          'toBlock': toBlockHex,
           'address': _pyusdContractAddress,
           'topics': [_transferEventSignature],
-          'fromBlock': fromBlockHex,
-          'toBlock': toBlockHex
         }
       ]);
 
-      if (logsResponse == null || logsResponse is! List) {
-        // print('Invalid logs response: $logsResponse');
+      if (logsResponse == null || !(logsResponse is List)) {
+        print('Invalid logs response for PYUSD activity');
         return;
       }
 
-      // Update congestion data with transaction count
-      _congestionData = _congestionData.copyWith(
-        pyusdTransactionCount: logsResponse.length,
-        confirmedPyusdTxCount: logsResponse.length,
-      );
+      // Process the logs to extract transaction data
+      final logs = logsResponse as List;
+      int pyusdTxCount = 0;
 
-      // Process recent logs to extract transactions
-      await _processRecentLogs(logsResponse);
+      // Create a set of existing transaction hashes for quick lookup
+      final existingTxHashes = _recentPyusdTransactions
+          .map((tx) => tx['hash']?.toString().toLowerCase() ?? '')
+          .toSet();
 
-      notifyListeners();
-    } catch (e) {
-      _extractPyusdTransactionsFromRecentBlocks();
-      print('Error fetching PYUSD transaction activity: $e');
-    }
-  }
+      for (var log in logs) {
+        try {
+          final String txHash = log['transactionHash'] ?? '';
 
-  // Process log entries to extract transaction details
-  Future<void> _processRecentLogs(List<dynamic> logs) async {
-    try {
-      // Sort logs by block number (descending) to get the most recent first
-      logs.sort((a, b) {
-        final blockNumberA =
-            FormatterUtils.parseHexSafely(a['blockNumber']) ?? 0;
-        final blockNumberB =
-            FormatterUtils.parseHexSafely(b['blockNumber']) ?? 0;
-        return blockNumberB.compareTo(blockNumberA);
-      });
+          // Skip if we already have this transaction
+          if (txHash.isEmpty ||
+              existingTxHashes.contains(txHash.toLowerCase())) {
+            continue;
+          }
 
-      // print('Processing ${logs.length} log entries');
+          // Get the full transaction details
+          final txResponse =
+              await _makeRpcCall('eth_getTransactionByHash', [txHash]);
 
-      // Take the 500 most recent logs (increased from 100)
-      final recentLogs = logs.take(100).toList();
+          if (txResponse == null) continue;
 
-      // Clear existing transactions list
-      _recentPyusdTransactions.clear();
+          // Get the transaction receipt for status and other details
+          final receiptResponse =
+              await _makeRpcCall('eth_getTransactionReceipt', [txHash]);
 
-      // Create a set of transaction hashes we've already processed
-      final Set<String> processedTxHashes = {};
+          // Create an enriched transaction object
+          Map<String, dynamic> enrichedTx =
+              Map<String, dynamic>.from(txResponse);
 
-      // Process each log to get transaction details
-      for (var log in recentLogs) {
-        final txHash = log['transactionHash'];
+          // Add receipt data if available
+          if (receiptResponse != null) {
+            enrichedTx['status'] = receiptResponse['status'];
+            enrichedTx['gasUsed'] = receiptResponse['gasUsed'];
+            enrichedTx['blockNumber'] = receiptResponse['blockNumber'];
+          }
 
-        // Skip if we've already processed this transaction
-        if (processedTxHashes.contains(txHash)) continue;
-        processedTxHashes.add(txHash);
+          // Extract PYUSD amount from input data
+          if (txResponse['input'] != null &&
+              txResponse['input'].toString().length >= 138 &&
+              txResponse['input'].toString().startsWith('0xa9059cbb')) {
+            try {
+              // Extract recipient address (32 bytes after method ID)
+              final String recipient =
+                  '0x' + txResponse['input'].toString().substring(34, 74);
 
-        // Get full transaction details
-        final tx = await _getTransactionDetails(txHash);
-        if (tx != null) {
-          // Add additional transaction details
-          tx['blockNumber'] = log['blockNumber'];
-          tx['logIndex'] = log['logIndex'];
-          tx['transactionIndex'] = log['transactionIndex'];
+              // Extract value (32 bytes after recipient)
+              final String valueHex =
+                  txResponse['input'].toString().substring(74);
+              final BigInt tokenValueBigInt =
+                  FormatterUtils.parseBigInt("0x$valueHex");
 
-          // Get block timestamp if not already present
-          if (!tx.containsKey('timestamp') && tx['blockNumber'] != null) {
-            final block = await _makeRpcCall(
-                'eth_getBlockByNumber', [tx['blockNumber'], false]);
-            if (block != null && block.containsKey('timestamp')) {
-              tx['timestamp'] = block['timestamp'];
+              // Convert to PYUSD with 6 decimals
+              final double tokenValue =
+                  tokenValueBigInt / BigInt.from(10).pow(6);
+
+              // Add these fields to the transaction
+              enrichedTx['tokenValue'] = tokenValue;
+              enrichedTx['tokenRecipient'] = recipient;
+              enrichedTx['isTokenTransfer'] = true;
+            } catch (e) {
+              print('Error extracting PYUSD transfer data: $e');
+              enrichedTx['tokenValue'] = 0.0;
+              enrichedTx['isTokenTransfer'] = true;
+            }
+          } else {
+            enrichedTx['tokenValue'] = 0.0;
+            enrichedTx['isTokenTransfer'] = false;
+          }
+
+          // Get block timestamp
+          if (enrichedTx['blockNumber'] != null) {
+            final blockHex = enrichedTx['blockNumber'];
+            final blockResponse =
+                await _makeRpcCall('eth_getBlockByNumber', [blockHex, false]);
+
+            if (blockResponse != null && blockResponse['timestamp'] != null) {
+              enrichedTx['timestamp'] = blockResponse['timestamp'];
             }
           }
 
-          // Add the transaction to our list
-          _recentPyusdTransactions.add(tx);
+          // Add to recent transactions
+          _recentPyusdTransactions.insert(0, enrichedTx);
+          if (_recentPyusdTransactions.length > 200) {
+            _recentPyusdTransactions.removeLast();
+          }
 
-          if (_recentPyusdTransactions.length > 30) break;
+          pyusdTxCount++;
+        } catch (e) {
+          print('Error processing PYUSD transaction log: $e');
         }
       }
 
-      // Sort transactions by block number and transaction index
-      _recentPyusdTransactions.sort((a, b) {
-        final blockNumberA =
-            FormatterUtils.parseHexSafely(a['blockNumber']) ?? 0;
-        final blockNumberB =
-            FormatterUtils.parseHexSafely(b['blockNumber']) ?? 0;
-        if (blockNumberA != blockNumberB) {
-          return blockNumberB.compareTo(blockNumberA);
-        }
-        final txIndexA =
-            int.parse(a['transactionIndex'].toString().substring(2), radix: 16);
-        final txIndexB =
-            int.parse(b['transactionIndex'].toString().substring(2), radix: 16);
-        return txIndexB.compareTo(txIndexA);
-      });
+      // Update PYUSD transaction count
+      if (pyusdTxCount > 0) {
+        _congestionData = _congestionData.copyWith(
+          pyusdTransactionCount:
+              _congestionData.pyusdTransactionCount + pyusdTxCount,
+        );
+
+        _safeNotifyListeners();
+      }
     } catch (e) {
-      print('Error processing recent logs: $e');
+      print('Error fetching PYUSD transaction activity: $e');
     }
   }
 
@@ -826,57 +845,47 @@ class NetworkCongestionProvider with ChangeNotifier {
         lastBlockNumber: latestBlockNumber,
       );
 
-      // Create a list of futures to fetch blocks in parallel
+      // Fetch the last 10 blocks
+      final int numBlocksToFetch = 10;
       List<Future<Map<String, dynamic>?>> blockFutures = [];
 
-      // Fetch the last 10 blocks in descending order
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < numBlocksToFetch; i++) {
         final blockNumber = latestBlockNumber - i;
+        if (blockNumber < 0) break;
+
         final blockHex = '0x${blockNumber.toRadixString(16)}';
         blockFutures.add(_fetchBlock(blockHex));
       }
 
-      // Wait for all block fetches to complete
       final blockResponses = await Future.wait(blockFutures);
 
       // Process the blocks
-      List<Map<String, dynamic>> newBlocks = [];
       for (var blockResponse in blockResponses) {
         if (blockResponse != null) {
-          newBlocks.add(blockResponse);
+          // Insert at the beginning to maintain newest-first order
+          _recentBlocks.insert(0, blockResponse);
+
+          // Check for PYUSD transactions in this block
+          _countPyusdTransactionsInBlock(blockResponse);
         }
       }
 
       // Sort blocks by block number in descending order
-      newBlocks.sort((a, b) {
+      _recentBlocks.sort((a, b) {
         final blockNumberA = FormatterUtils.parseHexSafely(a['number']) ?? 0;
         final blockNumberB = FormatterUtils.parseHexSafely(b['number']) ?? 0;
         return blockNumberB.compareTo(blockNumberA);
       });
 
-      // Add sorted blocks to the list
-      _recentBlocks.addAll(newBlocks);
-
-      // Calculate block time if possible
-      if (_recentBlocks.length >= 2) {
-        final currentTimestamp =
-            FormatterUtils.parseHexSafely(_recentBlocks[0]['timestamp']);
-        final previousTimestamp =
-            FormatterUtils.parseHexSafely(_recentBlocks[1]['timestamp']);
-
-        if (currentTimestamp != null && previousTimestamp != null) {
-          final blockTime = currentTimestamp - previousTimestamp;
-          _congestionData = _congestionData.copyWith(
-            blockTime: blockTime.toDouble(),
-            lastBlockTimestamp: currentTimestamp,
-          );
-        }
+      // Keep only the most recent blocks
+      if (_recentBlocks.length > 30) {
+        _recentBlocks.length = 30;
       }
 
-      // Update last refreshed time
-      _congestionData = _congestionData.copyWith(
-        lastRefreshed: DateTime.now(),
-      );
+      // Calculate block statistics after fetching blocks
+      await _calculateBlockStatistics();
+
+      _safeNotifyListeners();
     } catch (e) {
       print('Error fetching initial blocks: $e');
     }
@@ -1213,9 +1222,49 @@ class NetworkCongestionProvider with ChangeNotifier {
                   _pyusdContractAddress.toLowerCase()) {
             pyusdTxCount++;
 
+            // Process the transaction to extract PYUSD amount
+            Map<String, dynamic> enrichedTx = Map<String, dynamic>.from(tx);
+
+            // Extract PYUSD amount from input data if it's a token transfer
+            if (tx['input'] != null &&
+                tx['input'].toString().length >= 138 &&
+                tx['input'].toString().startsWith('0xa9059cbb')) {
+              try {
+                // Extract recipient address (32 bytes after method ID)
+                final String recipient =
+                    '0x' + tx['input'].toString().substring(34, 74);
+
+                // Extract value (32 bytes after recipient)
+                final String valueHex = tx['input'].toString().substring(74);
+                final BigInt tokenValueBigInt =
+                    FormatterUtils.parseBigInt("0x$valueHex");
+
+                // Convert to PYUSD with 6 decimals
+                final double tokenValue =
+                    tokenValueBigInt / BigInt.from(10).pow(6);
+
+                // Add these fields to the transaction
+                enrichedTx['tokenValue'] = tokenValue;
+                enrichedTx['tokenRecipient'] = recipient;
+                enrichedTx['isTokenTransfer'] = true;
+              } catch (e) {
+                print('Error extracting PYUSD transfer data: $e');
+                enrichedTx['tokenValue'] = 0.0;
+                enrichedTx['isTokenTransfer'] = true;
+              }
+            } else {
+              enrichedTx['tokenValue'] = 0.0;
+              enrichedTx['isTokenTransfer'] = false;
+            }
+
+            // Add timestamp from block
+            if (block['timestamp'] != null) {
+              enrichedTx['timestamp'] = block['timestamp'];
+            }
+
             // Add to recent transactions if not already there
             if (!_recentPyusdTransactions.any((t) => t['hash'] == tx['hash'])) {
-              _recentPyusdTransactions.insert(0, tx);
+              _recentPyusdTransactions.insert(0, enrichedTx);
               if (_recentPyusdTransactions.length > 200) {
                 _recentPyusdTransactions.removeLast();
               }
@@ -1460,30 +1509,57 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<Map<String, dynamic>> getDetailedTransactionTrace(
       String txHash) async {
     try {
-      // Use trace_transaction RPC method
+      // First try trace_transaction which is more widely supported by GCP
       final traceResult = await _makeRpcCall('trace_transaction', [txHash]);
+
       if (traceResult != null) {
+        // Also get debug_traceTransaction for more detailed info
+        final debugTraceResult = await _makeRpcCall('debug_traceTransaction', [
+          txHash,
+          {"tracer": "callTracer", "timeout": "30s"}
+        ]);
+
         return {
-          'gasUsed': traceResult['gasUsed'],
-          'trace': traceResult['trace'],
-          'vmTrace': traceResult['vmTrace']
+          'trace': traceResult,
+          'debugTrace': debugTraceResult,
+          'success': true,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
         };
       }
-      return {};
+      return {'success': false, 'error': 'No trace data available'};
     } catch (e) {
       print('Error getting transaction trace: $e');
-      return {};
+      return {'success': false, 'error': e.toString()};
     }
   }
 
-  Future<Map<String, dynamic>> getBlockTrace(String blockHash) async {
+  Future<Map<String, dynamic>> getBlockTrace(int blockNumber) async {
     try {
+      // Convert block number to hex
+      final blockHex = '0x${blockNumber.toRadixString(16)}';
+
       // Use trace_block RPC method
-      final traceResult = await _makeRpcCall('trace_block', [blockHash]);
-      return traceResult ?? {};
+      final traceResult = await _makeRpcCall('trace_block', [blockHex]);
+
+      if (traceResult != null) {
+        // Filter for PYUSD transactions
+        final pyusdTraces = (traceResult as List).where((trace) {
+          final to = trace['action']?['to']?.toString().toLowerCase();
+          return to == _pyusdContractAddress.toLowerCase();
+        }).toList();
+
+        return {
+          'fullTrace': traceResult,
+          'pyusdTraces': pyusdTraces,
+          'success': true,
+          'blockNumber': blockNumber,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+      }
+      return {'success': false, 'error': 'No block trace data available'};
     } catch (e) {
       print('Error getting block trace: $e');
-      return {};
+      return {'success': false, 'error': e.toString()};
     }
   }
 
@@ -1625,6 +1701,102 @@ class NetworkCongestionProvider with ChangeNotifier {
     } else {
       print(
           'NetworkCongestionProvider: Skipping notifyListeners - provider disposed');
+    }
+  }
+
+  // Add a method to analyze a PYUSD transaction in depth
+  Future<Map<String, dynamic>> analyzePyusdTransaction(String txHash) async {
+    try {
+      // Get basic transaction data
+      final txData = await _getTransactionDetails(txHash);
+      if (txData == null) {
+        return {'success': false, 'error': 'Transaction not found'};
+      }
+
+      // Get detailed trace
+      final traceData = await getDetailedTransactionTrace(txHash);
+
+      // Extract token transfer details
+      Map<String, dynamic> tokenDetails = {};
+      if (txData['input'] != null &&
+          txData['input'].toString().startsWith('0xa9059cbb')) {
+        try {
+          // Extract recipient address (32 bytes after method ID)
+          final String recipient =
+              '0x' + txData['input'].toString().substring(34, 74);
+
+          // Extract value (32 bytes after recipient)
+          final String valueHex = txData['input'].toString().substring(74);
+          final BigInt tokenValueBigInt =
+              FormatterUtils.parseBigInt("0x$valueHex");
+
+          // Convert to PYUSD with 6 decimals
+          final double tokenValue = tokenValueBigInt / BigInt.from(10).pow(6);
+
+          tokenDetails = {
+            'recipient': recipient,
+            'value': tokenValue,
+            'formattedValue': '\$${tokenValue.toStringAsFixed(2)}',
+          };
+        } catch (e) {
+          print('Error extracting token details: $e');
+        }
+      }
+
+      // Get gas usage details
+      final gasUsed = FormatterUtils.parseHexSafely(txData['gasUsed']) ?? 0;
+      final gasPrice = FormatterUtils.parseHexSafely(txData['gasPrice']) ?? 0;
+      final gasCost = (gasUsed * gasPrice) / 1e18; // Convert to ETH
+
+      return {
+        'success': true,
+        'transaction': txData,
+        'trace': traceData,
+        'tokenDetails': tokenDetails,
+        'gasAnalysis': {
+          'gasUsed': gasUsed,
+          'gasPrice': gasPrice / 1e9, // Convert to Gwei
+          'gasCostEth': gasCost,
+          'gasCostUsd': gasCost * 3000, // Approximate ETH price in USD
+        },
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      print('Error analyzing PYUSD transaction: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  // Cache for transaction traces to reduce RPC calls
+  final Map<String, Map<String, dynamic>> _transactionTraceCache = {};
+
+  // Get transaction trace with caching
+  Future<Map<String, dynamic>> getTransactionTraceWithCache(
+      String txHash) async {
+    try {
+      // Check cache first
+      if (_transactionTraceCache.containsKey(txHash)) {
+        return _transactionTraceCache[txHash]!;
+      }
+
+      // Fetch trace
+      final trace = await getDetailedTransactionTrace(txHash);
+
+      // Cache the result
+      if (trace['success'] == true) {
+        _transactionTraceCache[txHash] = trace;
+
+        // Limit cache size to reduce memory usage
+        if (_transactionTraceCache.length > 50) {
+          final oldestKey = _transactionTraceCache.keys.first;
+          _transactionTraceCache.remove(oldestKey);
+        }
+      }
+
+      return trace;
+    } catch (e) {
+      print('Error getting transaction trace with cache: $e');
+      return {'success': false, 'error': e.toString()};
     }
   }
 }

@@ -4,8 +4,8 @@ import '../provider/network_congestion_provider.dart';
 import 'tabs/blocks_tab.dart';
 import 'tabs/gas_tab.dart';
 import 'tabs/overview_tab.dart';
+import 'tabs/tracing_tab.dart';
 import 'tabs/transactions_tab.dart';
-import 'tabs/analysis_tab.dart';
 import 'widgets/data_source_info_card.dart';
 
 class NetworkCongestionScreen extends StatefulWidget {
@@ -27,7 +27,7 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
   void initState() {
     super.initState();
     print('NetworkCongestionScreen: initState called');
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
 
     // Initialize provider and load first tab
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -128,7 +128,7 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
               Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
               Tab(icon: Icon(Icons.storage), text: 'Blocks'),
               Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
-              Tab(icon: Icon(Icons.analytics), text: 'Analysis'),
+              Tab(icon: Icon(Icons.bug_report), text: 'Tracing'),
             ],
             isScrollable: false,
             indicatorWeight: 3,
@@ -197,13 +197,9 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
             tabController: _tabController,
           ),
         );
+
       case 4:
-        return SingleChildScrollView(
-          child: AnalysisTab(
-            provider: provider,
-            congestionData: provider.congestionData,
-          ),
-        );
+        return TracingTab(provider: provider);
 
       default:
         return const SizedBox.shrink();

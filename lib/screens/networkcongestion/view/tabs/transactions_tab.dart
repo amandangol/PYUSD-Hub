@@ -27,7 +27,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Transaction Activity Overview
+          // // Transaction Activity Overview
           // _buildTransactionOverview(),
 
           // Recent PYUSD Transactions (expanded view)
@@ -50,18 +50,16 @@ class _TransactionsTabState extends State<TransactionsTab> {
 
       for (var tx in transactions) {
         // Check if transaction has timestamp
-        if (tx.containsKey('timestamp')) {
-          final int? timestamp = FormatterUtils.parseHexSafely(tx['timestamp']);
-          if (timestamp != null) {
-            final DateTime txTime =
-                DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-            if (txTime.isAfter(yesterday)) {
-              // Add value to total volume if transaction is within last 24 hours
-              final double? value =
-                  FormatterUtils.parseHexSafely(tx['value'])?.toDouble();
-              if (value != null) {
-                totalVolume24h += value / 1e18; // Convert from wei to ETH
-              }
+        if (tx.containsKey('timeStamp')) {
+          final int timestamp = int.parse(tx['timeStamp']);
+          final DateTime txTime =
+              DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+          if (txTime.isAfter(yesterday)) {
+            // Add value to total volume if transaction is within last 24 hours
+            final String value = tx['value'] ?? '0';
+            if (value.isNotEmpty) {
+              totalVolume24h +=
+                  double.parse(value) / 1e18; // Convert from wei to ETH
             }
           }
         }
@@ -170,6 +168,40 @@ class _TransactionsTabState extends State<TransactionsTab> {
             widget.provider.recentBlocks.last['number'])
         : null;
 
+    // Calculate total volume from transactions
+    double totalVolume = 0;
+    for (var tx in transactions) {
+      double amount = 0.0;
+      if (tx.containsKey('tokenValue')) {
+        amount = tx['tokenValue'];
+      } else if (tx['input'] != null &&
+          tx['input'].toString().length >= 138 &&
+          tx['input'].toString().startsWith('0xa9059cbb')) {
+        try {
+          final String valueHex = tx['input'].toString().substring(74);
+          final BigInt tokenValueBigInt =
+              FormatterUtils.parseBigInt("0x$valueHex");
+          amount =
+              tokenValueBigInt / BigInt.from(10).pow(6); // PYUSD has 6 decimals
+        } catch (e) {
+          print('Error parsing token value: $e');
+        }
+      }
+      totalVolume += amount;
+    }
+
+    // Format volume with appropriate suffix (K, M, B)
+    String formattedVolume = '\$0.00';
+    if (totalVolume >= 1000000000) {
+      formattedVolume = '\$${(totalVolume / 1000000000).toStringAsFixed(2)}B';
+    } else if (totalVolume >= 1000000) {
+      formattedVolume = '\$${(totalVolume / 1000000).toStringAsFixed(2)}M';
+    } else if (totalVolume >= 1000) {
+      formattedVolume = '\$${(totalVolume / 1000).toStringAsFixed(2)}K';
+    } else {
+      formattedVolume = '\$${totalVolume.toStringAsFixed(2)}';
+    }
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -198,6 +230,32 @@ class _TransactionsTabState extends State<TransactionsTab> {
                   ),
               ],
             ),
+            if (transactions.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: StatsCard(
+                      title: 'Total Volume',
+                      value: formattedVolume,
+                      icon: Icons.attach_money,
+                      color: Colors.green,
+                      description: 'PYUSD transferred',
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatsCard(
+                      title: 'Unique Addresses',
+                      value: '${_calculateUniqueAddresses(transactions)}',
+                      icon: Icons.people,
+                      color: Colors.purple,
+                      description: 'Unique wallets',
+                    ),
+                  ),
+                ],
+              ),
+            ],
             if (oldestBlockNumber != null) ...[
               const SizedBox(height: 8),
               Container(
@@ -292,5 +350,19 @@ class _TransactionsTabState extends State<TransactionsTab> {
         ),
       ),
     );
+  }
+
+  // Helper method to format ETH value
+  String _formatEthValue(String hexValue) {
+    final value = FormatterUtils.parseHexSafely(hexValue) ?? 0;
+    final ethValue = value / 1e18;
+
+    if (ethValue == 0) {
+      return '0 ETH';
+    } else if (ethValue < 0.000001) {
+      return '< 0.000001 ETH';
+    } else {
+      return '${ethValue.toStringAsFixed(6)} ETH';
+    }
   }
 }

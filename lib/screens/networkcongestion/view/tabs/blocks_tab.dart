@@ -7,11 +7,23 @@ import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
 import '../../../../widgets/common/info_dialog.dart';
 import '../../provider/network_congestion_provider.dart';
+import '../widgets/transaction_trace_viewer.dart';
 
-class BlocksTab extends StatelessWidget {
+class BlocksTab extends StatefulWidget {
   final NetworkCongestionProvider provider;
 
-  const BlocksTab({super.key, required this.provider});
+  const BlocksTab({
+    super.key,
+    required this.provider,
+  });
+
+  @override
+  State<BlocksTab> createState() => _BlocksTabState();
+}
+
+class _BlocksTabState extends State<BlocksTab> {
+  final Map<String, bool> _expandedTraces = {};
+  final Map<String, Map<String, dynamic>> _traceCache = {};
 
   @override
   Widget build(BuildContext context) {
@@ -35,8 +47,9 @@ class BlocksTab extends StatelessWidget {
   // Block Information Overview Card
   Widget _buildBlockInfoOverview(BuildContext context) {
     // Get the latest block if available
-    final latestBlock =
-        provider.recentBlocks.isNotEmpty ? provider.recentBlocks[0] : null;
+    final latestBlock = widget.provider.recentBlocks.isNotEmpty
+        ? widget.provider.recentBlocks[0]
+        : null;
 
     // Parse block number
     int blockNumber = 0;
@@ -112,8 +125,8 @@ class BlocksTab extends StatelessWidget {
                 _buildBlockStatCard(
                   context,
                   'Avg Block Time',
-                  provider.congestionData.averageBlockTime > 0
-                      ? '${provider.congestionData.averageBlockTime.toStringAsFixed(1)} sec'
+                  widget.provider.congestionData.averageBlockTime > 0
+                      ? '${widget.provider.congestionData.averageBlockTime.toStringAsFixed(1)} sec'
                       : 'Loading...',
                   Icons.timer,
                   Colors.blue,
@@ -122,8 +135,8 @@ class BlocksTab extends StatelessWidget {
                 _buildBlockStatCard(
                   context,
                   'Blocks/Hour',
-                  provider.congestionData.blocksPerHour > 0
-                      ? '~${provider.congestionData.blocksPerHour}'
+                  widget.provider.congestionData.blocksPerHour > 0
+                      ? '~${widget.provider.congestionData.blocksPerHour}'
                       : 'Loading...',
                   Icons.av_timer,
                   Colors.green,
@@ -132,8 +145,8 @@ class BlocksTab extends StatelessWidget {
                 _buildBlockStatCard(
                   context,
                   'Avg Tx/Block',
-                  provider.congestionData.averageTxPerBlock > 0
-                      ? '${provider.congestionData.averageTxPerBlock}'
+                  widget.provider.congestionData.averageTxPerBlock > 0
+                      ? '${widget.provider.congestionData.averageTxPerBlock}'
                       : 'Loading...',
                   Icons.sync_alt,
                   Colors.purple,
@@ -142,8 +155,8 @@ class BlocksTab extends StatelessWidget {
                 _buildBlockStatCard(
                   context,
                   'Gas Limit',
-                  provider.congestionData.gasLimit > 0
-                      ? '${(provider.congestionData.gasLimit / 1000000).toStringAsFixed(1)}M'
+                  widget.provider.congestionData.gasLimit > 0
+                      ? '${(widget.provider.congestionData.gasLimit / 1000000).toStringAsFixed(1)}M'
                       : 'Loading...',
                   Icons.local_gas_station,
                   Colors.orange,
@@ -247,7 +260,7 @@ class BlocksTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            provider.recentBlocks.isEmpty
+            widget.provider.recentBlocks.isEmpty
                 ? const Center(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
@@ -266,12 +279,12 @@ class BlocksTab extends StatelessWidget {
                     separatorBuilder: (context, index) =>
                         const Divider(height: 1),
                     itemCount: expandedView
-                        ? provider.recentBlocks.length
-                        : (provider.recentBlocks.length > 3
+                        ? widget.provider.recentBlocks.length
+                        : (widget.provider.recentBlocks.length > 3
                             ? 3
-                            : provider.recentBlocks.length),
+                            : widget.provider.recentBlocks.length),
                     itemBuilder: (context, index) {
-                      final block = provider.recentBlocks[index];
+                      final block = widget.provider.recentBlocks[index];
 
                       // Parse block data
                       final blockNumberHex =

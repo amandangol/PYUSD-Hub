@@ -412,6 +412,7 @@ class PyusdTextField extends StatelessWidget {
   final Icon? prefixIcon;
   final String? suffixText;
   final FocusNode? focusNode;
+  final String? errorText;
 
   const PyusdTextField({
     super.key,
@@ -426,6 +427,7 @@ class PyusdTextField extends StatelessWidget {
     this.prefixIcon,
     this.suffixText,
     this.focusNode,
+    this.errorText,
   });
 
   @override
@@ -442,6 +444,7 @@ class PyusdTextField extends StatelessWidget {
         suffixIcon: suffixIcon,
         prefixIcon: prefixIcon,
         suffixText: suffixText,
+        errorText: errorText,
       ),
       validator: validator,
       onChanged: onChanged,
