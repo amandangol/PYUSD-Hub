@@ -410,13 +410,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         IconButton(
           icon: const Icon(Icons.refresh),
           onPressed: _isRefreshing ? null : _refreshTransactionDetails,
-          tooltip: 'Refresh transaction details',
         ),
         // Etherscan button
         IconButton(
           icon: const Icon(Icons.open_in_new),
           onPressed: _openBlockExplorer,
-          tooltip: 'View on Etherscan',
         ),
       ],
     );

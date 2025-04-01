@@ -282,7 +282,6 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
                               _mnemonicController.text = data.text!;
                             }
                           },
-                          tooltip: 'Paste from clipboard',
                         ),
                       ),
                       style: TextStyle(

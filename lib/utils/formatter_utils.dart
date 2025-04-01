@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:intl/intl.dart';
 import 'package:web3dart/web3dart.dart';
 
@@ -217,6 +219,16 @@ class FormatterUtils {
       return '< 0.01 Gwei';
     } else {
       return '${gweiValue.toStringAsFixed(2)} Gwei';
+    }
+  }
+
+  /// Format JSON data with indentation for display
+  static String formatJson(dynamic jsonData) {
+    try {
+      return const JsonEncoder.withIndent('  ').convert(jsonData);
+    } catch (e) {
+      print('Error formatting JSON: $e');
+      return jsonData.toString();
     }
   }
 }

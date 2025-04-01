@@ -116,7 +116,6 @@ class _PinInputState extends State<PinInput> {
                 _obscureText ? Icons.visibility : Icons.visibility_off,
                 color: theme.colorScheme.primary,
               ),
-              tooltip: _obscureText ? 'Show PIN' : 'Hide PIN',
             ),
           ],
         ),

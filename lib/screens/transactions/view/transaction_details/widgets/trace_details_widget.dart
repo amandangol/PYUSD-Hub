@@ -220,7 +220,6 @@ class TraceDetailsWidget extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.copy),
                   onPressed: () => _copyTraceData(context),
-                  tooltip: 'Copy trace data',
                   color: subtitleColor,
                 ),
               ],

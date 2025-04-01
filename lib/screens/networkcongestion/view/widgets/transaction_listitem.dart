@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../utils/snackbar_utils.dart';
 import '../../../trace/view/transaction_trace_screen.dart';
 
 class TransactionListItem extends StatelessWidget {
@@ -224,7 +225,6 @@ class TransactionListItem extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.open_in_new, size: 20),
                         color: Colors.blue,
-                        tooltip: 'View on Etherscan',
                         onPressed: () => _launchEtherscan(context, txHash),
                       ),
                     ],
@@ -266,20 +266,9 @@ class TransactionListItem extends StatelessWidget {
   // Helper method to copy text to clipboard
   void _copyToClipboard(BuildContext context, String text, String description) {
     Clipboard.setData(ClipboardData(text: text)).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$description copied to clipboard'),
-          duration: const Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green,
-          action: SnackBarAction(
-            label: 'OK',
-            textColor: Colors.white,
-            onPressed: () {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            },
-          ),
-        ),
+      SnackbarUtil.showSnackbar(
+        context: context,
+        message: '$description copied to clipboard',
       );
     });
   }

@@ -328,7 +328,6 @@ class _GasTabState extends State<GasTab> {
                           ),
                         );
                       },
-                      tooltip: 'Configure Alert Settings',
                     ),
                   ],
                 ),

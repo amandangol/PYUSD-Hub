@@ -9,10 +9,12 @@ import '../provider/trace_provider.dart';
 
 class TransactionTraceScreen extends StatefulWidget {
   final String txHash;
+  final String? heroTag;
 
   const TransactionTraceScreen({
     Key? key,
     required this.txHash,
+    this.heroTag,
   }) : super(key: key);
 
   @override

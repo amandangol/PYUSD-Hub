@@ -11,10 +11,12 @@ import 'transaction_trace_screen.dart';
 
 class BlockTraceScreen extends StatefulWidget {
   final int blockNumber;
+  final String? heroTag;
 
   const BlockTraceScreen({
     super.key,
     required this.blockNumber,
+    this.heroTag,
   });
 
   @override
@@ -684,7 +686,7 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                   MaterialPageRoute(
                     builder: (context) => TransactionTraceScreen(
                       txHash: hash,
-                      // heroTag: heroTag,
+                      heroTag: heroTag,
                     ),
                   ),
                 );

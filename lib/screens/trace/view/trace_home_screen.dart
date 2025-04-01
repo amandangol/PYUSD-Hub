@@ -64,7 +64,7 @@ class TraceHomeScreen extends StatelessWidget {
                 context: context,
                 title: 'Advanced Tracing',
                 description:
-                    'Use specialized Ethereum tracing methods like raw transaction tracing, replay transactions, and storage inspection.',
+                    'Use specialized GCP tracing methods like raw transaction tracing, replay transactions, and storage inspection.',
                 icon: Icons.science,
                 color: Colors.purple,
                 onTap: () => _navigateToTraceScreen(context, 2),
@@ -144,14 +144,13 @@ class TraceHomeScreen extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 16),
-          OutlinedButton(
+          TraceButton(
+            text: 'Explore Tracing Tools',
             onPressed: () => _navigateToTraceScreen(context, 0),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            child: const Text('Explore Tracing Tools'),
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            icon: Icons.explore,
+            borderRadius: 12,
           ),
         ],
       ),
@@ -241,11 +240,11 @@ class TraceHomeScreen extends StatelessWidget {
         String title;
         String subtitle;
 
-        if (type == 'txTrace') {
+        if (type == 'transaction') {
           icon = Icons.receipt_long;
           title = 'Transaction Trace';
           subtitle = 'Hash: ${_truncateHash(trace['hash'] ?? 'Unknown')}';
-        } else if (type == 'blockTrace') {
+        } else if (type == 'block') {
           icon = Icons.storage;
           title = 'Block Trace';
           subtitle = 'Block: ${trace['blockNumber'] ?? 'Unknown'}';

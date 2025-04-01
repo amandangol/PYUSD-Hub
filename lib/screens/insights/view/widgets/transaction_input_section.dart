@@ -46,7 +46,6 @@ class TransactionInputSection extends StatelessWidget {
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.paste),
                   onPressed: onPasteTxHash,
-                  tooltip: 'Paste from clipboard',
                 ),
               ),
               if (detectedNetwork != null) ...[
@@ -138,7 +137,6 @@ class TransactionInputSection extends StatelessWidget {
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.paste),
                   onPressed: onPasteAddress,
-                  tooltip: 'Paste from clipboard',
                 ),
               ),
               const SizedBox(height: 12),

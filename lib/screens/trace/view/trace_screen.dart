@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
+import '../../../widgets/pyusd_components.dart';
 import 'block_trace_screen.dart';
 import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
@@ -265,7 +266,7 @@ class _TraceScreenState extends State<TraceScreen>
           ),
           const SizedBox(height: 24),
 
-          // Transaction hash input
+          // Transaction hash input with paste and clear buttons
           TextField(
             controller: _txHashController,
             decoration: InputDecoration(
@@ -278,6 +279,31 @@ class _TraceScreenState extends State<TraceScreen>
               filled: true,
               fillColor:
                   isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.content_paste, size: 20),
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      if (data != null && data.text != null) {
+                        setState(() {
+                          _txHashController.text = data.text!.trim();
+                        });
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      setState(() {
+                        _txHashController.clear();
+                        _txError = '';
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
             autofocus: false,
           ),
@@ -404,7 +430,7 @@ class _TraceScreenState extends State<TraceScreen>
           ),
           const SizedBox(height: 24),
 
-          // Block number input
+          // Block number input with paste and clear buttons
           TextField(
             controller: _blockNumberController,
             decoration: InputDecoration(
@@ -417,6 +443,31 @@ class _TraceScreenState extends State<TraceScreen>
               filled: true,
               fillColor:
                   isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.content_paste, size: 20),
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      if (data != null && data.text != null) {
+                        setState(() {
+                          _blockNumberController.text = data.text!.trim();
+                        });
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      setState(() {
+                        _blockNumberController.clear();
+                        _blockError = '';
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
             keyboardType: TextInputType.number,
             autofocus: false,
@@ -1049,16 +1100,11 @@ class _TraceScreenState extends State<TraceScreen>
                     ),
                   ),
                 ),
-                ElevatedButton(
+                TraceButton(
+                  text: 'View Full Trace',
                   onPressed: _showFullTraceDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('View Full Trace'),
+                  backgroundColor: Colors.purple,
+                  icon: Icons.visibility,
                 ),
               ],
             ),
@@ -1115,9 +1161,8 @@ class _TraceScreenState extends State<TraceScreen>
         if (trace['returnValue'] != null)
           _buildSummaryItem('Return Value', trace['returnValue']),
         const SizedBox(height: 16),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.copy, size: 16),
-          label: const Text('Copy Trace Data'),
+        TraceButton(
+          text: 'Copy Trace Data',
           onPressed: () {
             final jsonString =
                 const JsonEncoder.withIndent('  ').convert(trace);
@@ -1127,10 +1172,11 @@ class _TraceScreenState extends State<TraceScreen>
               message: 'Trace data copied to clipboard',
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade700,
-            foregroundColor: Colors.white,
-          ),
+          icon: Icons.copy,
+          backgroundColor: Colors.grey.shade700,
+          foregroundColor: Colors.white,
+          horizontalPadding: 12,
+          verticalPadding: 8,
         ),
       ],
     );
@@ -1149,9 +1195,8 @@ class _TraceScreenState extends State<TraceScreen>
         _buildSummaryItem('Block Number', '$blockNumber'),
         _buildSummaryItem('Transactions Traced', '$txCount'),
         const SizedBox(height: 16),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.copy, size: 16),
-          label: const Text('Copy Trace Data'),
+        TraceButton(
+          text: 'Copy Trace Data',
           onPressed: () {
             final jsonString =
                 const JsonEncoder.withIndent('  ').convert(traces);
@@ -1161,10 +1206,11 @@ class _TraceScreenState extends State<TraceScreen>
               message: 'Trace data copied to clipboard',
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade700,
-            foregroundColor: Colors.white,
-          ),
+          icon: Icons.copy,
+          backgroundColor: Colors.grey.shade700,
+          foregroundColor: Colors.white,
+          horizontalPadding: 12,
+          verticalPadding: 8,
         ),
       ],
     );
@@ -1185,9 +1231,8 @@ class _TraceScreenState extends State<TraceScreen>
         if (trace['returnValue'] != null)
           _buildSummaryItem('Return Value', trace['returnValue']),
         const SizedBox(height: 16),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.copy, size: 16),
-          label: const Text('Copy Trace Data'),
+        TraceButton(
+          text: 'Copy Trace Data',
           onPressed: () {
             final jsonString =
                 const JsonEncoder.withIndent('  ').convert(trace);
@@ -1197,10 +1242,11 @@ class _TraceScreenState extends State<TraceScreen>
               message: 'Trace data copied to clipboard',
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade700,
-            foregroundColor: Colors.white,
-          ),
+          icon: Icons.copy,
+          backgroundColor: Colors.grey.shade700,
+          foregroundColor: Colors.white,
+          horizontalPadding: 12,
+          verticalPadding: 8,
         ),
       ],
     );
@@ -1222,9 +1268,8 @@ class _TraceScreenState extends State<TraceScreen>
         _buildSummaryItem(
             'Complete', storage['complete'] == true ? 'Yes' : 'No'),
         const SizedBox(height: 16),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.copy, size: 16),
-          label: const Text('Copy Storage Data'),
+        TraceButton(
+          text: 'Copy Storage Data',
           onPressed: () {
             final jsonString =
                 const JsonEncoder.withIndent('  ').convert(storage);
@@ -1234,10 +1279,11 @@ class _TraceScreenState extends State<TraceScreen>
               message: 'Storage data copied to clipboard',
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade700,
-            foregroundColor: Colors.white,
-          ),
+          icon: Icons.copy,
+          backgroundColor: Colors.grey.shade700,
+          foregroundColor: Colors.white,
+          horizontalPadding: 12,
+          verticalPadding: 8,
         ),
       ],
     );
@@ -1246,27 +1292,11 @@ class _TraceScreenState extends State<TraceScreen>
   Widget _buildSummaryItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-        ],
+      child: PyusdListTile(
+        title: label,
+        subtitle: value,
+        contentPadding: EdgeInsets.zero,
+        showDivider: false,
       ),
     );
   }
@@ -1324,7 +1354,8 @@ class _TraceScreenState extends State<TraceScreen>
                       fontWeight: FontWeight.bold,
                     ),
               ),
-              ElevatedButton.icon(
+              TraceButton(
+                text: 'Clear History',
                 onPressed: () {
                   showDialog(
                     context: context,
@@ -1337,7 +1368,8 @@ class _TraceScreenState extends State<TraceScreen>
                           onPressed: () => Navigator.pop(context),
                           child: const Text('Cancel'),
                         ),
-                        TextButton(
+                        TraceButton(
+                          text: 'Clear',
                           onPressed: () {
                             traceProvider.clearHistory();
                             Navigator.pop(context);
@@ -1346,24 +1378,20 @@ class _TraceScreenState extends State<TraceScreen>
                               message: 'History cleared',
                             );
                           },
-                          child: const Text('Clear'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                          ),
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          horizontalPadding: 16,
+                          verticalPadding: 8,
                         ),
                       ],
                     ),
                   );
                 },
-                icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('Clear History'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade100,
-                  foregroundColor: Colors.red,
-                  elevation: 0,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
+                icon: Icons.delete_outline,
+                backgroundColor: Colors.red.shade100,
+                foregroundColor: Colors.red,
+                horizontalPadding: 12,
+                verticalPadding: 8,
               ),
             ],
           ),
@@ -1373,10 +1401,6 @@ class _TraceScreenState extends State<TraceScreen>
           if (recentTraces.isNotEmpty) ...[
             for (final trace in recentTraces)
               _buildTraceHistoryItem(trace, isDarkMode),
-          ],
-          if (recentBlocks.isNotEmpty) ...[
-            for (final blockNumber in recentBlocks)
-              _buildBlockHistoryItem(blockNumber, isDarkMode),
           ],
         ],
       ),
@@ -1395,7 +1419,7 @@ class _TraceScreenState extends State<TraceScreen>
 
     if (type == 'transaction') {
       title = 'Transaction Trace';
-      subtitle = 'Tx: ${_truncateHash(trace['hash'])}';
+      subtitle = 'Tx: ${FormatterUtils.formatHash(trace['hash'])}';
       icon = Icons.receipt_long;
       iconColor = Colors.blue;
     } else if (type == 'block') {
@@ -1410,7 +1434,7 @@ class _TraceScreenState extends State<TraceScreen>
       iconColor = Colors.orange;
     } else if (type == 'txReplay') {
       title = 'Transaction Replay';
-      subtitle = 'Tx: ${_truncateHash(trace['hash'])}';
+      subtitle = 'Tx: ${FormatterUtils.formatHash(trace['hash'])}';
       icon = Icons.replay;
       iconColor = Colors.purple;
     } else {
@@ -1435,7 +1459,8 @@ class _TraceScreenState extends State<TraceScreen>
           children: [
             Text(subtitle),
             Text(
-              _formatTimeAgo(timestamp),
+              FormatterUtils.formatRelativeTime(
+                  timestamp.millisecondsSinceEpoch ~/ 1000),
               style: TextStyle(
                 fontSize: 12,
                 color: isDarkMode ? Colors.white54 : Colors.black54,
@@ -1471,84 +1496,31 @@ class _TraceScreenState extends State<TraceScreen>
     );
   }
 
-  Widget _buildBlockHistoryItem(int blockNumber, bool isDarkMode) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green.withOpacity(0.2),
-          child: const Icon(Icons.storage, color: Colors.green, size: 20),
-        ),
-        title: const Text('Block Trace'),
-        subtitle: Text('Block #$blockNumber'),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BlockTraceScreen(blockNumber: blockNumber),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   void _showTraceDetailsDialog(Map<String, dynamic> trace) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Trace Details'),
-        content: SingleChildScrollView(
-          child: Text(
-            const JsonEncoder.withIndent('  ').convert(trace),
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(
-                  text: const JsonEncoder.withIndent('  ').convert(trace)));
-              SnackbarUtil.showSnackbar(
-                context: context,
-                message: 'Copied to clipboard',
-              );
-            },
-            child: const Text('Copy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+      builder: (context) => PyusdDialog(
+        title: 'Trace Details',
+        content: const JsonEncoder.withIndent('  ').convert(trace),
+        confirmText: 'Close',
+        cancelText: 'Copy',
+        onCancel: () {
+          Clipboard.setData(ClipboardData(
+              text: const JsonEncoder.withIndent('  ').convert(trace)));
+          SnackbarUtil.showSnackbar(
+            context: context,
+            message: 'Copied to clipboard',
+          );
+          Navigator.pop(context);
+        },
+        onConfirm: () => Navigator.pop(context),
+        isDestructive: false,
       ),
     );
   }
 
-  String _truncateHash(String hash) {
-    if (hash.length <= 10) return hash;
-    return '${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}';
-  }
-
-  String _formatTimeAgo(DateTime dateTime) {
-    final difference = DateTime.now().difference(dateTime);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
-  }
-
   void _showFullTraceDialog() {
-    final jsonString =
-        const JsonEncoder.withIndent('  ').convert(_advancedTraceResult);
+    final jsonString = FormatterUtils.formatJson(_advancedTraceResult);
 
     showDialog(
       context: context,
@@ -1565,7 +1537,8 @@ class _TraceScreenState extends State<TraceScreen>
           ),
         ),
         actions: [
-          TextButton(
+          TraceButton(
+            text: 'Copy',
             onPressed: () {
               Clipboard.setData(ClipboardData(text: jsonString));
               SnackbarUtil.showSnackbar(
@@ -1573,11 +1546,18 @@ class _TraceScreenState extends State<TraceScreen>
                 message: 'Trace data copied to clipboard',
               );
             },
-            child: const Text('Copy'),
+            icon: Icons.copy,
+            backgroundColor: Colors.blue,
+            horizontalPadding: 12,
+            verticalPadding: 8,
           ),
-          TextButton(
+          TraceButton(
+            text: 'Close',
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            icon: Icons.close,
+            backgroundColor: Colors.grey,
+            horizontalPadding: 12,
+            verticalPadding: 8,
           ),
         ],
       ),

@@ -42,12 +42,10 @@ class WalletInputSection extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.paste),
                   onPressed: onPaste,
-                  tooltip: 'Paste from clipboard',
                 ),
                 IconButton(
                   icon: const Icon(Icons.qr_code_scanner),
                   onPressed: onScanQR,
-                  tooltip: 'Scan QR code',
                 ),
               ],
             ),
