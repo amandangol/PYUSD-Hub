@@ -5,12 +5,17 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import '../../networkcongestion/view/widgets/block_trace_screen.dart';
+import 'block_trace_screen.dart';
 import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
 
 class TraceScreen extends StatefulWidget {
-  const TraceScreen({Key? key}) : super(key: key);
+  final int initialTabIndex;
+
+  const TraceScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<TraceScreen> createState() => _TraceScreenState();
@@ -53,14 +58,15 @@ class _TraceScreenState extends State<TraceScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _txHashController.dispose();
-    _blockNumberController.dispose();
     _tabController.dispose();
     _txHashController.dispose();
     _blockNumberController.dispose();
@@ -170,13 +176,22 @@ class _TraceScreenState extends State<TraceScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return DefaultTabController(
       length: 4,
+      initialIndex: widget.initialTabIndex,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('PYUSD Tracer'),
-          bottom: const TabBar(
-            tabs: [
+          elevation: 0,
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: primaryColor,
+            labelColor: primaryColor,
+            unselectedLabelColor: isDarkMode ? Colors.white70 : Colors.black54,
+            tabs: const [
               Tab(text: 'Transaction'),
               Tab(text: 'Block'),
               Tab(text: 'Advanced'),
@@ -185,6 +200,7 @@ class _TraceScreenState extends State<TraceScreen>
           ),
         ),
         body: TabBarView(
+          controller: _tabController,
           children: [
             _buildTransactionTraceTab(),
             _buildBlockTraceTab(),
@@ -196,7 +212,10 @@ class _TraceScreenState extends State<TraceScreen>
     );
   }
 
-  Widget _buildAdvancedTraceTab() {
+  Widget _buildTransactionTraceTab() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -206,24 +225,317 @@ class _TraceScreenState extends State<TraceScreen>
           Card(
             elevation: 2,
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Advanced Tracing',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            const Icon(Icons.receipt_long, color: Colors.blue),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Transaction Tracing',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Use specialized Ethereum tracing methods for detailed analysis.',
+                    'Analyze the execution of any transaction on the Ethereum network. See internal calls, state changes, and PYUSD transfers.',
                     style: TextStyle(
-                      color: Colors.grey.shade600,
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Transaction hash input
+          TextField(
+            controller: _txHashController,
+            decoration: InputDecoration(
+              labelText: 'Transaction Hash',
+              hintText: 'Enter transaction hash (0x...)',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.tag),
+              filled: true,
+              fillColor:
+                  isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
+            ),
+            autofocus: false,
+          ),
+          const SizedBox(height: 24),
+
+          // Trace button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isLoadingTx ? null : _traceTransaction,
+              icon: _isLoadingTx
+                  ? Container(
+                      width: 24,
+                      height: 24,
+                      padding: const EdgeInsets.all(2.0),
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Icon(Icons.search),
+              label: Text(_isLoadingTx ? 'Tracing...' : 'Trace Transaction'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+
+          // Error message
+          if (_txError.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _txError,
+                        style: const TextStyle(
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Transaction trace result
+          if (_txTraceResult != null) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            // Transaction trace result would be displayed here
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlockTraceTab() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with explanation
+          Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.storage, color: Colors.green),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Block Tracing',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Trace all transactions in a specific Ethereum block to analyze network activity.',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Block number input
+          TextField(
+            controller: _blockNumberController,
+            decoration: InputDecoration(
+              labelText: 'Block Number',
+              hintText: 'Enter block number (e.g., 18000000)',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.numbers),
+              filled: true,
+              fillColor:
+                  isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
+            ),
+            keyboardType: TextInputType.number,
+            autofocus: false,
+          ),
+          const SizedBox(height: 24),
+
+          // Trace button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isLoadingBlock ? null : _traceBlock,
+              icon: _isLoadingBlock
+                  ? Container(
+                      width: 24,
+                      height: 24,
+                      padding: const EdgeInsets.all(2.0),
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Icon(Icons.search),
+              label: Text(_isLoadingBlock ? 'Tracing...' : 'Trace Block'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+
+          // Error message
+          if (_blockError.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _blockError,
+                        style: const TextStyle(
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Block trace result
+          if (_blockTraceResult != null) ...[
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            // Block trace result would be displayed here
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdvancedTraceTab() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with explanation
+          Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.science, color: Colors.purple),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Advanced Tracing',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Use specialized Ethereum tracing methods for detailed analysis of transactions and blocks.',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
                     ),
                   ),
                 ],
@@ -238,9 +550,12 @@ class _TraceScreenState extends State<TraceScreen>
             decoration: InputDecoration(
               labelText: 'Trace Method',
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
               prefixIcon: const Icon(Icons.science),
+              filled: true,
+              fillColor:
+                  isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
             ),
             items: _advancedMethods.map((String method) {
               return DropdownMenuItem<String>(
@@ -260,23 +575,11 @@ class _TraceScreenState extends State<TraceScreen>
           ),
           const SizedBox(height: 24),
 
-          // Dynamic input fields based on selected method
+          // Dynamic inputs based on selected method
           _buildAdvancedMethodInputs(),
+          const SizedBox(height: 24),
 
-          if (_advancedError.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                _advancedError,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-
-          // Trace button
+          // Execute button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -291,26 +594,55 @@ class _TraceScreenState extends State<TraceScreen>
                         strokeWidth: 3,
                       ),
                     )
-                  : const Icon(Icons.science),
+                  : const Icon(Icons.play_arrow),
               label:
                   Text(_isLoadingAdvanced ? 'Processing...' : 'Execute Trace'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: Colors.purple,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
           ),
 
-          // Results section
+          // Error message
+          if (_advancedError.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _advancedError,
+                        style: const TextStyle(
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Advanced trace result
           if (_advancedTraceResult != null) ...[
             const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 16),
-            _buildAdvancedTraceResults(),
+            _buildAdvancedTraceResult(),
           ],
         ],
       ),
@@ -318,35 +650,49 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Widget _buildAdvancedMethodInputs() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final inputFillColor =
+        isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50;
+
     switch (_selectedAdvancedMethod) {
       case 'Raw Transaction':
         return Column(
           children: [
+            TextField(
+              controller: _rawTxController,
+              decoration: InputDecoration(
+                labelText: 'Raw Transaction Data',
+                hintText: 'Enter raw transaction data (0x...)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.code),
+                filled: true,
+                fillColor: inputFillColor,
+              ),
+              maxLines: 4,
+              autofocus: false,
+            ),
+            const SizedBox(height: 8),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _rawTxController,
-                    decoration: InputDecoration(
-                      labelText: 'Raw Transaction Hex',
-                      hintText: 'Enter raw transaction data (0x...)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      prefixIcon: const Icon(Icons.code),
-                    ),
-                    maxLines: 3,
-                    autofocus: false,
-                  ),
+                TextButton.icon(
+                  icon: const Icon(Icons.paste, size: 16),
+                  label: const Text('Paste'),
+                  onPressed: () async {
+                    final data = await Clipboard.getData('text/plain');
+                    if (data != null && data.text != null) {
+                      setState(() {
+                        _rawTxController.text = data.text!.trim();
+                      });
+                    }
+                  },
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.clear),
-                  tooltip: 'Clear input',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                  ),
+                TextButton.icon(
+                  icon: const Icon(Icons.clear, size: 16),
+                  label: const Text('Clear'),
                   onPressed: () {
                     setState(() {
                       _rawTxController.clear();
@@ -355,90 +701,102 @@ class _TraceScreenState extends State<TraceScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                icon: const Icon(Icons.paste, size: 16),
-                label: const Text('Paste from clipboard'),
-                onPressed: () async {
-                  final data = await Clipboard.getData('text/plain');
-                  if (data != null && data.text != null) {
-                    setState(() {
-                      _rawTxController.text = data.text!.trim();
-                    });
-                  }
-                },
-              ),
-            ),
           ],
         );
 
       case 'Replay Block Transactions':
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return Column(
           children: [
-            Expanded(
-              child: TextField(
-                controller: _replayBlockController,
-                decoration: InputDecoration(
-                  labelText: 'Block Number',
-                  hintText: 'Enter block number to replay',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.storage),
+            TextField(
+              controller: _replayBlockController,
+              decoration: InputDecoration(
+                labelText: 'Block Number',
+                hintText: 'Enter block number (e.g., 18500000)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                keyboardType: TextInputType.number,
-                autofocus: false,
+                prefixIcon: const Icon(Icons.storage),
+                filled: true,
+                fillColor: inputFillColor,
               ),
+              keyboardType: TextInputType.number,
+              autofocus: false,
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear input',
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.grey.shade200,
-              ),
-              onPressed: () {
-                setState(() {
-                  _replayBlockController.clear();
-                });
-              },
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.paste, size: 16),
+                  label: const Text('Paste'),
+                  onPressed: () async {
+                    final data = await Clipboard.getData('text/plain');
+                    if (data != null && data.text != null) {
+                      setState(() {
+                        _replayBlockController.text = data.text!.trim();
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  icon: const Icon(Icons.clear, size: 16),
+                  label: const Text('Clear'),
+                  onPressed: () {
+                    setState(() {
+                      _replayBlockController.clear();
+                    });
+                  },
+                ),
+              ],
             ),
           ],
         );
 
       case 'Replay Transaction':
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return Column(
           children: [
-            Expanded(
-              child: TextField(
-                controller: _replayTxController,
-                decoration: InputDecoration(
-                  labelText: 'Transaction Hash',
-                  hintText: 'Enter transaction hash to replay',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.receipt_long),
+            TextField(
+              controller: _replayTxController,
+              decoration: InputDecoration(
+                labelText: 'Transaction Hash',
+                hintText: 'Enter transaction hash (0x...)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                autofocus: false,
+                prefixIcon: const Icon(Icons.receipt_long),
+                filled: true,
+                fillColor: inputFillColor,
               ),
+              autofocus: false,
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear input',
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.grey.shade200,
-              ),
-              onPressed: () {
-                setState(() {
-                  _replayTxController.clear();
-                });
-              },
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.paste, size: 16),
+                  label: const Text('Paste'),
+                  onPressed: () async {
+                    final data = await Clipboard.getData('text/plain');
+                    if (data != null && data.text != null) {
+                      setState(() {
+                        _replayTxController.text = data.text!.trim();
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  icon: const Icon(Icons.clear, size: 16),
+                  label: const Text('Clear'),
+                  onPressed: () {
+                    setState(() {
+                      _replayTxController.clear();
+                    });
+                  },
+                ),
+              ],
             ),
           ],
         );
@@ -450,11 +808,13 @@ class _TraceScreenState extends State<TraceScreen>
               controller: _contractAddressController,
               decoration: InputDecoration(
                 labelText: 'Contract Address',
-                hintText: 'Enter contract address',
+                hintText: 'Enter contract address (0x...)',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                prefixIcon: const Icon(Icons.account_balance_wallet),
+                prefixIcon: const Icon(Icons.account_balance),
+                filled: true,
+                fillColor: inputFillColor,
               ),
               autofocus: false,
             ),
@@ -463,39 +823,39 @@ class _TraceScreenState extends State<TraceScreen>
               controller: _blockHashController,
               decoration: InputDecoration(
                 labelText: 'Block Hash',
-                hintText: 'Enter block hash',
+                hintText: 'Enter block hash (0x...)',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                prefixIcon: const Icon(Icons.tag),
+                prefixIcon: const Icon(Icons.storage),
+                filled: true,
+                fillColor: inputFillColor,
               ),
               autofocus: false,
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _txIndexController,
-                    decoration: InputDecoration(
-                      labelText: 'Transaction Index',
-                      hintText: 'Enter tx index (0 for first)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      prefixIcon: const Icon(Icons.format_list_numbered),
-                    ),
-                    keyboardType: TextInputType.number,
-                    autofocus: false,
-                  ),
+            TextField(
+              controller: _txIndexController,
+              decoration: InputDecoration(
+                labelText: 'Transaction Index',
+                hintText: 'Enter tx index (0 for first)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.clear),
-                  tooltip: 'Clear all fields',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                  ),
+                prefixIcon: const Icon(Icons.format_list_numbered),
+                filled: true,
+                fillColor: inputFillColor,
+              ),
+              keyboardType: TextInputType.number,
+              autofocus: false,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.clear, size: 16),
+                  label: const Text('Clear All'),
                   onPressed: () {
                     setState(() {
                       _contractAddressController.clear();
@@ -609,22 +969,24 @@ class _TraceScreenState extends State<TraceScreen>
               blockHash.isEmpty ||
               txIndexText.isEmpty) {
             setState(() {
-              _advancedError = 'Please fill in all required fields';
+              _advancedError =
+                  'Please fill in all fields (contract address, block hash, and tx index)';
               _isLoadingAdvanced = false;
             });
             return;
           }
 
-          final txIndex = int.tryParse(txIndexText) ?? 0;
+          final txIndex = int.tryParse(txIndexText);
+          if (txIndex == null) {
+            setState(() {
+              _advancedError = 'Invalid transaction index format';
+              _isLoadingAdvanced = false;
+            });
+            return;
+          }
 
           final result = await provider.getStorageRangeAt(
-              blockHash,
-              txIndex,
-              contractAddress,
-              '0x0', // Start from the beginning
-              100 // Get up to 100 storage slots
-              );
-
+              blockHash, txIndex, contractAddress, '0x0', 1000);
           setState(() {
             _advancedTraceResult = result;
             if (result['success'] != true) {
@@ -638,573 +1000,269 @@ class _TraceScreenState extends State<TraceScreen>
         _advancedError = e.toString();
       });
     } finally {
-      setState(() {
-        _isLoadingAdvanced = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingAdvanced = false;
+        });
+      }
     }
   }
 
-  Widget _buildAdvancedTraceResults() {
-    if (_advancedTraceResult == null ||
-        _advancedTraceResult!['success'] != true) {
+  Widget _buildAdvancedTraceResult() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    if (_advancedTraceResult == null) {
       return const SizedBox.shrink();
     }
 
+    final success = _advancedTraceResult!['success'] == true;
+    final resultColor = success ? Colors.green : Colors.red;
+    final resultIcon = success ? Icons.check_circle : Icons.error;
+    final resultTitle =
+        success ? 'Trace Completed Successfully' : 'Trace Failed';
+
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.1),
+                    color: resultColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.check_circle, color: Colors.teal),
+                  child: Icon(resultIcon, color: resultColor),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '${_selectedAdvancedMethod} Trace Results',
+                    resultTitle,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
+                ElevatedButton(
+                  onPressed: _showFullTraceDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('View Full Trace'),
+                ),
               ],
             ),
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
-
-            // Result preview
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Result Preview',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _getResultPreview(),
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 13,
-                    ),
-                    maxLines: 10,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            Text(
+              'Trace Summary',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Action buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.copy),
-                  label: const Text('Copy Full Result'),
-                  onPressed: () {
-                    final jsonString = const JsonEncoder.withIndent('  ')
-                        .convert(_advancedTraceResult);
-                    Clipboard.setData(ClipboardData(text: jsonString));
-                    SnackbarUtil.showSnackbar(
-                      context: context,
-                      message: 'Full trace result copied to clipboard',
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.visibility),
-                  label: const Text('View Details'),
-                  onPressed: () {
-                    _showFullTraceDialog();
-                  },
-                ),
-              ],
-            ),
+            const SizedBox(height: 12),
+            _buildTraceSummary(),
           ],
         ),
       ),
     );
   }
 
-  String _getResultPreview() {
-    try {
-      final result = _advancedTraceResult;
-      if (result == null) return 'No data';
+  Widget _buildTraceSummary() {
+    if (_advancedTraceResult == null ||
+        _advancedTraceResult!['success'] != true) {
+      return const Text('No trace data available');
+    }
 
-      // Extract the most relevant part based on the method
-      switch (_selectedAdvancedMethod) {
-        case 'Raw Transaction':
-          return const JsonEncoder.withIndent('  ').convert(result['trace']);
-
-        case 'Replay Block Transactions':
-          final traces = result['traces'];
-          if (traces is List && traces.isNotEmpty) {
-            return 'Found ${traces.length} transaction traces in block';
-          }
-          return const JsonEncoder.withIndent('  ')
-                  .convert(traces)
-                  .substring(0, 500) +
-              '...';
-
-        case 'Replay Transaction':
-          return const JsonEncoder.withIndent('  ').convert(result['trace']);
-
-        case 'Storage Range':
-          final storage = result['storage'];
-          return const JsonEncoder.withIndent('  ').convert(storage);
-
-        default:
-          return const JsonEncoder.withIndent('  ').convert(result);
-      }
-    } catch (e) {
-      return 'Error generating preview: $e';
+    // Extract relevant data based on the trace method
+    switch (_selectedAdvancedMethod) {
+      case 'Raw Transaction':
+        return _buildRawTransactionSummary();
+      case 'Replay Block Transactions':
+        return _buildReplayBlockSummary();
+      case 'Replay Transaction':
+        return _buildReplayTransactionSummary();
+      case 'Storage Range':
+        return _buildStorageRangeSummary();
+      default:
+        return const Text('No summary available for this trace type');
     }
   }
 
-  void _showFullTraceDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          width: double.maxFinite,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
-            maxWidth: MediaQuery.of(context).size.width * 0.9,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppBar(
-                title: Text('${_selectedAdvancedMethod} Trace Details'),
-                automaticallyImplyLeading: false,
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: SelectableText(
-                    const JsonEncoder.withIndent('  ')
-                        .convert(_advancedTraceResult),
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton.icon(
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy All'),
-                      onPressed: () {
-                        final jsonString = const JsonEncoder.withIndent('  ')
-                            .convert(_advancedTraceResult);
-                        Clipboard.setData(ClipboardData(text: jsonString));
-                        SnackbarUtil.showSnackbar(
-                          context: context,
-                          message: 'Full trace result copied to clipboard',
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      child: const Text('Close'),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+  Widget _buildRawTransactionSummary() {
+    final trace = _advancedTraceResult!['trace'];
+    if (trace == null) return const Text('No trace data available');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSummaryItem('Gas Used', '${trace['gasUsed'] ?? 'N/A'}'),
+        _buildSummaryItem(
+            'Status', trace['failed'] == true ? 'Failed' : 'Success'),
+        if (trace['returnValue'] != null)
+          _buildSummaryItem('Return Value', trace['returnValue']),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.copy, size: 16),
+          label: const Text('Copy Trace Data'),
+          onPressed: () {
+            final jsonString =
+                const JsonEncoder.withIndent('  ').convert(trace);
+            Clipboard.setData(ClipboardData(text: jsonString));
+            SnackbarUtil.showSnackbar(
+              context: context,
+              message: 'Trace data copied to clipboard',
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade700,
+            foregroundColor: Colors.white,
           ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildTransactionTraceTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with explanation
-          Card(
-            elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Transaction Tracing',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Enter a transaction hash to trace its execution and analyze PYUSD transfers.',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
+  Widget _buildReplayBlockSummary() {
+    final traces = _advancedTraceResult!['traces'];
+    if (traces == null) return const Text('No trace data available');
 
-          // Transaction hash input with reset button
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _txHashController,
-                  decoration: InputDecoration(
-                    labelText: 'Transaction Hash',
-                    hintText: 'Enter transaction hash (0x...)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: const Icon(Icons.receipt_long),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.paste),
-                      tooltip: 'Paste from clipboard',
-                      onPressed: () async {
-                        final data = await Clipboard.getData('text/plain');
-                        if (data != null && data.text != null) {
-                          setState(() {
-                            _txHashController.text = data.text!.trim();
-                            _txError = '';
-                            _txTraceResult =
-                                null; // Clear previous results when pasting
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  // Remove autofocus
-                  autofocus: false,
-                  onChanged: (value) {
-                    // Clear previous results when input changes
-                    if (_txTraceResult != null) {
-                      setState(() {
-                        _txTraceResult = null;
-                        _txError = '';
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.clear),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _txHashController.clear();
-                    _txTraceResult = null;
-                    _txError = '';
-                  });
-                },
-              ),
-            ],
-          ),
-          if (_txError.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                _txError,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isLoadingTx ? null : _traceTransaction,
-              icon: _isLoadingTx
-                  ? Container(
-                      width: 24,
-                      height: 24,
-                      padding: const EdgeInsets.all(2.0),
-                      child: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : const Icon(Icons.search),
-              label: Text(_isLoadingTx ? 'Tracing...' : 'Trace Transaction'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
+    final blockNumber = _advancedTraceResult!['blockNumber'];
+    final txCount = traces is List ? traces.length : 0;
 
-          // Transaction trace result
-          if (_txTraceResult != null &&
-              _txTraceResult!['success'] == true &&
-              _txHashController.text.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.check_circle,
-                              color: Colors.green),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Trace Completed Successfully',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => TransactionTraceScreen(
-                                    txHash: _txHashController.text.trim()),
-                              ),
-                            );
-                          },
-                          child: const Text('View Details'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSummaryItem('Block Number', '$blockNumber'),
+        _buildSummaryItem('Transactions Traced', '$txCount'),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.copy, size: 16),
+          label: const Text('Copy Trace Data'),
+          onPressed: () {
+            final jsonString =
+                const JsonEncoder.withIndent('  ').convert(traces);
+            Clipboard.setData(ClipboardData(text: jsonString));
+            SnackbarUtil.showSnackbar(
+              context: context,
+              message: 'Trace data copied to clipboard',
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade700,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildBlockTraceTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
+  Widget _buildReplayTransactionSummary() {
+    final trace = _advancedTraceResult!['trace'];
+    if (trace == null) return const Text('No trace data available');
+
+    final txHash = _advancedTraceResult!['txHash'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSummaryItem('Transaction Hash', txHash ?? 'N/A'),
+        _buildSummaryItem(
+            'Status', trace['failed'] == true ? 'Failed' : 'Success'),
+        if (trace['returnValue'] != null)
+          _buildSummaryItem('Return Value', trace['returnValue']),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.copy, size: 16),
+          label: const Text('Copy Trace Data'),
+          onPressed: () {
+            final jsonString =
+                const JsonEncoder.withIndent('  ').convert(trace);
+            Clipboard.setData(ClipboardData(text: jsonString));
+            SnackbarUtil.showSnackbar(
+              context: context,
+              message: 'Trace data copied to clipboard',
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade700,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStorageRangeSummary() {
+    final storage = _advancedTraceResult!['storage'];
+    if (storage == null) return const Text('No storage data available');
+
+    final contractAddress = _advancedTraceResult!['contractAddress'];
+    final storageKeys =
+        storage['storage'] != null ? storage['storage'].keys.length : 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSummaryItem('Contract Address', contractAddress ?? 'N/A'),
+        _buildSummaryItem('Storage Keys', '$storageKeys'),
+        _buildSummaryItem(
+            'Complete', storage['complete'] == true ? 'Yes' : 'No'),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.copy, size: 16),
+          label: const Text('Copy Storage Data'),
+          onPressed: () {
+            final jsonString =
+                const JsonEncoder.withIndent('  ').convert(storage);
+            Clipboard.setData(ClipboardData(text: jsonString));
+            SnackbarUtil.showSnackbar(
+              context: context,
+              message: 'Storage data copied to clipboard',
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade700,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with explanation
-          Card(
-            elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Block Tracing',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Enter a block number to trace all transactions in that block and find PYUSD transactions.',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.purple.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline,
-                            color: Colors.purple.shade700, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Block tracing can take longer for blocks with many transactions.',
-                            style: TextStyle(
-                              color: Colors.purple.shade700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Block number input with reset button
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _blockNumberController,
-                  decoration: InputDecoration(
-                    labelText: 'Block Number',
-                    hintText: 'Enter block number (e.g., 18500000)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: const Icon(Icons.storage),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.paste),
-                      tooltip: 'Paste from clipboard',
-                      onPressed: () async {
-                        final data = await Clipboard.getData('text/plain');
-                        if (data != null && data.text != null) {
-                          setState(() {
-                            _blockNumberController.text = data.text!.trim();
-                            _blockError = '';
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                  // Remove autofocus
-                  autofocus: false,
-                  onChanged: (value) {
-                    // Clear error when input changes
-                    if (_blockError.isNotEmpty) {
-                      setState(() {
-                        _blockError = '';
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.clear),
-                tooltip: 'Clear input',
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.grey.withOpacity(0.1),
-                ),
-                onPressed: () {
-                  setState(() {
-                    _blockNumberController.clear();
-                    _blockError = '';
-                  });
-                },
-              ),
-            ],
-          ),
-          if (_blockError.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                _blockError,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-
-          // Trace button
           SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isLoadingBlock ? null : _traceBlock,
-              icon: _isLoadingBlock
-                  ? Container(
-                      width: 24,
-                      height: 24,
-                      padding: const EdgeInsets.all(2.0),
-                      child: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : const Icon(Icons.search),
-              label: Text(_isLoadingBlock ? 'Tracing...' : 'Trace Block'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'monospace',
               ),
             ),
           ),
@@ -1215,410 +1273,313 @@ class _TraceScreenState extends State<TraceScreen>
 
   Widget _buildHistoryTab() {
     final traceProvider = Provider.of<TraceProvider>(context);
-    final recentTraces = traceProvider.recentTraces;
+    final recentTraces = List.from(traceProvider.recentTraces)
+      ..sort((a, b) => (b['timestamp'] as int)
+          .compareTo(a['timestamp'] as int)); // Sort by latest first
+    final recentBlocks = List.from(traceProvider.recentBlocksTraced);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    if (recentTraces.isEmpty && recentBlocks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.history,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No trace history yet',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your recent trace activities will appear here',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Recent Traces',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Text(
+                'Trace History',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Clear History'),
+                      content: const Text(
+                          'Are you sure you want to clear all trace history?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            traceProvider.clearHistory();
+                            Navigator.pop(context);
+                            SnackbarUtil.showSnackbar(
+                              context: context,
+                              message: 'History cleared',
+                            );
+                          },
+                          child: const Text('Clear'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Clear History'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade100,
+                  foregroundColor: Colors.red,
+                  elevation: 0,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               ),
-              if (recentTraces.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Clear History'),
-                        content: const Text(
-                            'Are you sure you want to clear all trace history?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              traceProvider.clearHistory();
-                              Navigator.pop(context);
-                              SnackbarUtil.showSnackbar(
-                                context: context,
-                                message: 'Trace history cleared',
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Clear'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text('Clear'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: recentTraces.isEmpty
-                ? _buildEmptyHistoryMessage()
-                : _buildHistoryList(recentTraces),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Custom reusable widgets
-
-  Widget _buildHeaderCard({
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    Widget? additionalWidget,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-              ),
-            ),
-            if (additionalWidget != null) ...[
-              const SizedBox(height: 8),
-              additionalWidget,
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoBox(String message, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: color.withOpacity(0.7), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: color.withOpacity(0.7),
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    required String error,
-    required Function() onClear,
-    required Function(String) onChanged,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: label,
-                  hintText: hint,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: Icon(icon),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.paste),
-                    tooltip: 'Paste from clipboard',
-                    onPressed: () async {
-                      final data = await Clipboard.getData('text/plain');
-                      if (data != null && data.text != null) {
-                        controller.text = data.text!.trim();
-                        onChanged(controller.text);
-                      }
-                    },
-                  ),
-                ),
-                keyboardType: keyboardType,
-                autofocus: false,
-                onChanged: onChanged,
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear input',
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.transparent,
-              ),
-              onPressed: onClear,
-            ),
-          ],
-        ),
-        if (error.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text(
-              error,
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 13,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    required String loadingLabel,
-    required IconData icon,
-    required bool isLoading,
-    required Color color,
-    required Function() onPressed,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: isLoading ? null : onPressed,
-        icon: isLoading
-            ? Container(
-                width: 24,
-                height: 24,
-                padding: const EdgeInsets.all(2.0),
-                child: const CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              )
-            : Icon(icon),
-        label: Text(isLoading ? loadingLabel : label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSuccessCard({
-    required String message,
-    required IconData icon,
-    required Color color,
-    required String buttonText,
-    required Function() onButtonPressed,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: onButtonPressed,
-              child: Text(buttonText),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyHistoryMessage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.history,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No trace history yet',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade600,
-            ),
-          ),
+          const Divider(),
           const SizedBox(height: 8),
-          Text(
-            'Trace transactions or blocks to see them here',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
-          ),
+          if (recentTraces.isNotEmpty) ...[
+            for (final trace in recentTraces)
+              _buildTraceHistoryItem(trace, isDarkMode),
+          ],
+          if (recentBlocks.isNotEmpty) ...[
+            for (final blockNumber in recentBlocks)
+              _buildBlockHistoryItem(blockNumber, isDarkMode),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildHistoryList(List<dynamic> recentTraces) {
-    return ListView.builder(
-      itemCount: recentTraces.length,
-      itemBuilder: (context, index) {
-        final trace = recentTraces[recentTraces.length - 1 - index];
-        final timestamp = DateTime.fromMillisecondsSinceEpoch(
-            trace['timestamp'] as int? ?? 0);
-        final formattedTime =
-            '${timestamp.day}/${timestamp.month}/${timestamp.year} ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+  Widget _buildTraceHistoryItem(Map<String, dynamic> trace, bool isDarkMode) {
+    final type = trace['type'] as String;
+    final timestamp =
+        DateTime.fromMillisecondsSinceEpoch(trace['timestamp'] as int);
 
-        if (trace['type'] == 'transaction') {
-          return _buildHistoryItem(
-            icon: Icons.receipt_long,
-            color: Colors.blue,
-            title:
-                'Transaction: ${FormatterUtils.formatHash(trace['hash'] as String? ?? '')}',
-            timestamp: formattedTime,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TransactionTraceScreen(
-                      txHash: trace['hash'] as String? ?? ''),
-                ),
-              );
-            },
-          );
-        } else if (trace['type'] == 'block') {
-          final blockNumber = trace['blockNumber'] as int? ?? 0;
-          return _buildHistoryItem(
-            icon: Icons.storage,
-            color: Colors.purple,
-            title: 'Block: ${FormatterUtils.formatLargeNumber(blockNumber)}',
-            timestamp: formattedTime,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      BlockTraceScreen(blockNumber: blockNumber),
-                ),
-              );
-            },
-          );
-        }
-        return const SizedBox.shrink();
-      },
-    );
-  }
+    String title;
+    String subtitle;
+    IconData icon;
+    Color iconColor;
 
-  Widget _buildHistoryItem({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String timestamp,
-    required Function() onTap,
-  }) {
+    if (type == 'transaction') {
+      title = 'Transaction Trace';
+      subtitle = 'Tx: ${_truncateHash(trace['hash'])}';
+      icon = Icons.receipt_long;
+      iconColor = Colors.blue;
+    } else if (type == 'block') {
+      title = 'Block Trace';
+      subtitle = 'Block #${trace['blockNumber']}';
+      icon = Icons.storage;
+      iconColor = Colors.green;
+    } else if (type == 'blockReplay') {
+      title = 'Block Replay';
+      subtitle = 'Block #${trace['blockNumber']}';
+      icon = Icons.replay;
+      iconColor = Colors.orange;
+    } else if (type == 'txReplay') {
+      title = 'Transaction Replay';
+      subtitle = 'Tx: ${_truncateHash(trace['hash'])}';
+      icon = Icons.replay;
+      iconColor = Colors.purple;
+    } else {
+      title = 'Advanced Trace';
+      subtitle = type;
+      icon = Icons.science;
+      iconColor = Colors.grey;
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color),
+        leading: CircleAvatar(
+          backgroundColor: iconColor.withOpacity(0.2),
+          child: Icon(icon, color: iconColor, size: 20),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+        title: Text(title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(subtitle),
+            Text(
+              _formatTimeAgo(timestamp),
+              style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ],
         ),
-        subtitle: Text('Traced on $timestamp'),
         trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
+        onTap: () {
+          if (type == 'transaction' || type == 'txReplay') {
+            final hash = trace['hash'] as String;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TransactionTraceScreen(txHash: hash),
+              ),
+            );
+          } else if (type == 'block' || type == 'blockReplay') {
+            final blockNumber = trace['blockNumber'] as int;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    BlockTraceScreen(blockNumber: blockNumber),
+              ),
+            );
+          } else {
+            // Show a dialog with the trace details
+            _showTraceDetailsDialog(trace);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildBlockHistoryItem(int blockNumber, bool isDarkMode) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.green.withOpacity(0.2),
+          child: const Icon(Icons.storage, color: Colors.green, size: 20),
+        ),
+        title: const Text('Block Trace'),
+        subtitle: Text('Block #$blockNumber'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BlockTraceScreen(blockNumber: blockNumber),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showTraceDetailsDialog(Map<String, dynamic> trace) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Trace Details'),
+        content: SingleChildScrollView(
+          child: Text(
+            const JsonEncoder.withIndent('  ').convert(trace),
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(
+                  text: const JsonEncoder.withIndent('  ').convert(trace)));
+              SnackbarUtil.showSnackbar(
+                context: context,
+                message: 'Copied to clipboard',
+              );
+            },
+            child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _truncateHash(String hash) {
+    if (hash.length <= 10) return hash;
+    return '${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}';
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final difference = DateTime.now().difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  void _showFullTraceDialog() {
+    final jsonString =
+        const JsonEncoder.withIndent('  ').convert(_advancedTraceResult);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Full Trace Data'),
+        content: Container(
+          width: double.maxFinite,
+          height: 500,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              jsonString,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: jsonString));
+              SnackbarUtil.showSnackbar(
+                context: context,
+                message: 'Trace data copied to clipboard',
+              );
+            },
+            child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

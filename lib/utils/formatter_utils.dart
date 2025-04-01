@@ -4,10 +4,6 @@ import 'package:web3dart/web3dart.dart';
 class FormatterUtils {
   static final _numberFormat = NumberFormat('#,##0.####');
   static final _addressFormat = NumberFormat('0.000');
-  static final _currencyFormat =
-      NumberFormat.currency(symbol: '\$', decimalDigits: 2);
-  static final _compactCurrencyFormat =
-      NumberFormat.compactCurrency(symbol: '\$', decimalDigits: 2);
 
   /// Formats an Ethereum address to a shorter, readable version (e.g., "0x1234...abcd")
   static String formatAddress(String address) {

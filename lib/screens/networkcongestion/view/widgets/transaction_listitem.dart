@@ -213,7 +213,6 @@ class TransactionListItem extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.account_tree_outlined, size: 20),
                         color: Colors.orange,
-                        tooltip: 'Trace Transaction',
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(

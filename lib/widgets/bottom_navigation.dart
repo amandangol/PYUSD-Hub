@@ -5,40 +5,40 @@ import '../providers/navigation_provider.dart';
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({super.key});
 
-  // Define screens for bottom navigation with metadata
-  static final List<Map<String, dynamic>> _screens = [
-    {
-      'icon': Icons.speed,
-      'label': 'Network',
-      'color': Colors.green,
-    },
-    {
-      'icon': Icons.newspaper,
-      'label': 'Explore',
-      'color': Colors.purple,
-    },
-    {
-      'icon': Icons.account_balance_wallet,
-      'label': 'Wallet',
-      'color': Colors.blue,
-    },
-    {
-      'icon': Icons.account_tree_outlined,
-      'label': 'Trace',
-      'color': Colors.orange,
-    },
-    {
-      'icon': Icons.settings,
-      'label': 'Settings',
-      'color': Colors.grey,
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final navigationProvider = context.watch<NavigationProvider>();
+
+    // Define screens for bottom navigation with metadata - matching the ones in MainApp
+    final List<Map<String, dynamic>> _screens = [
+      {
+        'icon': Icons.network_check,
+        'label': 'Network',
+        'color': Colors.blue,
+      },
+      {
+        'icon': Icons.explore,
+        'label': 'Explore',
+        'color': Colors.green,
+      },
+      {
+        'icon': Icons.account_balance_wallet,
+        'label': 'Wallet',
+        'color': Colors.orange,
+      },
+      {
+        'icon': Icons.account_tree_outlined,
+        'label': 'Tracer',
+        'color': Colors.purple,
+      },
+      {
+        'icon': Icons.settings,
+        'label': 'Settings',
+        'color': Colors.grey,
+      },
+    ];
 
     return Container(
       decoration: BoxDecoration(

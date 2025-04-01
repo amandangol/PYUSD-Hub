@@ -12,7 +12,7 @@ class TraceDetailsWidget extends StatelessWidget {
   final Color subtitleColor;
   final Color primaryColor;
   final VoidCallback onRefresh;
-
+  final bool isDarkMode;
   const TraceDetailsWidget({
     super.key,
     required this.traceData,
@@ -22,6 +22,7 @@ class TraceDetailsWidget extends StatelessWidget {
     required this.subtitleColor,
     required this.primaryColor,
     required this.onRefresh,
+    required this.isDarkMode,
   });
 
   @override

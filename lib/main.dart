@@ -18,6 +18,7 @@ import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/explore/service/news_service.dart';
 import 'screens/explore/view/news_explore_screen.dart';
 import 'screens/trace/provider/trace_provider.dart';
+import 'screens/trace/view/trace_home_screen.dart';
 import 'screens/trace/view/trace_screen.dart';
 import 'screens/wallet/provider/walletscreen_provider.dart';
 import 'screens/networkcongestion/provider/network_congestion_provider.dart';
@@ -35,7 +36,6 @@ import 'screens/networkcongestion/view/network_congestion_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/explore/provider/news_provider.dart';
 import 'screens/insights/provider/insights_provider.dart';
-import 'screens/insights/view/insights_screen.dart';
 import 'services/bigquery_service.dart';
 import 'providers/navigation_provider.dart';
 import 'widgets/bottom_navigation.dart';
@@ -205,9 +205,9 @@ class _MainAppState extends State<MainApp> {
     },
     {
       'label': 'Tracer',
-      'icon': Icons.analytics,
+      'icon': Icons.account_tree_outlined,
       'color': Colors.purple,
-      'screen': const TraceScreen(),
+      'screen': const TraceHomeScreen(),
     },
     {
       'label': 'Settings',

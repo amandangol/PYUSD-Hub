@@ -382,7 +382,7 @@ class TraceProvider with ChangeNotifier {
           'gasUsed': gasUsed,
           'gasPrice': gasPrice / 1e9, // Convert to Gwei
           'gasCostEth': gasCost,
-          'gasCostUsd': gasCost * 3000, // Approximate ETH price in USD
+          'gasCostUsd': gasCost * 2000, // Approximate ETH price in USD
         },
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };

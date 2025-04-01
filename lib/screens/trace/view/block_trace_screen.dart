@@ -6,8 +6,8 @@ import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
-import '../../../trace/provider/trace_provider.dart';
-import '../../../trace/view/transaction_trace_screen.dart';
+import '../provider/trace_provider.dart';
+import 'transaction_trace_screen.dart';
 
 class BlockTraceScreen extends StatefulWidget {
   final int blockNumber;

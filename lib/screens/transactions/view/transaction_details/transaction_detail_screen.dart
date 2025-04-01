@@ -47,7 +47,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   Map<String, dynamic>? _traceData;
   bool _isLoadingTrace = false;
   late final TransactionDetailProvider _transactionDetailProvider;
-  final MarketService _marketService = MarketService();
+  late MarketService _marketService = MarketService();
 
   // TabController for the tabbed interface
   late TabController _tabController;
@@ -55,16 +55,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   @override
   void initState() {
     super.initState();
-    // Initialize TabController with 4 tabs
-    _tabController = TabController(length: 4, vsync: this);
-
-    // Get provider reference once
     _transactionDetailProvider =
         Provider.of<TransactionDetailProvider>(context, listen: false);
-    // Schedule the fetch for the next frame to avoid blocking UI render
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeData();
-    });
+    _marketService = Provider.of<MarketService>(context, listen: false);
+
+    // Initialize tab controller with 4 tabs (added Trace tab)
+    _tabController = TabController(length: 4, vsync: this);
+
+    _initializeData();
   }
 
   @override
@@ -208,19 +206,19 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         forceRefresh: forceRefresh,
       );
 
-      if (!mounted) return;
-
-      setState(() {
-        _traceData = traceData;
-        _isLoadingTrace = false;
-      });
+      if (mounted) {
+        setState(() {
+          _traceData = traceData;
+          _isLoadingTrace = false;
+        });
+      }
     } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoadingTrace = false;
-      });
-      _showErrorSnackBar('Failed to fetch transaction trace');
+      print('Error fetching transaction trace: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingTrace = false;
+        });
+      }
     }
   }
 
@@ -312,28 +310,31 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                     ),
                   ),
 
-                  // TabBar
+                  // Tab Bar
                   Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: TabBar(
-                      controller: _tabController,
-                      labelColor: primaryColor,
-                      unselectedLabelColor: subtitleColor,
-                      indicatorColor: primaryColor,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      tabs: const [
-                        Tab(text: "Details", icon: Icon(Icons.info_outline)),
-                        Tab(text: "Gas", icon: Icon(Icons.local_gas_station)),
-                        Tab(text: "Market", icon: Icon(Icons.show_chart)),
-                        Tab(
-                            text: "Trace",
-                            icon: Icon(Icons.account_tree_outlined)),
-                      ],
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: primaryColor,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        labelColor: primaryColor,
+                        unselectedLabelColor: subtitleColor,
+                        tabs: const [
+                          Tab(text: 'Details'),
+                          Tab(text: 'Gas'),
+                          Tab(text: 'Market'),
+                          Tab(text: 'Trace'),
+                        ],
+                      ),
                     ),
                   ),
 
-                  // Tab content
+                  // Tab Content
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
@@ -385,8 +386,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                             primaryColor: primaryColor,
-                            onRefresh: () =>
-                                _fetchTransactionTrace(forceRefresh: true),
+                            isDarkMode: widget.isDarkMode,
+                            onRefresh: _refreshTransactionDetails,
                           ),
                         ),
                       ],
