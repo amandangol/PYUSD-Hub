@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
-import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 /// A custom input field for blockchain-related data
@@ -34,15 +32,27 @@ class TraceInputField extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final inputFillColor =
         isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100;
+    final borderColor =
+        isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+    final labelColor = isDarkMode ? Colors.blue.shade200 : Colors.blue.shade700;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
+            if (prefixIcon != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Icon(prefixIcon, size: 16, color: labelColor),
+              ),
             Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: labelColor,
+                fontSize: 14,
+              ),
             ),
             if (!isRequired)
               const Text(
@@ -56,24 +66,62 @@ class TraceInputField extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
+            hintStyle: TextStyle(
+              color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade400,
+              fontSize: 13,
+            ),
             filled: true,
             fillColor: inputFillColor,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(color: borderColor, width: 1),
             ),
-            prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-            suffixIcon: onPaste != null
-                ? IconButton(
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: borderColor, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  BorderSide(color: Theme.of(context).primaryColor, width: 2),
+            ),
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 18) : null,
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (controller.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () {
+                      controller.clear();
+                    },
+                    tooltip: 'Clear text',
+                  ),
+                if (onPaste != null)
+                  IconButton(
                     icon: const Icon(Icons.paste, size: 18),
                     onPressed: onPaste,
                     tooltip: 'Paste from clipboard',
-                  )
-                : null,
+                  ),
+              ],
+            ),
             helperText: helperText,
+            helperStyle: TextStyle(
+              fontSize: 12,
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+            ),
           ),
           maxLines: isMultiline ? 3 : 1,
-          style: const TextStyle(fontFamily: 'monospace'),
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            color: isDarkMode ? Colors.grey.shade200 : Colors.grey.shade800,
+          ),
+          onChanged: (_) {
+            (context as Element).markNeedsBuild();
+          },
         ),
       ],
     );
@@ -638,6 +686,13 @@ class TraceMethodSelector extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final dropdownColor = isDarkMode ? Colors.grey.shade800 : Colors.white;
 
+    // Ensure the selected method is in the available methods list
+    // If not, default to the first available method
+    final String effectiveSelectedMethod =
+        availableMethods.contains(selectedMethod)
+            ? selectedMethod
+            : availableMethods.first;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -657,7 +712,7 @@ class TraceMethodSelector extends StatelessWidget {
             ),
           ),
           child: DropdownButton<String>(
-            value: selectedMethod,
+            value: effectiveSelectedMethod,
             onChanged: (String? newValue) {
               if (newValue != null) {
                 onMethodChanged(newValue);
@@ -677,7 +732,7 @@ class TraceMethodSelector extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _buildMethodDescription(selectedMethod),
+        _buildMethodDescription(effectiveSelectedMethod),
       ],
     );
   }
@@ -687,11 +742,6 @@ class TraceMethodSelector extends StatelessWidget {
     IconData icon;
 
     switch (method) {
-      case 'Raw Transaction':
-        description =
-            'Trace a raw transaction without submitting it to the network.';
-        icon = Icons.code;
-        break;
       case 'Replay Block Transactions':
         description =
             'Replay all transactions in a block to get detailed traces.';

@@ -147,6 +147,12 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      // Validate the mnemonic first
+      final isValid = await _walletService.validateMnemonic(mnemonic);
+      if (!isValid) {
+        throw Exception('Invalid recovery phrase. Please check and try again.');
+      }
+
       // Delete any existing authentication data first
       await _authService.deleteAuthData();
 
@@ -164,6 +170,7 @@ class AuthProvider extends ChangeNotifier {
       await saveAuthState(); // Save authentication state
     } catch (e) {
       _setError('Failed to import wallet: $e');
+      throw e; // Re-throw to allow the UI to handle it
     } finally {
       _setLoading(false);
     }

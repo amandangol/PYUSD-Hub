@@ -213,4 +213,28 @@ class WalletService {
     final hexString = HEX.encode(digest.bytes);
     return encrypt.Key.fromBase16(hexString);
   }
+
+  // Add this new method to validate a mnemonic
+  Future<bool> validateMnemonic(String mnemonic) async {
+    try {
+      // Check if the mnemonic is valid using bip39
+      if (!bip39.validateMnemonic(mnemonic)) {
+        return false;
+      }
+
+      // Try to derive a wallet from the mnemonic to ensure it's valid
+      final seed = bip39.mnemonicToSeed(mnemonic);
+      final master = await ED25519_HD_KEY.getMasterKeyFromSeed(seed);
+      final privateKey = HEX.encode(master.key);
+
+      // Verify we can create credentials from this private key
+      final credentials = EthPrivateKey.fromHex(privateKey);
+      await credentials.extractAddress();
+
+      return true;
+    } catch (e) {
+      print('Mnemonic validation error: $e');
+      return false;
+    }
+  }
 }

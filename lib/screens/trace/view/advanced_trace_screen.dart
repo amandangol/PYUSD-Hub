@@ -52,10 +52,6 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
 
       // Execute the appropriate trace method based on the method name
       switch (widget.traceMethod) {
-        case 'Raw Transaction':
-          final rawTx = widget.traceParams['rawTx'] as String;
-          result = await provider.traceRawTransaction(rawTx);
-          break;
         case 'Replay Block Transactions':
           final blockNumber =
               int.parse(widget.traceParams['blockNumber'] as String);
@@ -524,22 +520,21 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
   Widget _buildTraceVisualizationCard() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Customize visualization based on trace method
     Widget visualization;
+
     switch (widget.traceMethod) {
       case 'Storage Range':
         visualization = _buildStorageRangeVisualization();
         break;
-      case 'Raw Transaction':
-      case 'Replay Transaction':
-        visualization = _buildTransactionTraceVisualization();
-        break;
       case 'Replay Block Transactions':
         visualization = _buildBlockTraceVisualization();
         break;
+      case 'Replay Transaction':
+        visualization = _buildTransactionTraceVisualization();
+        break;
       default:
         visualization = const Center(
-          child: Text('Visualization not available for this trace method'),
+          child: Text('No visualization available for this trace type'),
         );
     }
 
@@ -560,7 +555,7 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.bar_chart,
+                    Icons.account_tree,
                     color: Colors.green,
                   ),
                 ),

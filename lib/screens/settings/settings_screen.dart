@@ -360,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const PyusdQAScreen(),
+                            builder: (context) => const PyusdInfoScreen(),
                           ),
                         );
                       },
@@ -837,8 +837,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                )),
             child: const Text(
               'Log Out',
               style: TextStyle(color: Colors.white),

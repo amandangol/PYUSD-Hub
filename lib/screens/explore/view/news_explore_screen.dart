@@ -61,7 +61,7 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const PyusdQAScreen(),
+                      builder: (context) => const PyusdInfoScreen(),
                     ),
                   );
                 },
@@ -74,7 +74,7 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: PyusdQAScreen.qaItems.take(3).map((item) {
+              children: PyusdInfoScreen.qaItems.take(3).map((item) {
                 return Container(
                   width: 250,
                   margin: const EdgeInsets.only(right: 12),
@@ -89,7 +89,7 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const PyusdQAScreen(),
+                            builder: (context) => const PyusdInfoScreen(),
                           ),
                         );
                       },
@@ -296,7 +296,8 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                                         errorWidget: (context, url, error) =>
                                             Container(
                                           height: 200,
-                                          color: colorScheme.surfaceContainerHighest,
+                                          color: colorScheme
+                                              .surfaceContainerHighest,
                                           child: const Center(
                                             child:
                                                 Icon(Icons.image_not_supported),

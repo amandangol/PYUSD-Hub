@@ -417,6 +417,7 @@ class PyusdDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
@@ -441,17 +442,45 @@ class PyusdDialog extends StatelessWidget {
         if (cancelText != null)
           TextButton(
             onPressed: onCancel ?? () => Navigator.of(context).pop(),
-            child: Text(cancelText!),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              cancelText!,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ElevatedButton(
           onPressed: onConfirm,
           style: ElevatedButton.styleFrom(
-            backgroundColor: isDestructive ? theme.colorScheme.error : null,
-            foregroundColor: isDestructive ? theme.colorScheme.onError : null,
+            backgroundColor: isDestructive
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
+            foregroundColor: isDestructive
+                ? theme.colorScheme.onError
+                : theme.colorScheme.onPrimary,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          child: Text(confirmText),
+          child: Text(
+            confirmText,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actionsAlignment: MainAxisAlignment.end,
     );
   }
 }

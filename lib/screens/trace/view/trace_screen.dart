@@ -59,7 +59,7 @@ class _TraceScreenState extends State<TraceScreen>
   String _advancedError = '';
 
   // Selected advanced trace method
-  String _selectedAdvancedMethod = 'Raw Transaction';
+  String _selectedAdvancedMethod = 'Replay Block Transactions';
 
   @override
   void initState() {
@@ -184,8 +184,8 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Future<void> _executeAdvancedTrace() async {
-    // Validate inputs based on selected method
-    String? validationError = _validateAdvancedTraceInputs();
+    // Validate inputs
+    final validationError = _validateAdvancedTraceInputs();
     if (validationError != null) {
       setState(() {
         _advancedError = validationError;
@@ -206,11 +206,6 @@ class _TraceScreenState extends State<TraceScreen>
 
       // Execute the appropriate trace method based on the selected method
       switch (_selectedAdvancedMethod) {
-        case 'Raw Transaction':
-          final rawTx = _rawTxController.text.trim();
-          result = await provider.traceRawTransaction(rawTx);
-          traceParams = {'rawTx': rawTx};
-          break;
         case 'Replay Block Transactions':
           final blockNumber = int.parse(_replayBlockController.text.trim());
           result = await provider.replayBlockTransactions(blockNumber);
@@ -505,7 +500,6 @@ class _TraceScreenState extends State<TraceScreen>
               });
             },
             availableMethods: const [
-              'Raw Transaction',
               'Replay Block Transactions',
               'Replay Transaction',
               'Storage Range',
@@ -541,47 +535,6 @@ class _TraceScreenState extends State<TraceScreen>
         isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100;
 
     switch (_selectedAdvancedMethod) {
-      case 'Raw Transaction':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TraceInputField(
-              controller: _rawTxController,
-              label: 'Raw Transaction Data',
-              hintText: '0x...',
-              prefixIcon: Icons.code,
-              onPaste: () async {
-                final data = await Clipboard.getData('text/plain');
-                if (data != null && data.text != null) {
-                  setState(() {
-                    _rawTxController.text = data.text!.trim();
-                  });
-                }
-              },
-              helperText:
-                  'Enter the raw transaction data (not the transaction hash)',
-            ),
-            const SizedBox(height: 8),
-            if (_rawTxController.text.trim().length == 66 &&
-                _rawTxController.text.trim().startsWith('0x'))
-              const Text(
-                'Note: This appears to be a transaction hash, not raw transaction data. For transaction hashes, use the Transaction Trace tab.',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                ),
-              )
-            else
-              const Text(
-                'Note: This feature uses eth_call for compatibility with mainnet. Limited trace information will be available.',
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 12,
-                ),
-              ),
-          ],
-        );
-
       case 'Replay Block Transactions':
         return TraceInputField(
           controller: _replayBlockController,
@@ -597,7 +550,6 @@ class _TraceScreenState extends State<TraceScreen>
               });
             }
           },
-          helperText: 'Enter the block number to replay all transactions',
         );
 
       case 'Replay Transaction':
@@ -614,7 +566,6 @@ class _TraceScreenState extends State<TraceScreen>
               });
             }
           },
-          helperText: 'Enter the transaction hash to replay',
         );
 
       case 'Storage Range':
@@ -812,12 +763,6 @@ class _TraceScreenState extends State<TraceScreen>
                     title = 'Block Trace';
                     subtitle = 'Block: ${trace['blockNumber'] as int? ?? 0}';
                     break;
-                  case 'rawTransaction':
-                    icon = Icons.code;
-                    title = 'Raw Transaction Trace';
-                    subtitle =
-                        'Data: ${FormatterUtils.formatHash(trace['rawTx'] as String? ?? 'Unknown')}';
-                    break;
                   case 'blockReplay':
                     icon = Icons.replay;
                     title = 'Block Replay';
@@ -970,11 +915,6 @@ class _TraceScreenState extends State<TraceScreen>
         }
         break;
 
-      case 'rawTransaction':
-        _selectedAdvancedMethod = 'Raw Transaction';
-        _rawTxController.text = trace['rawTx'] as String? ?? '';
-        break;
-
       case 'blockReplay':
         _selectedAdvancedMethod = 'Replay Block Transactions';
         _replayBlockController.text =
@@ -1036,19 +976,6 @@ class _TraceScreenState extends State<TraceScreen>
   String? _validateAdvancedTraceInputs() {
     // Validate inputs based on the selected method
     switch (_selectedAdvancedMethod) {
-      case 'Raw Transaction':
-        final rawTx = _rawTxController.text.trim();
-        if (rawTx.isEmpty) {
-          return 'Raw transaction data is required';
-        }
-        if (!rawTx.startsWith('0x')) {
-          return 'Raw transaction must start with 0x';
-        }
-        if (rawTx.length < 10) {
-          return 'Raw transaction data is too short';
-        }
-        break;
-
       case 'Replay Block Transactions':
         final blockNumber = _replayBlockController.text.trim();
         if (blockNumber.isEmpty) {

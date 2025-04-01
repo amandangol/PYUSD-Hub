@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../widgets/pyusd_components.dart';
 
-class PyusdQAScreen extends StatefulWidget {
-  const PyusdQAScreen({super.key});
+class PyusdInfoScreen extends StatefulWidget {
+  const PyusdInfoScreen({super.key});
 
   // Static list of Q&A items
   static final List<QAItem> qaItems = [
@@ -107,10 +107,10 @@ class PyusdQAScreen extends StatefulWidget {
   ];
 
   @override
-  State<PyusdQAScreen> createState() => _PyusdQAScreenState();
+  State<PyusdInfoScreen> createState() => _PyusdQAScreenState();
 }
 
-class _PyusdQAScreenState extends State<PyusdQAScreen> {
+class _PyusdQAScreenState extends State<PyusdInfoScreen> {
   // Track which items are expanded
   final Set<int> _expandedItems = {
     0,
@@ -183,10 +183,10 @@ class _PyusdQAScreenState extends State<PyusdQAScreen> {
             // Q&A list
             Expanded(
               child: ListView.builder(
-                itemCount: PyusdQAScreen.qaItems.length,
+                itemCount: PyusdInfoScreen.qaItems.length,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemBuilder: (context, index) {
-                  final item = PyusdQAScreen.qaItems[index];
+                  final item = PyusdInfoScreen.qaItems[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     shape: RoundedRectangleBorder(
