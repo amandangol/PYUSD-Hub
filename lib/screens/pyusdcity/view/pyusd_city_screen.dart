@@ -276,30 +276,33 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                   Positioned(
                     top: 40,
                     left: 16,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildNetworkStatusBadge(
-                          'Network: ${congestionLevel < 30 ? "Low Traffic" : congestionLevel < 60 ? "Moderate" : congestionLevel < 80 ? "High Traffic" : "Congested"}',
-                          _getCongestionColor(congestionLevel),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildCongestionIndicator(
-                          'Congestion',
-                          '$congestionLevel%',
-                          congestionLevel / 100,
-                        ),
-                        const SizedBox(height: 8),
-                        // GasStationWidget(
-                        //   gasPrice: data.currentGasPrice,
-                        //   darkMode: true,
-                        // ),
-                        _buildCongestionIndicator(
-                          'Gas Price',
-                          '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
-                          min(data.currentGasPrice / 150, 1.0),
-                        ),
-                      ],
+                    child: Container(
+                      width: 200,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildNetworkStatusBadge(
+                            'Network: ${congestionLevel < 30 ? "Low Traffic" : congestionLevel < 60 ? "Moderate" : congestionLevel < 80 ? "High Traffic" : "Congested"}',
+                            _getCongestionColor(congestionLevel),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildCongestionIndicator(
+                            'Congestion',
+                            '$congestionLevel%',
+                            congestionLevel / 100,
+                          ),
+                          const SizedBox(height: 8),
+                          // GasStationWidget(
+                          //   gasPrice: data.currentGasPrice,
+                          //   darkMode: true,
+                          // ),
+                          _buildCongestionIndicator(
+                            'Gas Price',
+                            '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
+                            min(data.currentGasPrice / 150, 1.0),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -598,27 +601,36 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              StatsCard(
-                title: 'Blocks/Hour',
-                value: data.blocksPerHour.toString(),
-                icon: Icons.storage,
-                color: Colors.blue,
-                description: 'Block rate',
+              SizedBox(
+                width: MediaQuery.of(context).size.width / 3 - 20,
+                child: StatsCard(
+                  title: 'Blocks/Hour',
+                  value: data.blocksPerHour.toString(),
+                  icon: Icons.storage,
+                  color: Colors.blue,
+                  description: 'Block rate',
+                ),
               ),
-              StatsCard(
-                title: 'PYUSD Txs',
-                value: data.confirmedPyusdTxCount.toString(),
-                icon: Icons.swap_horiz,
-                color: Colors.green,
-                description: 'Confirmed',
+              SizedBox(
+                width: MediaQuery.of(context).size.width / 3 - 20,
+                child: StatsCard(
+                  title: 'PYUSD Txs',
+                  value: data.confirmedPyusdTxCount.toString(),
+                  icon: Icons.swap_horiz,
+                  color: Colors.green,
+                  description: 'Confirmed',
+                ),
               ),
-              StatsCard(
-                title: 'Est. Wait',
-                value:
-                    '${data.estimatedConfirmationMinutes.toStringAsFixed(1)}m',
-                icon: Icons.timer,
-                color: Colors.orange,
-                description: 'For confirmation',
+              SizedBox(
+                width: MediaQuery.of(context).size.width / 3 - 20,
+                child: StatsCard(
+                  title: 'Est. Wait',
+                  value:
+                      '${data.estimatedConfirmationMinutes.toStringAsFixed(1)}m',
+                  icon: Icons.timer,
+                  color: Colors.orange,
+                  description: 'For confirmation',
+                ),
               ),
             ],
           ),

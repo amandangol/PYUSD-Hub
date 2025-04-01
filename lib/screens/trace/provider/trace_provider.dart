@@ -30,6 +30,10 @@ class TraceProvider with ChangeNotifier {
   List<int> _recentBlocksTraced = [];
   List<int> get recentBlocksTraced => _recentBlocksTraced;
 
+  // Add these variables to support undo functionality
+  Map<String, dynamic>? _lastRemovedTrace;
+  int? _lastRemovedIndex;
+
   TraceProvider() {
     _loadHistoryFromPrefs();
   }
@@ -460,77 +464,130 @@ class TraceProvider with ChangeNotifier {
   }
 
   // Trace a specific call using trace_call
-  Future<Map<String, dynamic>> traceCall(
-      Map<String, dynamic> callObject, List<String> tracerTypes) async {
+  Future<Map<String, dynamic>> traceCall(String toAddress, String data,
+      [String? fromAddress]) async {
     try {
-      final List<Map<String, dynamic>> calls = [];
-
-      // Add different tracer types
-      for (final tracerType in tracerTypes) {
-        calls.add({
-          'method': 'trace_call',
-          'params': [
-            callObject,
-            ['trace'],
-            {'tracer': tracerType, 'timeout': '30s'}
-          ]
-        });
-      }
-
-      final results = await _makeBatchRpcCalls(calls);
-
-      // Check if we got any valid results
-      bool hasValidResult = false;
-      for (final result in results) {
-        if (result != null) {
-          hasValidResult = true;
-          break;
-        }
-      }
-
-      if (!hasValidResult) {
-        return {'success': false, 'error': 'No trace data available'};
-      }
-
-      // Map results to tracer types
-      final Map<String, dynamic> tracerResults = {};
-      for (int i = 0; i < tracerTypes.length; i++) {
-        tracerResults[tracerTypes[i]] = results[i];
-      }
-
-      return {
-        'success': true,
-        'traces': tracerResults,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      final callObject = {
+        'to': toAddress,
+        'data': data,
       };
-    } catch (e) {
-      print('Error in trace_call: $e');
-      return {'success': false, 'error': e.toString()};
-    }
-  }
 
-  // Trace a raw transaction using debug_traceCall
-  Future<Map<String, dynamic>> traceRawTransaction(String rawTx) async {
-    try {
-      if (!rawTx.startsWith('0x')) {
-        rawTx = '0x$rawTx';
+      // Add from address if provided
+      if (fromAddress != null && fromAddress.isNotEmpty) {
+        callObject['from'] = fromAddress;
       }
 
-      final result = await _makeRpcCall('debug_traceCall', [
-        rawTx,
+      final params = [
+        callObject,
+        ['trace'],
         'latest',
-        {'tracer': 'callTracer', 'timeout': '30s'}
-      ]);
+      ];
+
+      final result = await _makeRpcCall('debug_traceCall', params);
 
       if (result == null) {
         return {'success': false, 'error': 'No trace data available'};
       }
 
+      // Add to recent traces
+      _recentTraces.insert(0, {
+        'type': 'traceCall',
+        'to': toAddress,
+        'data': data,
+        'from': fromAddress,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
+
+      // Trim history if needed
+      if (_recentTraces.length > 20) {
+        _recentTraces = _recentTraces.sublist(0, 20);
+      }
+
+      _saveHistoryToPrefs();
+      _safeNotifyListeners();
+
       return {
         'success': true,
         'trace': result,
+        'to': toAddress,
+        'data': data,
+        'from': fromAddress,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
+    } catch (e) {
+      print('Error executing trace call: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  // Trace a raw transaction using eth_call instead of debug_traceCall
+  Future<Map<String, dynamic>> traceRawTransaction(String rawTx) async {
+    try {
+      // Normalize the input
+      rawTx = rawTx.trim();
+      if (!rawTx.startsWith('0x')) {
+        rawTx = '0x$rawTx';
+      }
+
+      // Check if input might be a transaction hash instead of raw transaction data
+      if (rawTx.length == 66) {
+        return {
+          'success': false,
+          'error':
+              'This appears to be a transaction hash, not raw transaction data. For transaction hashes, use the Transaction Trace tab instead.'
+        };
+      }
+
+      // Check for odd length (after 0x prefix)
+      if ((rawTx.length - 2) % 2 != 0) {
+        return {
+          'success': false,
+          'error':
+              'Invalid hex string: Hex data must have an even number of characters (after 0x prefix)'
+        };
+      }
+
+      try {
+        // First, try to get transaction details to display more information
+        Map<String, dynamic> txInfo = {};
+
+        try {
+          // Use eth_call which is more widely supported
+          final result = await _makeRpcCall('eth_call', [
+            {
+              'data': rawTx,
+            },
+            'latest'
+          ]);
+
+          txInfo['callResult'] = result;
+        } catch (e) {
+          txInfo['callError'] = e.toString();
+        }
+
+        // Add to recent traces
+        _addToRecentTraces({
+          'type': 'rawTransaction',
+          'rawTx': rawTx,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+
+        _saveHistoryToPrefs();
+        _safeNotifyListeners();
+
+        return {
+          'success': true,
+          'rawTx': rawTx,
+          'txInfo': txInfo,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'note': 'Limited trace information available using eth_call'
+        };
+      } catch (e) {
+        return {
+          'success': false,
+          'error': 'Error executing raw transaction: $e'
+        };
+      }
     } catch (e) {
       print('Error tracing raw transaction: $e');
       return {'success': false, 'error': e.toString()};
@@ -636,5 +693,39 @@ class TraceProvider with ChangeNotifier {
       print('Error getting storage range: $e');
       return {'success': false, 'error': e.toString()};
     }
+  }
+
+  // Add these methods for history management
+
+  void removeTraceFromHistory(int index) {
+    if (index >= 0 && index < _recentTraces.length) {
+      _lastRemovedTrace = _recentTraces[index];
+      _lastRemovedIndex = index;
+      _recentTraces.removeAt(index);
+      _saveHistoryToPrefs();
+      notifyListeners();
+    }
+  }
+
+  void restoreRemovedTrace() {
+    if (_lastRemovedTrace != null && _lastRemovedIndex != null) {
+      if (_lastRemovedIndex! > _recentTraces.length) {
+        _recentTraces.add(_lastRemovedTrace!);
+      } else {
+        _recentTraces.insert(_lastRemovedIndex!, _lastRemovedTrace!);
+      }
+      _lastRemovedTrace = null;
+      _lastRemovedIndex = null;
+      _saveHistoryToPrefs();
+      notifyListeners();
+    }
+  }
+
+  void clearTraceHistory() {
+    _recentTraces.clear();
+    _lastRemovedTrace = null;
+    _lastRemovedIndex = null;
+    _saveHistoryToPrefs();
+    notifyListeners();
   }
 }

@@ -7,6 +7,7 @@ import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
 import '../../../providers/gemini_provider.dart';
+import '../widgets/trace_widgets.dart';
 
 class TransactionTraceScreen extends StatefulWidget {
   final String txHash;
@@ -645,8 +646,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                       text: 'Analyze with AI',
                       onPressed: _getAiAnalysis,
                       icon: Icons.auto_awesome,
-                      backgroundColor: accentColor,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blue.withOpacity(0.8),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -656,8 +656,6 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
               Center(
                 child: Column(
                   children: [
-                    const SizedBox(height: 30),
-                    CircularProgressIndicator(color: accentColor),
                     const SizedBox(height: 20),
                     const Text(
                       'Analyzing transaction...',
@@ -702,14 +700,11 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                       style: TextStyle(color: textColor.withOpacity(0.7)),
                     ),
                     const SizedBox(height: 20),
-                    ElevatedButton.icon(
+                    TraceButton(
+                      text: 'Try Again',
                       onPressed: _getAiAnalysis,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try Again'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
+                      icon: Icons.refresh,
+                      backgroundColor: Colors.blue,
                     ),
                     const SizedBox(height: 20),
                   ],

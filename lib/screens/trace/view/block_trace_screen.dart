@@ -6,6 +6,7 @@ import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
+import '../widgets/trace_widgets.dart';
 import 'transaction_trace_screen.dart';
 import '../../../providers/gemini_provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';

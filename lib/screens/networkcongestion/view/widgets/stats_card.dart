@@ -8,81 +8,84 @@ class StatsCard extends StatelessWidget {
   final String description;
 
   const StatsCard({
-    super.key,
+    Key? key,
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
     required this.description,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 90, // Reduced fixed width
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
-            spreadRadius: 0,
-            blurRadius: 2,
-            offset: const Offset(0, 1),
+            color: color.withOpacity(0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: Colors.grey.shade100,
+          color: color.withOpacity(0.2),
           width: 1,
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Icon with smaller circular background
           Container(
-            padding: const EdgeInsets.all(5),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
+              shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 14,
+            child: Icon(icon, color: color, size: 14),
+          ),
+          const SizedBox(height: 4),
+
+          // Title
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Colors.black54,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+
+          // Value (main data)
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
               color: color,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: color,
-                  ),
-                ),
-              ],
+
+          // Description
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 9,
+              color: Colors.grey,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

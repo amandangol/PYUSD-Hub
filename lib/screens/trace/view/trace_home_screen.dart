@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
+import '../widgets/trace_widgets.dart';
 import 'trace_screen.dart';
 
 class TraceHomeScreen extends StatelessWidget {
@@ -148,9 +149,7 @@ class TraceHomeScreen extends StatelessWidget {
             text: 'Explore Tracing Tools',
             onPressed: () => _navigateToTraceScreen(context, 0),
             backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
             icon: Icons.explore,
-            borderRadius: 12,
           ),
         ],
       ),
@@ -298,9 +297,10 @@ class TraceHomeScreen extends StatelessWidget {
           children: [
             Text(
               'FYI',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 3),
             ),
             const SizedBox(height: 12),
             _buildDocItem(
