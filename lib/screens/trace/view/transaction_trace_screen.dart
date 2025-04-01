@@ -6,6 +6,7 @@ import 'package:pyusd_hub/utils/snackbar_utils.dart';
 
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
+import '../../../providers/gemini_provider.dart';
 
 class TransactionTraceScreen extends StatefulWidget {
   final String txHash;
@@ -26,6 +27,10 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
   Map<String, dynamic> _traceData = {};
   Map<String, dynamic> _analysisData = {};
   String _errorMessage = '';
+
+  bool _isAiAnalysisLoading = false;
+  Map<String, dynamic> _aiAnalysis = {};
+  bool _showAiAnalysis = false;
 
   @override
   void initState() {
@@ -66,17 +71,56 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
     }
   }
 
+  Future<void> _getAiAnalysis() async {
+    setState(() {
+      _isAiAnalysisLoading = true;
+      _showAiAnalysis = true;
+    });
+
+    try {
+      final geminiProvider =
+          Provider.of<GeminiProvider>(context, listen: false);
+      final analysis = await geminiProvider.analyzeTransactionTraceStructured(
+          _traceData,
+          _analysisData['transaction'] ?? {},
+          _analysisData['tokenDetails'] ?? {});
+
+      if (!mounted) return;
+
+      setState(() {
+        _aiAnalysis = analysis;
+        _isAiAnalysisLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _aiAnalysis = {
+          "summary": "Error analyzing transaction",
+          "error": true,
+          "errorMessage": e.toString()
+        };
+        _isAiAnalysisLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: PyusdAppBar(
+      appBar: CustomAppBar(
         title: 'Transaction Trace',
         isDarkMode: isDarkMode,
-        showLogo: false,
         onBackPressed: () => Navigator.pop(context),
         onRefreshPressed: _loadTraceData,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.psychology),
+            tooltip: 'AI Analysis',
+            onPressed: _isLoading ? null : _getAiAnalysis,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -249,6 +293,11 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
               ),
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          // AI Analysis button
+          _buildAiAnalysisCard(),
 
           const SizedBox(height: 16),
 
@@ -517,6 +566,471 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAiAnalysisCard() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? Colors.grey.shade800 : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final accentColor = Colors.purple;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.psychology,
+                    color: accentColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'AI Transaction Analysis',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                if (_showAiAnalysis)
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _isAiAnalysisLoading ? null : _getAiAnalysis,
+                    tooltip: 'Refresh Analysis',
+                  ),
+              ],
+            ),
+            const Divider(height: 24),
+            if (!_showAiAnalysis)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    Image.asset(
+                      'assets/images/geminilogo.png',
+                      height: 48,
+                      width: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Get an AI-powered analysis of this transaction',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Our AI will analyze the transaction trace and provide insights',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TraceButton(
+                      text: 'Analyze with AI',
+                      onPressed: _getAiAnalysis,
+                      icon: Icons.auto_awesome,
+                      backgroundColor: accentColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              )
+            else if (_isAiAnalysisLoading)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 30),
+                    CircularProgressIndicator(color: accentColor),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Analyzing transaction...',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This may take a few moments',
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              )
+            else if (_aiAnalysis.containsKey('error') &&
+                _aiAnalysis['error'] == true)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Error analyzing transaction',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _aiAnalysis['errorMessage'] ?? 'Unknown error occurred',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: textColor.withOpacity(0.7)),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: _getAiAnalysis,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try Again'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              )
+            else
+              _buildStructuredAnalysisContent(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStructuredAnalysisContent() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
+    // Extract data from analysis
+    final summary = _aiAnalysis['summary'] ?? 'No summary available';
+    final txType = _aiAnalysis['type'] ?? 'Unknown';
+    final riskLevel = _aiAnalysis['riskLevel'] ?? 'Unknown';
+    final riskFactors = _aiAnalysis['riskFactors'] ?? [];
+    final gasAnalysis =
+        _aiAnalysis['gasAnalysis'] ?? 'No gas analysis available';
+    final contractInteractions = _aiAnalysis['contractInteractions'] ?? [];
+    final technicalInsights =
+        _aiAnalysis['technicalInsights'] ?? 'No technical insights available';
+    final humanReadable =
+        _aiAnalysis['humanReadable'] ?? 'No explanation available';
+
+    // Determine risk color
+    Color riskColor = Colors.grey;
+    if (riskLevel == 'Low') {
+      riskColor = Colors.green;
+    } else if (riskLevel == 'Medium') {
+      riskColor = Colors.orange;
+    } else if (riskLevel == 'High') {
+      riskColor = Colors.red;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Summary section
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.summarize, size: 18, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Summary',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      txType,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                summary,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Risk assessment
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: riskColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: riskColor.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.security, size: 18, color: riskColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Risk Assessment',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: riskColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: riskColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      riskLevel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: riskColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (riskFactors.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                ...List.generate(
+                  riskFactors.length,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.warning_amber,
+                          size: 16,
+                          color: riskColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            riskFactors[index],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'No risk factors identified',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Expandable sections
+        ExpansionTile(
+          title: const Text('Technical Details'),
+          leading: const Icon(Icons.code),
+          childrenPadding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              technicalInsights,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+
+        ExpansionTile(
+          title: const Text('Gas Analysis'),
+          leading: const Icon(Icons.local_gas_station),
+          childrenPadding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              gasAnalysis,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+
+        if (contractInteractions.isNotEmpty)
+          ExpansionTile(
+            title: const Text('Contract Interactions'),
+            leading: const Icon(Icons.account_tree),
+            childrenPadding: const EdgeInsets.all(16),
+            children: [
+              ...List.generate(
+                contractInteractions.length,
+                (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    '• ${contractInteractions[index]}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+        const SizedBox(height: 16),
+
+        // Human readable explanation
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.person, size: 18, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Simplified Explanation',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                humanReadable,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Powered by Gemini
+        Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/geminilogo.png',
+                height: 16,
+                width: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Powered by Google Gemini',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: textColor.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

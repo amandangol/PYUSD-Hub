@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pyusd_hub/utils/formatter_utils.dart';
@@ -8,9 +9,9 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../config/rpc_endpoints.dart';
 import '../../../services/notification_service.dart';
 import '../model/networkcongestion_model.dart';
+import '../../../services/rpc_call_service.dart';
 
 class NetworkCongestionProvider with ChangeNotifier {
-  // Add these constants at the top of the class
   static const int MAX_RECENT_BLOCKS = 10;
   static const int MAX_RECENT_TRANSACTIONS = 50;
   static const int MAX_HISTORICAL_GAS_PRICES = 20;
@@ -87,6 +88,7 @@ class NetworkCongestionProvider with ChangeNotifier {
   bool get gasPriceNotificationsEnabled => _gasPriceNotificationsEnabled;
 
   final http.Client _httpClient = http.Client();
+  final RpcCallService _rpcService = RpcCallService();
 
   void setGasPriceThreshold(double threshold) {
     if (_isDisposed) return;
@@ -102,30 +104,17 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   Future<dynamic> _makeRpcCall(String method, List<dynamic> params) async {
     try {
-      final response = await _httpClient.post(
-        Uri.parse(_httpRpcUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'jsonrpc': '2.0',
-          'id': _requestId++,
-          'method': method,
-          'params': params
-        }),
-      );
+      final response =
+          await _rpcService.makeRpcCall(_httpRpcUrl, method, params);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data.containsKey('error')) {
-          print('RPC error: ${data['error']}');
-          return null;
-        }
-        return data['result'];
-      } else {
-        // print('HTTP error: ${response.statusCode}, Body: ${response.body}');
+      if (response.containsKey('error') && response['error'] != null) {
+        print('RPC error in NetworkCongestionProvider: ${response['error']}');
         return null;
       }
+
+      return response['result'];
     } catch (e) {
-      print('RPC call error: $e');
+      print('Error in _makeRpcCall: $e');
       return null;
     }
   }
@@ -245,6 +234,11 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<void> _fetchLatestBlocksUpdate() async {
     try {
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
+      if (latestBlockResponse == null) {
+        print('Failed to get latest block number: null response');
+        return;
+      }
+
       final latestBlockNumber =
           FormatterUtils.parseHexSafely(latestBlockResponse);
 
@@ -593,6 +587,12 @@ class NetworkCongestionProvider with ChangeNotifier {
     try {
       // Get the latest block number
       final latestBlockResponse = await _makeRpcCall('eth_blockNumber', []);
+      if (latestBlockResponse == null) {
+        print(
+            'Failed to get latest block number for PYUSD activity: null response');
+        return;
+      }
+
       final latestBlockNumber =
           FormatterUtils.parseHexSafely(latestBlockResponse);
 
@@ -617,13 +617,18 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
       ]);
 
-      if (logsResponse == null || logsResponse is! List) {
+      if (logsResponse == null) {
+        print('Failed to get logs for PYUSD activity: null response');
+        return;
+      }
+
+      if (!(logsResponse is List)) {
         print('Invalid logs response for PYUSD activity');
         return;
       }
 
       // Process the logs to extract transaction data
-      final logs = logsResponse;
+      final logs = logsResponse as List;
       int pyusdTxCount = 0;
 
       // Create a set of existing transaction hashes for quick lookup
@@ -669,7 +674,7 @@ class NetworkCongestionProvider with ChangeNotifier {
             try {
               // Extract recipient address (32 bytes after method ID)
               final String recipient =
-                  '0x${txResponse['input'].toString().substring(34, 74)}';
+                  '0x' + txResponse['input'].toString().substring(34, 74);
 
               // Extract value (32 bytes after recipient)
               final String valueHex =
@@ -860,7 +865,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       );
 
       // Fetch the last 10 blocks
-      const int numBlocksToFetch = 10;
+      final int numBlocksToFetch = 10;
       List<Future<Map<String, dynamic>?>> blockFutures = [];
 
       for (int i = 0; i < numBlocksToFetch; i++) {
@@ -908,7 +913,13 @@ class NetworkCongestionProvider with ChangeNotifier {
   // Helper function to fetch a single block
   Future<Map<String, dynamic>?> _fetchBlock(String blockHex) async {
     try {
-      return await _makeRpcCall('eth_getBlockByNumber', [blockHex, true]);
+      final result =
+          await _makeRpcCall('eth_getBlockByNumber', [blockHex, true]);
+      if (result == null) {
+        print('Failed to fetch block $blockHex: null response');
+        return null;
+      }
+      return result;
     } catch (e) {
       print('Error fetching block $blockHex: $e');
       return null;
@@ -1060,6 +1071,11 @@ class NetworkCongestionProvider with ChangeNotifier {
   Future<void> _fetchGasPrice() async {
     try {
       final gasPriceResponse = await _makeRpcCall('eth_gasPrice', []);
+      if (gasPriceResponse == null) {
+        print('Failed to get gas price: null response');
+        return;
+      }
+
       final gasPrice = FormatterUtils.parseHexSafely(gasPriceResponse);
 
       if (gasPrice != null) {
@@ -1246,7 +1262,7 @@ class NetworkCongestionProvider with ChangeNotifier {
               try {
                 // Extract recipient address (32 bytes after method ID)
                 final String recipient =
-                    '0x${tx['input'].toString().substring(34, 74)}';
+                    '0x' + tx['input'].toString().substring(34, 74);
 
                 // Extract value (32 bytes after recipient)
                 final String valueHex = tx['input'].toString().substring(74);
@@ -1374,8 +1390,8 @@ class NetworkCongestionProvider with ChangeNotifier {
       };
 
       // Calculate moving averages
-      const shortTermWindow = 5;
-      const mediumTermWindow = 20;
+      final shortTermWindow = 5;
+      final mediumTermWindow = 20;
 
       if (_congestionData.historicalGasPrices.length >= shortTermWindow) {
         final shortTermAvg = _congestionData.historicalGasPrices

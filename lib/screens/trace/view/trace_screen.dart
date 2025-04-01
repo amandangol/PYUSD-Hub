@@ -9,6 +9,8 @@ import '../../../widgets/pyusd_components.dart';
 import 'block_trace_screen.dart';
 import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'advanced_trace_screen.dart';
 
 class TraceScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -37,6 +39,11 @@ class _TraceScreenState extends State<TraceScreen>
   final TextEditingController _blockHashController = TextEditingController();
   final TextEditingController _txIndexController = TextEditingController();
 
+  // Add these controllers for Trace Call
+  final TextEditingController _traceCallToController = TextEditingController();
+  final TextEditingController _traceCallDataController =
+      TextEditingController();
+
   bool _isLoadingTx = false;
   bool _isLoadingBlock = false;
   bool _isLoadingAdvanced = false;
@@ -55,6 +62,10 @@ class _TraceScreenState extends State<TraceScreen>
     'Replay Transaction',
     'Storage Range'
   ];
+
+  bool _isAiAnalysisLoading = false;
+  Map<String, dynamic> _aiAnalysis = {};
+  bool _showAiAnalysis = false;
 
   @override
   void initState() {
@@ -77,6 +88,8 @@ class _TraceScreenState extends State<TraceScreen>
     _contractAddressController.dispose();
     _blockHashController.dispose();
     _txIndexController.dispose();
+    _traceCallToController.dispose();
+    _traceCallDataController.dispose();
     super.dispose();
   }
 
@@ -171,6 +184,97 @@ class _TraceScreenState extends State<TraceScreen>
       setState(() {
         _isLoadingBlock = false;
         _blockError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _executeAdvancedTrace() async {
+    // Validate inputs based on selected method
+    String? validationError = _validateAdvancedTraceInputs();
+    if (validationError != null) {
+      setState(() {
+        _advancedError = validationError;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingAdvanced = true;
+      _advancedError = '';
+      _advancedTraceResult = null;
+      _showAiAnalysis = false;
+    });
+
+    try {
+      final provider = Provider.of<TraceProvider>(context, listen: false);
+      Map<String, dynamic> result;
+      Map<String, dynamic> traceParams = {};
+
+      // Execute the appropriate trace method based on the selected method
+      switch (_selectedAdvancedMethod) {
+        case 'Raw Transaction':
+          final rawTx = _rawTxController.text.trim();
+          result = await provider.traceRawTransaction(rawTx);
+          traceParams = {'rawTx': rawTx};
+          break;
+        case 'Replay Block Transactions':
+          final blockNumber = int.parse(_replayBlockController.text.trim());
+          result = await provider.replayBlockTransactions(blockNumber);
+          traceParams = {'blockNumber': _replayBlockController.text.trim()};
+          break;
+        case 'Replay Transaction':
+          final txHash = _replayTxController.text.trim();
+          result = await provider.replayTransaction(txHash);
+          traceParams = {'txHash': txHash};
+          break;
+        case 'Storage Range':
+          final blockHash = _blockHashController.text.trim();
+          final txIndex = int.parse(_txIndexController.text.trim());
+          final contractAddress = _contractAddressController.text.trim();
+          result = await provider.getStorageRangeAt(
+            blockHash,
+            txIndex,
+            contractAddress,
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+            10,
+          );
+          traceParams = {
+            'blockHash': blockHash,
+            'txIndex': _txIndexController.text.trim(),
+            'contractAddress': contractAddress,
+            'startKey':
+                '0x0000000000000000000000000000000000000000000000000000000000000000',
+            'pageSize': '10',
+          };
+          break;
+        default:
+          result = {'success': false, 'error': 'Unknown trace method'};
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _advancedTraceResult = result;
+        _isLoadingAdvanced = false;
+      });
+
+      // Navigate to the advanced trace screen
+      if (result['success'] == true) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdvancedTraceScreen(
+              traceMethod: _selectedAdvancedMethod,
+              traceParams: traceParams,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingAdvanced = false;
+        _advancedError = 'Error: $e';
       });
     }
   }
@@ -363,14 +467,6 @@ class _TraceScreenState extends State<TraceScreen>
                 ),
               ),
             ),
-
-          // Transaction trace result
-          if (_txTraceResult != null) ...[
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
-            // Transaction trace result would be displayed here
-          ],
         ],
       ),
     );
@@ -592,33 +688,29 @@ class _TraceScreenState extends State<TraceScreen>
           const SizedBox(height: 24),
 
           // Method selector
-          DropdownButtonFormField<String>(
+          DropdownButton<String>(
             value: _selectedAdvancedMethod,
-            decoration: InputDecoration(
-              labelText: 'Trace Method',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              prefixIcon: const Icon(Icons.science),
-              filled: true,
-              fillColor:
-                  isDarkMode ? Colors.grey.shade800 : Colors.grey.shade50,
-            ),
-            items: _advancedMethods.map((String method) {
-              return DropdownMenuItem<String>(
-                value: method,
-                child: Text(method),
-              );
-            }).toList(),
             onChanged: (String? newValue) {
               if (newValue != null) {
                 setState(() {
                   _selectedAdvancedMethod = newValue;
-                  _advancedTraceResult = null;
                   _advancedError = '';
+                  _advancedTraceResult = null;
                 });
               }
             },
+            items: <String>[
+              'Raw Transaction',
+              'Replay Block Transactions',
+              'Replay Transaction',
+              'Storage Range',
+              'Trace Call',
+            ].map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 24),
 
@@ -921,140 +1013,6 @@ class _TraceScreenState extends State<TraceScreen>
     }
   }
 
-  Future<void> _executeAdvancedTrace() async {
-    setState(() {
-      _isLoadingAdvanced = true;
-      _advancedError = '';
-      _advancedTraceResult = null;
-    });
-
-    try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
-
-      switch (_selectedAdvancedMethod) {
-        case 'Raw Transaction':
-          final rawTx = _rawTxController.text.trim();
-          if (rawTx.isEmpty) {
-            setState(() {
-              _advancedError = 'Please enter raw transaction data';
-              _isLoadingAdvanced = false;
-            });
-            return;
-          }
-
-          final result = await provider.traceRawTransaction(rawTx);
-          setState(() {
-            _advancedTraceResult = result;
-            if (result['success'] != true) {
-              _advancedError =
-                  result['error'] ?? 'Failed to trace raw transaction';
-            }
-          });
-          break;
-
-        case 'Replay Block Transactions':
-          final blockNumberText = _replayBlockController.text.trim();
-          if (blockNumberText.isEmpty) {
-            setState(() {
-              _advancedError = 'Please enter a block number';
-              _isLoadingAdvanced = false;
-            });
-            return;
-          }
-
-          int? blockNumber;
-          if (blockNumberText.toLowerCase().startsWith('0x')) {
-            blockNumber = FormatterUtils.parseHexSafely(blockNumberText);
-          } else {
-            blockNumber = int.tryParse(blockNumberText);
-          }
-
-          if (blockNumber == null) {
-            setState(() {
-              _advancedError = 'Invalid block number format';
-              _isLoadingAdvanced = false;
-            });
-            return;
-          }
-
-          final result = await provider.replayBlockTransactions(blockNumber);
-          setState(() {
-            _advancedTraceResult = result;
-            if (result['success'] != true) {
-              _advancedError =
-                  result['error'] ?? 'Failed to replay block transactions';
-            }
-          });
-          break;
-
-        case 'Replay Transaction':
-          final txHash = _replayTxController.text.trim();
-          if (txHash.isEmpty) {
-            setState(() {
-              _advancedError = 'Please enter a transaction hash';
-              _isLoadingAdvanced = false;
-            });
-            return;
-          }
-
-          final result = await provider.replayTransaction(txHash);
-          setState(() {
-            _advancedTraceResult = result;
-            if (result['success'] != true) {
-              _advancedError =
-                  result['error'] ?? 'Failed to replay transaction';
-            }
-          });
-          break;
-
-        case 'Storage Range':
-          final contractAddress = _contractAddressController.text.trim();
-          final blockHash = _blockHashController.text.trim();
-          final txIndexText = _txIndexController.text.trim();
-
-          if (contractAddress.isEmpty ||
-              blockHash.isEmpty ||
-              txIndexText.isEmpty) {
-            setState(() {
-              _advancedError =
-                  'Please fill in all fields (contract address, block hash, and tx index)';
-              _isLoadingAdvanced = false;
-            });
-            return;
-          }
-
-          final txIndex = int.tryParse(txIndexText);
-          if (txIndex == null) {
-            setState(() {
-              _advancedError = 'Invalid transaction index format';
-              _isLoadingAdvanced = false;
-            });
-            return;
-          }
-
-          final result = await provider.getStorageRangeAt(
-              blockHash, txIndex, contractAddress, '0x0', 1000);
-          setState(() {
-            _advancedTraceResult = result;
-            if (result['success'] != true) {
-              _advancedError = result['error'] ?? 'Failed to get storage range';
-            }
-          });
-          break;
-      }
-    } catch (e) {
-      setState(() {
-        _advancedError = e.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingAdvanced = false;
-        });
-      }
-    }
-  }
-
   Widget _buildAdvancedTraceResult() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -1068,58 +1026,63 @@ class _TraceScreenState extends State<TraceScreen>
     final resultTitle =
         success ? 'Trace Completed Successfully' : 'Trace Failed';
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Column(
+      children: [
+        Card(
+          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: resultColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(resultIcon, color: resultColor),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    resultTitle,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: resultColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(resultIcon, color: resultColor),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        resultTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    TraceButton(
+                      text: 'View Full Trace',
+                      onPressed: _showFullTraceDialog,
+                      backgroundColor: Colors.purple,
+                      icon: Icons.visibility,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 16),
+                Text(
+                  'Trace Summary',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
-                TraceButton(
-                  text: 'View Full Trace',
-                  onPressed: _showFullTraceDialog,
-                  backgroundColor: Colors.purple,
-                  icon: Icons.visibility,
-                ),
+                const SizedBox(height: 12),
+                _buildTraceSummary(),
               ],
             ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 16),
-            Text(
-              'Trace Summary',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildTraceSummary(),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -1522,7 +1485,7 @@ class _TraceScreenState extends State<TraceScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Full Trace Data'),
-        content: SizedBox(
+        content: Container(
           width: double.maxFinite,
           height: 500,
           child: SingleChildScrollView(
@@ -1558,5 +1521,116 @@ class _TraceScreenState extends State<TraceScreen>
         ],
       ),
     );
+  }
+
+  String? _validateAdvancedTraceInputs() {
+    // Validate inputs based on the selected method
+    switch (_selectedAdvancedMethod) {
+      case 'Raw Transaction':
+        final rawTx = _rawTxController.text.trim();
+        if (rawTx.isEmpty) {
+          return 'Raw transaction data is required';
+        }
+        if (!rawTx.startsWith('0x')) {
+          return 'Raw transaction must start with 0x';
+        }
+        if (rawTx.length < 10) {
+          return 'Raw transaction data is too short';
+        }
+        break;
+
+      case 'Replay Block Transactions':
+        final blockNumber = _replayBlockController.text.trim();
+        if (blockNumber.isEmpty) {
+          return 'Block number is required';
+        }
+        try {
+          final blockNum = int.parse(blockNumber);
+          if (blockNum < 0) {
+            return 'Block number must be positive';
+          }
+        } catch (e) {
+          return 'Block number must be a valid integer';
+        }
+        break;
+
+      case 'Replay Transaction':
+        final txHash = _replayTxController.text.trim();
+        if (txHash.isEmpty) {
+          return 'Transaction hash is required';
+        }
+        if (!txHash.startsWith('0x')) {
+          return 'Transaction hash must start with 0x';
+        }
+        if (txHash.length != 66) {
+          return 'Transaction hash must be 66 characters long (including 0x)';
+        }
+        break;
+
+      case 'Storage Range':
+        final blockHash = _blockHashController.text.trim();
+        final txIndex = _txIndexController.text.trim();
+        final contractAddress = _contractAddressController.text.trim();
+
+        if (blockHash.isEmpty) {
+          return 'Block hash is required';
+        }
+        if (!blockHash.startsWith('0x')) {
+          return 'Block hash must start with 0x';
+        }
+        if (blockHash.length != 66) {
+          return 'Block hash must be 66 characters long (including 0x)';
+        }
+
+        if (txIndex.isEmpty) {
+          return 'Transaction index is required';
+        }
+        try {
+          final index = int.parse(txIndex);
+          if (index < 0) {
+            return 'Transaction index must be positive';
+          }
+        } catch (e) {
+          return 'Transaction index must be a valid integer';
+        }
+
+        if (contractAddress.isEmpty) {
+          return 'Contract address is required';
+        }
+        if (!contractAddress.startsWith('0x')) {
+          return 'Contract address must start with 0x';
+        }
+        if (contractAddress.length != 42) {
+          return 'Contract address must be 42 characters long (including 0x)';
+        }
+        break;
+
+      case 'Trace Call':
+        final toAddress = _traceCallToController.text.trim();
+        final data = _traceCallDataController.text.trim();
+
+        if (toAddress.isEmpty) {
+          return 'To address is required';
+        }
+        if (!toAddress.startsWith('0x')) {
+          return 'To address must start with 0x';
+        }
+        if (toAddress.length != 42) {
+          return 'To address must be 42 characters long (including 0x)';
+        }
+
+        if (data.isEmpty) {
+          return 'Call data is required';
+        }
+        if (!data.startsWith('0x')) {
+          return 'Call data must start with 0x';
+        }
+        break;
+
+      default:
+        return 'Unknown trace method';
+    }
+
+    return null; // All validations passed
   }
 }

@@ -1,6 +1,6 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../screens/networkcongestion/model/networkcongestion_model.dart';
+import 'dart:convert';
 
 class GeminiService {
   late final GenerativeModel _model;
@@ -15,165 +15,206 @@ class GeminiService {
       _model = GenerativeModel(
         model: 'gemini-1.5-flash',
         apiKey: apiKey,
+        generationConfig: GenerationConfig(
+          temperature: 0.2,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 2048,
+        ),
       );
       _isInitialized = true;
     }
   }
 
-  String _formatNetworkData(Map<String, dynamic> networkData) {
-    final congestionData =
-        networkData['congestionData'] as NetworkCongestionData;
+  Future<Map<String, dynamic>> analyzeTransactionTraceStructured(
+      Map<String, dynamic> traceData,
+      Map<String, dynamic> transactionData,
+      Map<String, dynamic> tokenDetails) async {
+    await initialize();
 
-    return '''
-Network Status:
-• Network: ${networkData['networkName'] ?? 'Polygon Mainnet'}
-• Version: ${congestionData.networkVersion}
-• Peers: ${congestionData.peerCount}
-• Network Status: ${congestionData.isNetworkListening ? 'Active' : 'Inactive'}
+    // Format the data for the AI
+    final formattedData = {
+      'transaction': transactionData,
+      'trace': traceData,
+      'tokenDetails': tokenDetails,
+    };
 
-Gas Metrics:
-• Current Gas Price: ${congestionData.currentGasPrice.toStringAsFixed(2)} Gwei
-• Average Gas Price: ${congestionData.averageGasPrice.toStringAsFixed(2)} Gwei
-• Network Gas Usage: ${congestionData.gasUsagePercentage.toStringAsFixed(2)}%
-• Gas Limit: ${congestionData.gasLimit}
-• Historical Gas Prices (last 20): ${congestionData.historicalGasPrices.map((p) => p.toStringAsFixed(2)).join(', ')}
-
-Block Information:
-• Latest Block: ${congestionData.lastBlockNumber}
-• Block Time: ${congestionData.blockTime.toStringAsFixed(2)} seconds
-• Average Block Time: ${congestionData.averageBlockTime.toStringAsFixed(2)} seconds
-• Blocks per Hour: ${congestionData.blocksPerHour}
-• Average Block Size: ${congestionData.averageBlockSize.toStringAsFixed(2)}
-• Average Transactions per Block: ${congestionData.averageTxPerBlock}
-
-PYUSD Activity:
-• Total Transactions: ${congestionData.pyusdTransactionCount}
-• Confirmed Transactions: ${congestionData.confirmedPyusdTxCount}
-• Pending Transactions: ${congestionData.pendingPyusdTxCount}
-• Average Confirmation Time: ${congestionData.averagePyusdConfirmationTime.toStringAsFixed(2)} minutes
-• Average Transaction Fee: ${congestionData.averagePyusdTransactionFee.toStringAsFixed(2)} MATIC
-• PYUSD Gas Usage %: ${congestionData.pyusdGasUsagePercentage.toStringAsFixed(2)}%
-
-Network Health:
-• Network Latency: ${congestionData.networkLatency.toStringAsFixed(2)}ms
-• Pending Queue Size: ${congestionData.pendingQueueSize}
-• PYUSD Pending Queue: ${congestionData.pyusdPendingQueueSize}
-• Bad Blocks: ${congestionData.badBlocks.length}
-• Last Updated: ${congestionData.lastRefreshed}
-
-Transaction Pool:
-• Total Pending: ${congestionData.pendingTransactions}
-• PYUSD Pending: ${congestionData.pendingPyusdTxCount}
-• Average Transaction Fee: ${congestionData.averagePyusdTransactionFee.toStringAsFixed(2)} MATIC
-''';
-  }
-
-  Future<String> getPYUSDInsights({
-    required Map<String, dynamic> networkData,
-    String? userQuery,
-  }) async {
-    if (!_isInitialized) {
-      await initialize();
+    // Create a prompt for the AI
+    final prompt = """
+    Analyze this Ethereum transaction and its trace data:
+    
+    ${jsonEncode(formattedData)}
+    
+    Respond with a JSON object containing the following fields:
+    
+    {
+      "summary": "A concise summary of what this transaction is doing",
+      "type": "The transaction type (e.g., 'Token Transfer', 'Contract Deployment', 'Contract Interaction', 'Swap', etc.)",
+      "riskLevel": "A risk assessment (Low, Medium, High) based on the transaction patterns",
+      "riskFactors": ["List of any risk factors or suspicious patterns"],
+      "gasAnalysis": "Analysis of gas usage and potential optimizations",
+      "contractInteractions": ["List of contracts interacted with and what they do"],
+      "technicalInsights": "Technical details about the execution flow",
+      "humanReadable": "A human-readable explanation of the transaction in simple terms"
     }
-
-    final formattedData = _formatNetworkData(networkData);
-
-    final prompt = '''
-You are an expert on PYUSD (PayPal USD) and the Polygon blockchain network. Analyze the following network data and provide detailed insights.
-
-Network Data:
-$formattedData
-
-${userQuery != null ? 'User Query: $userQuery' : ''}
-
-Please provide a comprehensive analysis that includes:
-
-1. Network Health Assessment:
-   - Current network status and performance
-   - Block production efficiency
-   - Network congestion levels
-   - Gas price trends and analysis
-
-2. PYUSD Activity Analysis:
-   - Transaction volume and patterns
-   - Gas usage efficiency
-   - Transaction confirmation times
-   - Cost analysis
-
-3. Technical Insights:
-   - Block production metrics
-   - Network latency impact
-   - Transaction pool analysis
-   - Historical trends
-
-4. Recommendations:
-   - Optimal transaction timing
-   - Gas price optimization
-   - Network usage patterns
-   - Risk assessment
-
-Keep your response clear, data-driven, and actionable. Focus on providing valuable insights based on the actual network data provided.
-''';
+    
+    Ensure your response is valid JSON that can be parsed. Only return the JSON object, nothing else.
+    """;
 
     try {
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
-      return response.text ?? 'No insights generated';
+      final responseText = response.text ?? "{}";
+
+      // Try to parse the JSON response
+      try {
+        return jsonDecode(responseText);
+      } catch (e) {
+        // If parsing fails, try to extract JSON from the text
+        final jsonPattern = RegExp(r'{[\s\S]*}');
+        final match = jsonPattern.firstMatch(responseText);
+        if (match != null) {
+          return jsonDecode(match.group(0)!);
+        } else {
+          // Return a formatted error if we can't parse JSON
+          return {
+            "summary": "Failed to parse AI response",
+            "humanReadable": responseText,
+            "error": true
+          };
+        }
+      }
     } catch (e) {
-      throw Exception('Failed to generate PYUSD insights: $e');
+      return {
+        "summary": "Error generating AI analysis",
+        "error": true,
+        "errorMessage": e.toString()
+      };
     }
   }
 
-  Future<String> chatAboutPYUSD({
-    required String message,
-    required Map<String, dynamic> networkData,
-    String? conversationHistory,
-  }) async {
-    if (!_isInitialized) {
-      await initialize();
+  Future<Map<String, dynamic>> analyzeBlockStructured(
+      Map<String, dynamic> blockData,
+      List<Map<String, dynamic>> transactions,
+      List<Map<String, dynamic>> pyusdTransactions,
+      List<Map<String, dynamic>> traces) async {
+    await initialize();
+
+    // Format the data for the AI
+    final formattedData = {
+      'blockData': blockData,
+      'transactions': transactions,
+      'pyusdTransactions': pyusdTransactions,
+      'traces': traces,
+    };
+
+    final prompt = """
+    You are a blockchain analysis expert. Analyze this Ethereum block data and provide insights.
+    
+    Block Data:
+    ${jsonEncode(formattedData)}
+    
+    Provide a structured analysis in JSON format with the following fields:
+    {
+      "summary": "A comprehensive summary of the block's activity",
+      "blockActivity": "Description of overall block activity (Normal, High, Low)",
+      "pyusdActivity": "Description of PYUSD-related activity in this block",
+      "gasAnalysis": "Analysis of gas usage patterns in this block",
+      "notableTransactions": [
+        {
+          "hash": "transaction hash",
+          "description": "what makes this transaction notable"
+        }
+      ],
+      "insights": "Technical insights about this block's execution and any patterns observed"
     }
-
-    final formattedData = _formatNetworkData(networkData);
-
-    final prompt = '''
-You are an expert on PYUSD (PayPal USD) and the Polygon blockchain network. Respond to the user's question using the current network data.
-
-Current Network Data:
-$formattedData
-
-${conversationHistory != null ? 'Previous Conversation:\n$conversationHistory' : ''}
-
-User Question: $message
-
-Please provide a response that:
-
-1. Directly addresses the user's question
-2. Uses current network data to support your answer
-3. Explains technical concepts clearly
-4. Provides actionable insights
-5. Includes relevant metrics and trends
-6. Offers practical recommendations
-
-Topics you can cover:
-- PYUSD market dynamics
-- Network performance and health
-- Transaction patterns and costs
-- Gas price analysis
-- Network congestion
-- Technical metrics
-- Security considerations
-- Integration challenges
-- Future developments
-
-Keep your response concise but comprehensive, focusing on the specific aspects the user asked about. Always reference the actual network data when making statements or predictions.
-''';
+    
+    Ensure your response is valid JSON that can be parsed. Only return the JSON object, nothing else.
+    """;
 
     try {
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
-      return response.text ?? 'No response generated';
+      final responseText = response.text ?? "{}";
+
+      // Try to parse the JSON response
+      try {
+        return jsonDecode(responseText);
+      } catch (e) {
+        // If parsing fails, try to extract JSON from the text
+        final jsonPattern = RegExp(r'{[\s\S]*}');
+        final match = jsonPattern.firstMatch(responseText);
+        if (match != null) {
+          return jsonDecode(match.group(0)!);
+        } else {
+          // Return a formatted error if we can't parse JSON
+          return {
+            "summary": "Failed to parse AI response",
+            "blockActivity": "Unknown",
+            "error": true
+          };
+        }
+      }
     } catch (e) {
-      throw Exception('Failed to generate chat response: $e');
+      return {
+        "summary": "Error generating AI analysis",
+        "error": true,
+        "errorMessage": e.toString()
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> analyzeAdvancedTraceStructured(
+      Map<String, dynamic> traceData) async {
+    await initialize();
+
+    final prompt = """
+    You are a blockchain trace analysis expert. Analyze this Ethereum trace data and provide insights.
+    
+    Trace Method: ${traceData['method']}
+    Trace Data:
+    ${jsonEncode(traceData['result'])}
+    
+    Provide a structured analysis in JSON format with the following fields:
+    {
+      "summary": "A comprehensive summary of what this trace shows",
+      "technicalDetails": "Technical explanation of the trace execution flow",
+      "insights": "Key insights derived from this trace data",
+      "recommendations": "Recommendations for developers or users based on this trace"
+    }
+    
+    Ensure your response is valid JSON that can be parsed. Only return the JSON object, nothing else.
+    """;
+
+    try {
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+      final responseText = response.text ?? "{}";
+
+      // Try to parse the JSON response
+      try {
+        return jsonDecode(responseText);
+      } catch (e) {
+        // If parsing fails, try to extract JSON from the text
+        final jsonPattern = RegExp(r'{[\s\S]*}');
+        final match = jsonPattern.firstMatch(responseText);
+        if (match != null) {
+          return jsonDecode(match.group(0)!);
+        } else {
+          // Return a formatted error if we can't parse JSON
+          return {
+            "summary": "Failed to parse AI response",
+            "technicalDetails": responseText,
+            "error": true
+          };
+        }
+      }
+    } catch (e) {
+      return {
+        "summary": "Error generating AI analysis",
+        "error": true,
+        "errorMessage": e.toString()
+      };
     }
   }
 }

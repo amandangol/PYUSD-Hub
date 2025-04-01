@@ -116,6 +116,63 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final bool isDarkMode;
+  final VoidCallback? onBackPressed;
+  final VoidCallback? onRefreshPressed;
+  final List<Widget>? actions;
+
+  const CustomAppBar({
+    super.key,
+    required this.title,
+    required this.isDarkMode,
+    this.onBackPressed,
+    this.onRefreshPressed,
+    this.actions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isDarkMode ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: onBackPressed != null
+          ? IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: isDarkMode ? Colors.white : Colors.black87,
+                size: 20,
+              ),
+              onPressed: onBackPressed,
+            )
+          : null,
+      actions: [
+        if (onRefreshPressed != null)
+          IconButton(
+            icon: Icon(
+              Icons.refresh,
+              color: isDarkMode ? Colors.white : Colors.black87,
+            ),
+            onPressed: onRefreshPressed,
+            tooltip: 'Refresh',
+          ),
+        if (actions != null) ...actions!,
+      ],
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
 /// A customizable button component with support for loading state, outlined style, and icons.
 
 class PyusdButton extends StatelessWidget {

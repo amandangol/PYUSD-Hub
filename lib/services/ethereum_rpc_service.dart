@@ -6,6 +6,7 @@ import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../providers/network_provider.dart';
 import '../screens/transactions/model/transaction_model.dart';
+import '../services/rpc_call_service.dart';
 
 class EthereumRpcService {
   static final EthereumRpcService _instance = EthereumRpcService._internal();
@@ -33,40 +34,22 @@ class EthereumRpcService {
     return _clientCache[rpcUrl];
   }
 
-  Future<Map<String, dynamic>> _makeRpcCall(
-    String rpcUrl,
-    String method,
-    List<dynamic> params, {
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
-    try {
-      final client = http.Client();
-      try {
-        final response = await client
-            .post(
-              Uri.parse(rpcUrl),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'jsonrpc': '2.0',
-                'id': 1,
-                'method': method,
-                'params': params,
-              }),
-            )
-            .timeout(timeout);
+  Future<dynamic> _makeRpcCall(
+      String rpcUrl, String method, List<dynamic> params) async {
+    final rpcService = RpcCallService();
+    final response = await rpcService.makeRpcCall(rpcUrl, method, params);
 
-        if (response.statusCode != 200) {
-          throw Exception(
-              'Failed to connect to Ethereum node: ${response.statusCode}');
-        }
-
-        return jsonDecode(response.body);
-      } finally {
-        client.close();
-      }
-    } catch (e) {
-      throw Exception('RPC call failed for $method: $e');
+    if (response.containsKey('error')) {
+      throw Exception('RPC error: ${response['error']}');
     }
+
+    return response['result'];
+  }
+
+  Future<List<Map<String, dynamic>>> batchRpcCalls(
+      String rpcUrl, List<(String, List<dynamic>)> calls) async {
+    final rpcService = RpcCallService();
+    return await rpcService.batchRpcCalls(rpcUrl, calls);
   }
 
   Future<double> getEthBalance(String rpcUrl, String address) async {
@@ -79,7 +62,7 @@ class EthereumRpcService {
         [address, 'latest'],
       );
 
-      final BigInt weiBalance = FormatterUtils.parseBigInt(response['result']);
+      final BigInt weiBalance = FormatterUtils.parseBigInt(response);
       return EtherAmount.fromBigInt(EtherUnit.wei, weiBalance)
           .getValueInUnit(EtherUnit.ether);
     } catch (e) {
@@ -112,7 +95,7 @@ class EthereumRpcService {
         ],
       );
 
-      final String hexBalance = response['result'];
+      final String hexBalance = response;
 
       if (hexBalance == '0x') {
         return 0.0;
@@ -156,9 +139,8 @@ class EthereumRpcService {
         ],
       );
 
-      if (decimalsResponse['result'].length > 2) {
-        tokenDecimals =
-            FormatterUtils.parseBigInt(decimalsResponse['result']).toInt();
+      if (decimalsResponse.length > 2) {
+        tokenDecimals = FormatterUtils.parseBigInt(decimalsResponse).toInt();
       } else {
         tokenDecimals = 18;
       }
@@ -179,20 +161,20 @@ class EthereumRpcService {
 
   Future<int> _getChainId(String rpcUrl) async {
     final chainIdResponse = await _makeRpcCall(rpcUrl, 'eth_chainId', []);
-    final chainIdHex = chainIdResponse['result'] as String;
+    final chainIdHex = chainIdResponse as String;
     return int.parse(chainIdHex.substring(2), radix: 16);
   }
 
   Future<int> _getNonce(String rpcUrl, EthereumAddress sender) async {
     final nonceResponse = await _makeRpcCall(
         rpcUrl, 'eth_getTransactionCount', [sender.hex, 'latest']);
-    final nonceHex = nonceResponse['result'] as String;
+    final nonceHex = nonceResponse as String;
     return int.parse(nonceHex.substring(2), radix: 16);
   }
 
   Future<BigInt> _getCurrentGasPrice(String rpcUrl) async {
     final gasPriceResponse = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);
-    return FormatterUtils.parseBigInt(gasPriceResponse['result']);
+    return FormatterUtils.parseBigInt(gasPriceResponse);
   }
 
   Future<String> sendEthTransaction(
@@ -239,7 +221,7 @@ class EthereumRpcService {
         ['0x${bytesToHex(signedTx!)}'],
       );
 
-      return txResponse['result'];
+      return txResponse as String;
     } catch (e) {
       throw Exception('Failed to send ETH transaction: $e');
     }
@@ -263,12 +245,9 @@ class EthereumRpcService {
     });
 
     try {
-      final response = await http.get(uri);
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch transactions: ${response.statusCode}');
-      }
+      final rpcService = RpcCallService();
+      final data = await rpcService.makeApiGet(uri);
 
-      final Map<String, dynamic> data = jsonDecode(response.body);
       if (data['status'] != '1') {
         if (data['message'] == 'No transactions found') {
           return [];
@@ -301,13 +280,9 @@ class EthereumRpcService {
     });
 
     try {
-      final response = await http.get(uri);
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to fetch token transactions: ${response.statusCode}');
-      }
+      final rpcService = RpcCallService();
+      final data = await rpcService.makeApiGet(uri);
 
-      final Map<String, dynamic> data = jsonDecode(response.body);
       if (data['status'] != '1') {
         if (data['message'] == 'No transactions found') {
           return [];
@@ -330,7 +305,7 @@ class EthereumRpcService {
         'eth_getTransactionByHash',
         [txHash],
       );
-      if (mainnetTx['result'] != null) {
+      if (mainnetTx != null) {
         return NetworkType.ethereumMainnet;
       }
     } catch (e) {
@@ -344,7 +319,7 @@ class EthereumRpcService {
         'eth_getTransactionByHash',
         [txHash],
       );
-      if (sepoliaTx['result'] != null) {
+      if (sepoliaTx != null) {
         return NetworkType.sepoliaTestnet;
       }
     } catch (e) {
@@ -379,12 +354,12 @@ class EthereumRpcService {
       final txResponse = responses[0];
       final receiptResponse = responses[1];
 
-      if (txResponse['result'] == null) {
+      if (txResponse == null) {
         return null;
       }
 
-      final txData = txResponse['result'] as Map<String, dynamic>;
-      final receiptData = receiptResponse['result'] as Map<String, dynamic>?;
+      final txData = txResponse as Map<String, dynamic>;
+      final receiptData = receiptResponse as Map<String, dynamic>?;
 
       TransactionStatus status;
       if (receiptData == null || receiptData['blockNumber'] == null) {
@@ -438,7 +413,7 @@ class EthereumRpcService {
       final blockResponse = blockFutures[0];
       final currentBlockResponse = blockFutures[1];
 
-      if (blockResponse['result'] == null) {
+      if (blockResponse == null) {
         return TransactionDetailModel(
           hash: txHash,
           timestamp: DateTime.now(),
@@ -475,9 +450,8 @@ class EthereumRpcService {
         );
       }
 
-      final blockData = blockResponse['result'] as Map<String, dynamic>;
-      final currentBlock =
-          FormatterUtils.parseBigInt(currentBlockResponse['result']);
+      final blockData = blockResponse as Map<String, dynamic>;
+      final currentBlock = FormatterUtils.parseBigInt(currentBlockResponse);
       final txBlockNumber =
           FormatterUtils.parseBigInt(receiptData['blockNumber']);
       final confirmations = (currentBlock - txBlockNumber).toInt();
@@ -581,8 +555,7 @@ class EthereumRpcService {
   Future<Map<String, double>> getDetailedGasPrices(String rpcUrl) async {
     try {
       final gasPriceResponse = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);
-      final currentGasPriceWei =
-          FormatterUtils.parseBigInt(gasPriceResponse['result']);
+      final currentGasPriceWei = FormatterUtils.parseBigInt(gasPriceResponse);
       final currentGasPriceGwei = currentGasPriceWei.toDouble() / 1e9;
 
       final slow = currentGasPriceGwei;
@@ -672,7 +645,7 @@ class EthereumRpcService {
         ['0x${bytesToHex(signedTx!)}'],
       );
 
-      return txResponse['result'];
+      return txResponse as String;
     } catch (e) {
       print('Error sending token transaction: $e');
       throw Exception('Failed to send token transaction: $e');
@@ -696,7 +669,7 @@ class EthereumRpcService {
         ],
       );
 
-      final hexValue = response['result'] as String;
+      final hexValue = response as String;
       return int.parse(hexValue.substring(2), radix: 16);
     } catch (e) {
       throw Exception('Failed to estimate gas: $e');
@@ -737,7 +710,7 @@ class EthereumRpcService {
         ],
       );
 
-      final hexValue = response['result'] as String;
+      final hexValue = response as String;
       return int.parse(hexValue.substring(2), radix: 16);
     } catch (e) {
       throw Exception('Failed to estimate token gas: $e');
@@ -823,7 +796,7 @@ class EthereumRpcService {
         [address, 'latest'],
       );
 
-      final code = response['result'] as String;
+      final code = response as String;
       return code != '0x' && code.length > 2;
     } catch (e) {
       throw Exception('Failed to check if address is contract: $e');
@@ -833,33 +806,12 @@ class EthereumRpcService {
   Future<double> getGasPrice(String rpcUrl) async {
     try {
       final response = await _makeRpcCall(rpcUrl, 'eth_gasPrice', []);
-      final BigInt weiGasPrice = FormatterUtils.parseBigInt(response['result']);
+      final BigInt weiGasPrice = FormatterUtils.parseBigInt(response);
       return weiGasPrice / BigInt.from(10).pow(9);
     } catch (e) {
       print('Error fetching gas price: $e');
       return 0.0;
     }
-  }
-
-  Future<List<Map<String, dynamic>>> batchRpcCalls(
-    String rpcUrl,
-    List<(String, List<dynamic>)> calls,
-  ) async {
-    final batch = calls.asMap().map((index, call) => MapEntry(index, {
-          'jsonrpc': '2.0',
-          'id': index,
-          'method': call.$1,
-          'params': call.$2,
-        }));
-
-    final response = await http.post(
-      Uri.parse(rpcUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(batch.values.toList()),
-    );
-
-    final List<dynamic> results = jsonDecode(response.body);
-    return results.cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>?> getTransactionTrace(

@@ -5,12 +5,14 @@ class TransactionVehicle extends StatelessWidget {
   final Map<String, dynamic> transaction;
   final bool isPending;
   final String speed; // 'fast', 'medium', 'slow', 'waiting'
+  final String transactionType; // 'pyusd', 'other'
 
   const TransactionVehicle({
     super.key,
     required this.transaction,
     required this.isPending,
     required this.speed,
+    this.transactionType = 'pyusd',
   });
 
   @override
@@ -24,7 +26,7 @@ class TransactionVehicle extends StatelessWidget {
         height: 20,
         decoration: BoxDecoration(
           color: _getVehicleColor(),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
@@ -35,24 +37,31 @@ class TransactionVehicle extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Vehicle body
-            Positioned.fill(
+            // Vehicle body details
+            Positioned(
+              top: 5,
+              left: 0,
+              right: 0,
               child: Container(
+                height: 6,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
+                  color: Colors.black.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: Colors.lightBlue.shade100,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
+              ),
+            ),
+
+            // Transaction type indicator
+            Positioned(
+              top: 2,
+              left: 2,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color:
+                      transactionType == 'pyusd' ? Colors.green : Colors.purple,
+                  shape: BoxShape.circle,
                 ),
               ),
             ),
@@ -85,6 +94,20 @@ class TransactionVehicle extends StatelessWidget {
               ),
             ),
 
+            // Headlights
+            Positioned(
+              top: 7,
+              right: 2,
+              child: Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.yellow.withOpacity(0.8),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+
             // Status indicator
             if (isPending)
               Positioned(
@@ -107,20 +130,36 @@ class TransactionVehicle extends StatelessWidget {
 
   Color _getVehicleColor() {
     if (isPending) {
-      return Colors.orange;
+      return Colors.orange.withOpacity(0.8);
     }
 
-    switch (speed) {
-      case 'fast':
-        return Colors.green;
-      case 'medium':
-        return Colors.blue;
-      case 'slow':
-        return Colors.red;
-      case 'waiting':
-        return Colors.grey;
-      default:
-        return Colors.blue;
+    if (transactionType == 'pyusd') {
+      switch (speed) {
+        case 'fast':
+          return Colors.green.shade400;
+        case 'medium':
+          return Colors.blue.shade400;
+        case 'slow':
+          return Colors.red.shade400;
+        case 'waiting':
+          return Colors.grey.shade400;
+        default:
+          return Colors.blue.shade400;
+      }
+    } else {
+      // Other transaction types
+      switch (speed) {
+        case 'fast':
+          return Colors.teal.shade400;
+        case 'medium':
+          return Colors.purple.shade400;
+        case 'slow':
+          return Colors.deepOrange.shade400;
+        case 'waiting':
+          return Colors.grey.shade400;
+        default:
+          return Colors.purple.shade400;
+      }
     }
   }
 
@@ -132,7 +171,9 @@ class TransactionVehicle extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isPending ? 'Pending Transaction' : 'Transaction'),
+        title: Text(transactionType == 'pyusd'
+            ? (isPending ? 'Pending PYUSD Transaction' : 'PYUSD Transaction')
+            : (isPending ? 'Pending Transaction' : 'Other Transaction')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,6 +187,7 @@ class TransactionVehicle extends StatelessWidget {
             const SizedBox(height: 8),
             Text('Status: ${isPending ? "Pending" : "Confirmed"}'),
             Text('Speed: ${speed.toUpperCase()}'),
+            Text('Type: ${transactionType.toUpperCase()}'),
           ],
         ),
         actions: [

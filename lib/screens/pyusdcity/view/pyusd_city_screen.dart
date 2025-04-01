@@ -86,19 +86,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/images/pyusdlogo.png',
-              height: 24,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.paid, size: 24);
-              },
-            ),
-            const SizedBox(width: 8),
-            const Text('PYUSD City'),
-          ],
-        ),
+        title: const Text('PYUSD City'),
         actions: [
           IconButton(
             icon: Icon(_showLegend ? Icons.map_outlined : Icons.map),
@@ -270,16 +258,6 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
 
                                       // Vehicles
                                       _buildVehicles(data),
-
-                                      // Gas station
-                                      Positioned(
-                                        right: 20,
-                                        bottom: 20,
-                                        child: GasStationWidget(
-                                          gasPrice: data.currentGasPrice,
-                                          darkMode: true,
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -312,6 +290,10 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                           congestionLevel / 100,
                         ),
                         const SizedBox(height: 8),
+                        // GasStationWidget(
+                        //   gasPrice: data.currentGasPrice,
+                        //   darkMode: true,
+                        // ),
                         _buildCongestionIndicator(
                           'Gas Price',
                           '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
@@ -448,27 +430,100 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   }
 
   Widget _buildVehicles(NetworkCongestionData data) {
-    // Get transactions from the provider instead of the data
+    // Get transactions from the provider
     final provider =
         Provider.of<NetworkCongestionProvider>(context, listen: false);
-    final transactions = provider.recentPyusdTransactions;
+    final pyusdTransactions = provider.recentPyusdTransactions;
 
-    return Stack(
-      children: [
-        for (int i = 0; i < min(transactions.length, 10); i++)
-          Positioned(
-            left: 20 +
-                (_random.nextDouble() *
-                    (MediaQuery.of(context).size.width - 100)),
-            top: 10 + (_random.nextDouble() * 50),
-            child: TransactionVehicle(
-              transaction: transactions[i],
-              isPending: false,
-              speed: _getTransactionSpeed(transactions[i]),
-            ),
+    // Create a list for all vehicles
+    final List<Widget> vehicles = [];
+
+    // Add PYUSD transactions
+    for (int i = 0; i < min(pyusdTransactions.length, 8); i++) {
+      // Calculate position based on animation - use a continuous function
+      final position = (_animationController.value + (i * 0.1)) % 1.0;
+      final screenWidth = MediaQuery.of(context).size.width;
+
+      vehicles.add(
+        Positioned(
+          left: position * (screenWidth + 100) - 50,
+          top: 10 + (_random.nextDouble() * 40),
+          child: TransactionVehicle(
+            transaction: pyusdTransactions[i],
+            isPending: false,
+            speed: _getTransactionSpeed(pyusdTransactions[i]),
+            transactionType: 'pyusd',
           ),
-      ],
+        ),
+      );
+    }
+
+    // Add other generic transactions (simulated)
+    for (int i = 0; i < min(data.pendingTransactions ~/ 100, 15); i++) {
+      // Calculate position with different offset for variety
+      final position = (_animationController.value + 0.5 + (i * 0.07)) % 1.0;
+      final screenWidth = MediaQuery.of(context).size.width;
+
+      // Create a simulated transaction
+      final Map<String, dynamic> otherTx = {
+        'hash': '0x${_generateRandomHash()}',
+        'from': '0x${_generateRandomHash().substring(0, 40)}',
+        'to': '0x${_generateRandomHash().substring(0, 40)}',
+        'gasPrice': '0x${_random.nextInt(100000000).toRadixString(16)}',
+      };
+
+      vehicles.add(
+        Positioned(
+          left: position * (screenWidth + 100) - 50,
+          top: 60 + (_random.nextDouble() * 40),
+          child: TransactionVehicle(
+            transaction: otherTx,
+            isPending: i % 3 == 0, // Some are pending
+            speed: ['fast', 'medium', 'slow'][_random.nextInt(3)],
+            transactionType: 'other',
+          ),
+        ),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Stack(children: vehicles);
+      },
     );
+  }
+
+  String _generateRandomHash() {
+    const chars = '0123456789abcdef';
+    return List.generate(64, (index) => chars[_random.nextInt(chars.length)])
+        .join();
+  }
+
+  String _getTransactionSpeed(Map<String, dynamic> transaction) {
+    // Determine transaction speed based on gas price
+    if (transaction['gasPrice'] != null) {
+      final gasPrice = int.tryParse(
+              transaction['gasPrice'].toString().startsWith('0x')
+                  ? transaction['gasPrice'].toString().substring(2)
+                  : transaction['gasPrice'].toString(),
+              radix: transaction['gasPrice'].toString().startsWith('0x')
+                  ? 16
+                  : 10) ??
+          0;
+
+      final gasPriceGwei = gasPrice / 1e9;
+
+      if (gasPriceGwei > 50) {
+        return 'fast';
+      } else if (gasPriceGwei > 30) {
+        return 'medium';
+      } else {
+        return 'slow';
+      }
+    }
+
+    return 'medium';
   }
 
   List<Widget> _buildWeatherEffects(int congestionLevel) {
@@ -575,111 +630,176 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   Widget _buildLegendOverlay(BuildContext context) {
     return Container(
       color: Colors.black.withOpacity(0.7),
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(16),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade900.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PYUSD City Legend',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 16),
+
+          // Buildings section
+          const Text(
+            'Buildings (Blocks)',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildLegendItem(
+            Colors.blue.shade200,
+            'Low Gas Usage (<50%)',
+          ),
+          _buildLegendItem(
+            Colors.blue.shade300,
+            'Medium Gas Usage (50-70%)',
+          ),
+          _buildLegendItem(
+            Colors.orange.shade300,
+            'High Gas Usage (70-90%)',
+          ),
+          _buildLegendItem(
+            Colors.red.shade300,
+            'Very High Gas Usage (>90%)',
+          ),
+          const SizedBox(height: 16),
+
+          // Vehicles section
+          const Text(
+            'Vehicles (Transactions)',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
             children: [
+              TransactionVehicle(
+                transaction: const {'hash': '0x0'},
+                isPending: false,
+                speed: 'fast',
+                transactionType: 'pyusd',
+              ),
+              const SizedBox(width: 8),
               const Text(
-                'PYUSD City Legend',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildLegendItem(
-                const Icon(Icons.location_city, color: Colors.blue),
-                'Buildings',
-                'Represent blocks on the Ethereum blockchain. Height indicates gas utilization.',
-              ),
-              _buildLegendItem(
-                Container(
-                  width: 24,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                'Vehicles',
-                'Represent PYUSD transactions. Color indicates confirmation speed.',
-              ),
-              _buildLegendItem(
-                const CloudWidget(size: 30, opacity: 0.8, darkMode: false),
-                'Clouds',
-                'Indicate network congestion level. More clouds = higher congestion.',
-              ),
-              _buildLegendItem(
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: const BoxDecoration(
-                    color: Colors.grey,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.local_gas_station,
-                      color: Colors.white, size: 16),
-                ),
-                'Gas Station',
-                'Shows current gas price in Gwei.',
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _showLegend = false;
-                    });
-                  },
-                  child: const Text('Close Legend'),
-                ),
+                'PYUSD Transaction (Fast)',
+                style: TextStyle(color: Colors.white),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              TransactionVehicle(
+                transaction: const {'hash': '0x0'},
+                isPending: false,
+                speed: 'medium',
+                transactionType: 'pyusd',
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'PYUSD Transaction (Medium)',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              TransactionVehicle(
+                transaction: const {'hash': '0x0'},
+                isPending: false,
+                speed: 'slow',
+                transactionType: 'pyusd',
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'PYUSD Transaction (Slow)',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              TransactionVehicle(
+                transaction: const {'hash': '0x0'},
+                isPending: false,
+                speed: 'medium',
+                transactionType: 'other',
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Other Transaction',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              TransactionVehicle(
+                transaction: const {'hash': '0x0'},
+                isPending: true,
+                speed: 'medium',
+                transactionType: 'pyusd',
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Pending Transaction',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+          Center(
+            child: TextButton(
+              onPressed: () {
+                setState(() {
+                  _showLegend = false;
+                });
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.blue.withOpacity(0.3),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Close Legend'),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildLegendItem(Widget icon, String title, String description) {
+  Widget _buildLegendItem(Color color, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 40,
-            child: Center(child: icon),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
             ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(color: Colors.white),
           ),
         ],
       ),
@@ -762,32 +882,6 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
         ],
       ),
     );
-  }
-
-  String _getTransactionSpeed(Map<String, dynamic> transaction) {
-    // Determine transaction speed based on gas price
-    if (transaction['gasPrice'] != null) {
-      final gasPrice = int.tryParse(
-              transaction['gasPrice'].toString().startsWith('0x')
-                  ? transaction['gasPrice'].toString().substring(2)
-                  : transaction['gasPrice'].toString(),
-              radix: transaction['gasPrice'].toString().startsWith('0x')
-                  ? 16
-                  : 10) ??
-          0;
-
-      final gasPriceGwei = gasPrice / 1e9;
-
-      if (gasPriceGwei > 50) {
-        return 'fast';
-      } else if (gasPriceGwei > 30) {
-        return 'medium';
-      } else {
-        return 'slow';
-      }
-    }
-
-    return 'medium';
   }
 
   Color _getGasPriceColor(double price) {

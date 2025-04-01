@@ -38,7 +38,6 @@ import 'screens/insights/provider/insights_provider.dart';
 import 'services/bigquery_service.dart';
 import 'providers/navigation_provider.dart';
 import 'widgets/bottom_navigation.dart';
-import 'widgets/floating_chat_bubble.dart';
 import 'routes/app_routes.dart';
 
 // Theme
@@ -257,7 +256,6 @@ class _MainAppState extends State<MainApp> {
                 FloatingActionButtonLocation.centerDocked,
             bottomNavigationBar: const AppBottomNavigation(),
           ),
-          const FloatingChatBubble(),
         ],
       ),
     );

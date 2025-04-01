@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
+import '../../../providers/gemini_provider.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class BlockTraceScreen extends StatefulWidget {
   final int blockNumber;
@@ -34,6 +36,9 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   final String _pyusdContractAddress =
       '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase();
   final ScrollController _scrollController = ScrollController();
+  bool _isAiAnalysisLoading = false;
+  Map<String, dynamic> _aiAnalysis = {};
+  bool _showAiAnalysis = false;
 
   @override
   void initState() {
@@ -144,12 +149,18 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: PyusdAppBar(
-        title: 'Block #${widget.blockNumber}',
+      appBar: CustomAppBar(
+        title: 'Block Number: ${widget.blockNumber}',
         isDarkMode: isDarkMode,
-        showLogo: false,
         onBackPressed: () => Navigator.pop(context),
         onRefreshPressed: _loadBlockData,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.psychology),
+            tooltip: 'AI Analysis',
+            onPressed: _isLoading ? null : _getAiAnalysis,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -185,6 +196,10 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
         SliverToBoxAdapter(
           child: _buildBlockInfoCard(),
         ),
+        if (_showAiAnalysis)
+          SliverToBoxAdapter(
+            child: _buildAiAnalysisCard(),
+          ),
         SliverToBoxAdapter(
           child: _buildSearchAndFilter(),
         ),
@@ -835,5 +850,296 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
       print('Error calculating gas percentage: $e');
       return '0%';
     }
+  }
+
+  Future<void> _getAiAnalysis() async {
+    setState(() {
+      _isAiAnalysisLoading = true;
+      _showAiAnalysis = true;
+    });
+
+    try {
+      final geminiProvider =
+          Provider.of<GeminiProvider>(context, listen: false);
+
+      // Prepare data for analysis
+      final blockData = {
+        'blockNumber': widget.blockNumber,
+        'blockHash': _blockData['hash'],
+        'timestamp': _blockData['timestamp'],
+        'gasUsed': _blockData['gasUsed'],
+        'gasLimit': _blockData['gasLimit'],
+        'transactionCount': _transactions.length,
+        'miner': _blockData['miner'],
+      };
+
+      // Get PYUSD transactions
+      final pyusdTransactions = _transactions.where((tx) {
+        final to = _safeToString(tx['to']).toLowerCase();
+        return to == _pyusdContractAddress;
+      }).toList();
+
+      final analysis = await geminiProvider.analyzeBlockStructured(
+        blockData,
+        _transactions
+            .take(10)
+            .toList(), // Send first 10 transactions for analysis
+        pyusdTransactions,
+        _traces.take(10).toList(), // Send first 10 traces for analysis
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isAiAnalysisLoading = false;
+        _aiAnalysis = analysis;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isAiAnalysisLoading = false;
+        _aiAnalysis = {
+          "summary": "Error generating AI analysis",
+          "error": true,
+          "errorMessage": e.toString()
+        };
+      });
+    }
+  }
+
+  Widget _buildAiAnalysisCard() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
+    return Card(
+      margin: const EdgeInsets.all(16.0),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.psychology,
+                      color: Colors.deepPurple, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'AI Block Analysis',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Image.asset(
+                  'assets/images/geminilogo.png',
+                  height: 24,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            if (_isAiAnalysisLoading)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Analyzing block data',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This may take a few moments',
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              )
+            else if (_aiAnalysis.containsKey('error') &&
+                _aiAnalysis['error'] == true)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Error analyzing block',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _aiAnalysis['errorMessage'] ?? 'Unknown error occurred',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: textColor.withOpacity(0.7)),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: _getAiAnalysis,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try Again'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              )
+            else
+              _buildStructuredBlockAnalysisContent(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStructuredBlockAnalysisContent() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
+    // Extract data from analysis
+    final summary = _aiAnalysis['summary'] ?? 'No summary available';
+    final blockActivity = _aiAnalysis['blockActivity'] ?? 'Normal';
+    final pyusdActivity = _aiAnalysis['pyusdActivity'] ?? 'None detected';
+    final gasAnalysis =
+        _aiAnalysis['gasAnalysis'] ?? 'No gas analysis available';
+    final notableTransactions = _aiAnalysis['notableTransactions'] ?? [];
+    final insights = _aiAnalysis['insights'] ?? 'No insights available';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Summary section
+        ExpansionTile(
+          title: const Text(
+            'Summary',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          initiallyExpanded: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: MarkdownBody(
+                data: summary,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(fontSize: 14, color: textColor),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // Block Activity section
+        ListTile(
+          title: const Text('Block Activity'),
+          subtitle: Text(blockActivity),
+          leading: const Icon(Icons.analytics, color: Colors.blue),
+        ),
+
+        // PYUSD Activity section
+        ListTile(
+          title: const Text('PYUSD Activity'),
+          subtitle: Text(pyusdActivity),
+          leading: const Icon(Icons.currency_exchange, color: Colors.green),
+        ),
+
+        // Gas Analysis section
+        ExpansionTile(
+          title: const Text('Gas Analysis'),
+          leading: const Icon(Icons.local_gas_station, color: Colors.orange),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: MarkdownBody(
+                data: gasAnalysis,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(fontSize: 14, color: textColor),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // Notable Transactions section
+        if (notableTransactions.isNotEmpty)
+          ExpansionTile(
+            title: const Text('Notable Transactions'),
+            leading: const Icon(Icons.star, color: Colors.amber),
+            children: [
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: notableTransactions.length,
+                itemBuilder: (context, index) {
+                  final tx = notableTransactions[index];
+                  return ListTile(
+                    title: Text(tx['hash'] ?? 'Unknown hash'),
+                    subtitle: Text(tx['description'] ?? 'No description'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      if (tx['hash'] != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransactionTraceScreen(
+                              txHash: tx['hash'],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+
+        // Insights section
+        ExpansionTile(
+          title: const Text('Technical Insights'),
+          leading: const Icon(Icons.lightbulb, color: Colors.yellow),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: MarkdownBody(
+                data: insights,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(fontSize: 14, color: textColor),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

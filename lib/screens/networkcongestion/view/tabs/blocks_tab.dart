@@ -10,6 +10,7 @@ import '../../../trace/provider/trace_provider.dart';
 import '../../../trace/view/transaction_trace_screen.dart';
 import '../../provider/network_congestion_provider.dart';
 import '../../../trace/view/block_trace_screen.dart';
+import '../widgets/stats_card.dart';
 
 class BlocksTab extends StatefulWidget {
   final NetworkCongestionProvider provider;
@@ -52,15 +53,25 @@ class _BlocksTabState extends State<BlocksTab> {
     final latestBlock = widget.provider.recentBlocks.isNotEmpty
         ? widget.provider.recentBlocks[0]
         : null;
+    final data = widget.provider.congestionData;
 
     // Parse block number
     int blockNumber = 0;
     if (latestBlock != null && latestBlock['number'] != null) {
-      final numStr = latestBlock['number'].toString();
-      blockNumber = numStr.startsWith('0x')
-          ? int.parse(numStr.substring(2), radix: 16)
-          : int.tryParse(numStr) ?? 0;
+      blockNumber = FormatterUtils.parseHexSafely(latestBlock['number']) ?? 0;
     }
+
+    // Parse gas used and gas limit
+    int gasUsed = 0;
+    int gasLimit = 0;
+    if (latestBlock != null) {
+      gasUsed = FormatterUtils.parseHexSafely(latestBlock['gasUsed']) ?? 0;
+      gasLimit = FormatterUtils.parseHexSafely(latestBlock['gasLimit']) ?? 0;
+    }
+
+    // Calculate gas usage percentage
+    final gasUsagePercentage =
+        gasLimit > 0 ? (gasUsed / gasLimit * 100).toStringAsFixed(1) : '0';
 
     return Card(
       elevation: 3,
@@ -115,126 +126,52 @@ class _BlocksTabState extends State<BlocksTab> {
             ),
             const SizedBox(height: 16),
 
-            // Block statistics
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 2.5,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+            // Block statistics in a grid
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                _buildBlockStatCard(
-                  context,
-                  'Avg Block Time',
-                  widget.provider.congestionData.averageBlockTime > 0
-                      ? '${widget.provider.congestionData.averageBlockTime.toStringAsFixed(1)} sec'
-                      : 'Loading...',
-                  Icons.timer,
-                  Colors.blue,
-                  'Average time between new blocks being added to the blockchain. Target is around 12-15 seconds.',
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: StatsCard(
+                    title: 'Block Time',
+                    value: '${data.blockTime.toStringAsFixed(1)}s',
+                    icon: Icons.access_time,
+                    color: Colors.blue,
+                    description: 'Average',
+                  ),
                 ),
-                _buildBlockStatCard(
-                  context,
-                  'Blocks/Hour',
-                  widget.provider.congestionData.blocksPerHour > 0
-                      ? '~${widget.provider.congestionData.blocksPerHour}'
-                      : 'Loading...',
-                  Icons.av_timer,
-                  Colors.green,
-                  'Estimated number of blocks being mined per hour on the Ethereum network.',
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: StatsCard(
+                    title: 'Gas Usage',
+                    value: '$gasUsagePercentage%',
+                    icon: Icons.local_gas_station,
+                    color: Colors.orange,
+                    description: 'Of limit',
+                  ),
                 ),
-                _buildBlockStatCard(
-                  context,
-                  'Avg Tx/Block',
-                  widget.provider.congestionData.averageTxPerBlock > 0
-                      ? '${widget.provider.congestionData.averageTxPerBlock}'
-                      : 'Loading...',
-                  Icons.sync_alt,
-                  Colors.purple,
-                  'Average number of transactions included in each block. Higher numbers indicate increased network activity.',
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: StatsCard(
+                    title: 'Gas Price',
+                    value: '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
+                    icon: Icons.monetization_on,
+                    color: Colors.green,
+                    description: 'Current',
+                  ),
                 ),
-                _buildBlockStatCard(
-                  context,
-                  'Gas Limit',
-                  widget.provider.congestionData.gasLimit > 0
-                      ? '${(widget.provider.congestionData.gasLimit / 1000000).toStringAsFixed(1)}M'
-                      : 'Loading...',
-                  Icons.local_gas_station,
-                  Colors.orange,
-                  'Maximum amount of gas that can be used in a single block. This is a network parameter that can be adjusted.',
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: StatsCard(
+                    title: 'Blocks/Hour',
+                    value: '${data.blocksPerHour}',
+                    icon: Icons.speed,
+                    color: Colors.purple,
+                    description: 'Production rate',
+                  ),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Block Statistics Card
-  Widget _buildBlockStatCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    String infoMessage,
-  ) {
-    return GestureDetector(
-      onTap: () => InfoDialog.show(
-        context,
-        title: title,
-        message: infoMessage,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: color,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.info_outline,
-                        size: 12,
-                        color: Colors.grey,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
             ),
           ],
         ),

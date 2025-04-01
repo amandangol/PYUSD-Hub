@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
+import '../../../../widgets/common/info_dialog.dart';
 import '../../provider/network_congestion_provider.dart';
 import '../widgets/stats_card.dart';
 import '../widgets/transaction_listitem.dart';
@@ -64,12 +65,46 @@ class _TransactionsTabState extends State<TransactionsTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'PYUSD Transaction Overview',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'PYUSD Transaction Overview',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.info_outline),
+                      onPressed: () => InfoDialog.show(
+                        context,
+                        title: 'PYUSD Transaction Overview',
+                        message:
+                            'Overview of PYUSD transactions on the Ethereum network, including transaction count, volume, confirmation time, and active users.',
+                      ),
+                    ),
+                  ],
+                ),
+                if (data.confirmedPyusdTxCount > 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Total: ${FormatterUtils.formatLargeNumber(data.confirmedPyusdTxCount)} txs',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
 
@@ -226,7 +261,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Showing transactions from blocks ${FormatterUtils.formatBlockNumber(oldestBlockNumber)} to ${FormatterUtils.formatBlockNumber(latestBlockNumber)}',
+                        'Showing transactions from blocks $oldestBlockNumber to $latestBlockNumber',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.blue,
