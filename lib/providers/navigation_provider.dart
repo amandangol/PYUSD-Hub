@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
 
 class NavigationProvider extends ChangeNotifier {
   int _currentIndex = 2; // Default to wallet screen (index 2)

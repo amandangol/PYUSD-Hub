@@ -296,7 +296,7 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                                         errorWidget: (context, url, error) =>
                                             Container(
                                           height: 200,
-                                          color: colorScheme.surfaceVariant,
+                                          color: colorScheme.surfaceContainerHighest,
                                           child: const Center(
                                             child:
                                                 Icon(Icons.image_not_supported),

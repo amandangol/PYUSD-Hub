@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../pyusdcity/view/pyusd_city_screen.dart';
 import '../provider/network_congestion_provider.dart';
 import 'tabs/blocks_tab.dart';
 import 'tabs/gas_tab.dart';
@@ -144,6 +145,20 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
               const Text('ETH/PYUSD Network Activity'),
             ],
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.location_city),
+              tooltip: 'PYUSD City View',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PyusdCityScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
           bottom: TabBar(
             controller: _tabController,
             tabs: const [

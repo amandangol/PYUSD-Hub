@@ -118,7 +118,7 @@ class NotificationService {
       }
 
       // Create the notification details
-      final androidDetails = AndroidNotificationDetails(
+      const androidDetails = AndroidNotificationDetails(
         'transaction_channel',
         'Transaction Notifications',
         channelDescription: 'Notifications for transaction updates',
@@ -131,14 +131,14 @@ class NotificationService {
         icon: '@mipmap/ic_launcher',
       );
 
-      final iOSDetails = DarwinNotificationDetails(
+      const iOSDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
         sound: 'default',
       );
 
-      final details = NotificationDetails(
+      const details = NotificationDetails(
         android: androidDetails,
         iOS: iOSDetails,
       );
@@ -193,7 +193,7 @@ class NotificationService {
           ((thresholdGasPrice - currentGasPrice) / thresholdGasPrice * 100)
               .toStringAsFixed(1);
 
-      final androidDetails = AndroidNotificationDetails(
+      const androidDetails = AndroidNotificationDetails(
         'gas_price_channel',
         'Gas Price Alerts',
         channelDescription: 'Notifications for low gas prices',
@@ -211,14 +211,14 @@ class NotificationService {
         ledOffMs: 500,
       );
 
-      final iOSDetails = DarwinNotificationDetails(
+      const iOSDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
         sound: 'default',
       );
 
-      final details = NotificationDetails(
+      const details = NotificationDetails(
         android: androidDetails,
         iOS: iOSDetails,
       );

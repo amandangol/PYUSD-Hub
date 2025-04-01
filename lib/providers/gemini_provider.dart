@@ -363,7 +363,7 @@ Note: These metrics are based on real-time network data and historical trends.
   }
 
   Future<void> _handleAboutCommand() async {
-    final response = '''
+    const response = '''
 About PYUSD on $_networkName:
 
 1. Network Overview:

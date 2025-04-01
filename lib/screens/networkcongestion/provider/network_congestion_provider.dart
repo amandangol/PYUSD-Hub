@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pyusd_hub/utils/formatter_utils.dart';
@@ -618,13 +617,13 @@ class NetworkCongestionProvider with ChangeNotifier {
         }
       ]);
 
-      if (logsResponse == null || !(logsResponse is List)) {
+      if (logsResponse == null || logsResponse is! List) {
         print('Invalid logs response for PYUSD activity');
         return;
       }
 
       // Process the logs to extract transaction data
-      final logs = logsResponse as List;
+      final logs = logsResponse;
       int pyusdTxCount = 0;
 
       // Create a set of existing transaction hashes for quick lookup
@@ -670,7 +669,7 @@ class NetworkCongestionProvider with ChangeNotifier {
             try {
               // Extract recipient address (32 bytes after method ID)
               final String recipient =
-                  '0x' + txResponse['input'].toString().substring(34, 74);
+                  '0x${txResponse['input'].toString().substring(34, 74)}';
 
               // Extract value (32 bytes after recipient)
               final String valueHex =
@@ -861,7 +860,7 @@ class NetworkCongestionProvider with ChangeNotifier {
       );
 
       // Fetch the last 10 blocks
-      final int numBlocksToFetch = 10;
+      const int numBlocksToFetch = 10;
       List<Future<Map<String, dynamic>?>> blockFutures = [];
 
       for (int i = 0; i < numBlocksToFetch; i++) {
@@ -1247,7 +1246,7 @@ class NetworkCongestionProvider with ChangeNotifier {
               try {
                 // Extract recipient address (32 bytes after method ID)
                 final String recipient =
-                    '0x' + tx['input'].toString().substring(34, 74);
+                    '0x${tx['input'].toString().substring(34, 74)}';
 
                 // Extract value (32 bytes after recipient)
                 final String valueHex = tx['input'].toString().substring(74);
@@ -1375,8 +1374,8 @@ class NetworkCongestionProvider with ChangeNotifier {
       };
 
       // Calculate moving averages
-      final shortTermWindow = 5;
-      final mediumTermWindow = 20;
+      const shortTermWindow = 5;
+      const mediumTermWindow = 20;
 
       if (_congestionData.historicalGasPrices.length >= shortTermWindow) {
         final shortTermAvg = _congestionData.historicalGasPrices

@@ -215,8 +215,6 @@ class _TraceScreenState extends State<TraceScreen>
 
   Widget _buildTransactionTraceTab() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -380,7 +378,6 @@ class _TraceScreenState extends State<TraceScreen>
 
   Widget _buildBlockTraceTab() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -545,7 +542,6 @@ class _TraceScreenState extends State<TraceScreen>
 
   Widget _buildAdvancedTraceTab() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -584,7 +580,7 @@ class _TraceScreenState extends State<TraceScreen>
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Use specialized Ethereum tracing methods for detailed analysis of transactions and blocks.',
+                    'Use specialized GCP tracing methods for detailed analysis of transactions and blocks.',
                     style: TextStyle(
                       color: isDarkMode ? Colors.white70 : Colors.black87,
                     ),
@@ -1526,7 +1522,7 @@ class _TraceScreenState extends State<TraceScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Full Trace Data'),
-        content: Container(
+        content: SizedBox(
           width: double.maxFinite,
           height: 500,
           child: SingleChildScrollView(

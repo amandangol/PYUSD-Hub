@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../provider/network_congestion_provider.dart';
 import '../widgets/stats_card.dart';
 import '../widgets/transaction_listitem.dart';

@@ -67,18 +67,17 @@ class AppTheme {
     brightness: Brightness.light,
     primaryColor: _lightPrimaryColor,
     scaffoldBackgroundColor: _lightBackgroundColor,
-    colorScheme: ColorScheme.light(
+    colorScheme: const ColorScheme.light(
       primary: _lightPrimaryColor,
       secondary: _lightAccentColor,
       surface: _lightSurfaceColor,
       error: _lightErrorColor,
-      background: _lightBackgroundColor,
     ),
     textTheme: _lightTextTheme,
     appBarTheme: AppBarTheme(
       elevation: 1, // Slight elevation for depth
       backgroundColor: _lightBackgroundColor,
-      iconTheme: IconThemeData(color: _lightTextPrimaryColor),
+      iconTheme: const IconThemeData(color: _lightTextPrimaryColor),
       titleTextStyle: _lightTextTheme.titleLarge,
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
@@ -105,11 +104,11 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _lightPrimaryColor, width: 2),
+        borderSide: const BorderSide(color: _lightPrimaryColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _lightErrorColor),
+        borderSide: const BorderSide(color: _lightErrorColor),
       ),
       contentPadding: const EdgeInsets.all(20),
     ),

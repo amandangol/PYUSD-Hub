@@ -48,10 +48,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
             );
           }
 
-          if (provider.stats == null) {
-            return const Center(child: Text('No data available'));
-          }
-
           return RefreshIndicator(
             onRefresh: provider.fetchInsightsData,
             child: SingleChildScrollView(
@@ -75,7 +71,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildStatsGrid(InsightsProvider provider) {
-    final stats = provider.stats!;
+    final stats = provider.stats;
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -141,7 +137,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildVolumeChart(InsightsProvider provider) {
-    final dailyVolume = provider.dailyVolume!;
+    final dailyVolume = provider.dailyVolume;
     return Card(
       elevation: 2,
       child: Padding(
@@ -208,7 +204,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _buildTopHolders(InsightsProvider provider) {
-    final topHolders = provider.topHolders!;
+    final topHolders = provider.topHolders;
     return Card(
       elevation: 2,
       child: Padding(

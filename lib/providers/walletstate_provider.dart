@@ -194,7 +194,7 @@ class WalletStateProvider extends ChangeNotifier {
       // If there's an error, keep the old values
       // but still allow future refreshes
       _isRefreshLocked = false;
-      throw e;
+      rethrow;
     }
   }
 

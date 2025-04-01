@@ -330,7 +330,7 @@ class EthereumRpcService {
         'eth_getTransactionByHash',
         [txHash],
       );
-      if (mainnetTx != null && mainnetTx['result'] != null) {
+      if (mainnetTx['result'] != null) {
         return NetworkType.ethereumMainnet;
       }
     } catch (e) {
@@ -344,7 +344,7 @@ class EthereumRpcService {
         'eth_getTransactionByHash',
         [txHash],
       );
-      if (sepoliaTx != null && sepoliaTx['result'] != null) {
+      if (sepoliaTx['result'] != null) {
         return NetworkType.sepoliaTestnet;
       }
     } catch (e) {
@@ -448,7 +448,7 @@ class EthereumRpcService {
               ? FormatterUtils.parseBigInt(txData['value']).toDouble() / 1e18
               : 0.0,
           gasUsed: receiptData['gasUsed'] != null
-              ? FormatterUtils.parseBigInt(receiptData!['gasUsed']).toDouble()
+              ? FormatterUtils.parseBigInt(receiptData['gasUsed']).toDouble()
               : 0.0,
           gasLimit: txData['gas'] != null
               ? FormatterUtils.parseBigInt(txData['gas']).toDouble()
@@ -462,8 +462,8 @@ class EthereumRpcService {
               : TransactionDirection.incoming,
           confirmations: 0,
           network: actualNetwork,
-          blockNumber: receiptData!['blockNumber'] != null
-              ? FormatterUtils.parseBigInt(receiptData!['blockNumber'])
+          blockNumber: receiptData['blockNumber'] != null
+              ? FormatterUtils.parseBigInt(receiptData['blockNumber'])
                   .toString()
               : '0',
           nonce: txData['nonce'] != null
@@ -479,7 +479,7 @@ class EthereumRpcService {
       final currentBlock =
           FormatterUtils.parseBigInt(currentBlockResponse['result']);
       final txBlockNumber =
-          FormatterUtils.parseBigInt(receiptData!['blockNumber']);
+          FormatterUtils.parseBigInt(receiptData['blockNumber']);
       final confirmations = (currentBlock - txBlockNumber).toInt();
 
       bool isTokenTransfer = txData['input'] != null &&

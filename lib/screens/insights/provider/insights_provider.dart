@@ -89,8 +89,8 @@ class InsightsProvider extends ChangeNotifier {
 
         debugPrint('Insights data updated successfully');
         debugPrint('Stats: $_stats');
-        debugPrint('Daily volumes: ${_dailyVolume?.length} points');
-        debugPrint('Top holders: ${_topHolders?.length} addresses');
+        debugPrint('Daily volumes: ${_dailyVolume.length} points');
+        debugPrint('Top holders: ${_topHolders.length} addresses');
 
         // Reset retry count on success
         _retryCount = 0;

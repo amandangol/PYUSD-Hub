@@ -163,8 +163,8 @@ class QRScannerOverlayPainter extends CustomPainter {
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     // Scanning frame dimensions
-    final frameWidth = 250.0;
-    final frameHeight = 250.0;
+    const frameWidth = 250.0;
+    const frameHeight = 250.0;
     final frameX = (size.width - frameWidth) / 2;
     final frameY = (size.height - frameHeight) / 2;
 
@@ -188,8 +188,8 @@ class QRScannerOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6;
 
-    final cornerLength = 30.0;
-    final cornerOffset = 4.0;
+    const cornerLength = 30.0;
+    const cornerOffset = 4.0;
 
     // Top-left corners
     canvas.drawLine(

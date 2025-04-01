@@ -5,10 +5,10 @@ class ShimmerEffect extends StatefulWidget {
   final bool isDarkMode;
 
   const ShimmerEffect({
-    Key? key,
+    super.key,
     required this.child,
     required this.isDarkMode,
-  }) : super(key: key);
+  });
 
   @override
   State<ShimmerEffect> createState() => _ShimmerEffectState();

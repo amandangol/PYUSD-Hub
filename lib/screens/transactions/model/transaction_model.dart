@@ -183,6 +183,7 @@ class TransactionDetailModel extends TransactionModel {
   });
 
   // Clone with updated values
+  @override
   TransactionDetailModel copyWith({
     String? hash,
     DateTime? timestamp,

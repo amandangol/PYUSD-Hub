@@ -740,7 +740,7 @@ class TraceButton extends StatelessWidget {
   final double? width;
 
   const TraceButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.icon,
@@ -751,7 +751,7 @@ class TraceButton extends StatelessWidget {
     this.verticalPadding = 12,
     this.borderRadius = 8,
     this.width,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

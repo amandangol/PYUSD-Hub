@@ -194,10 +194,10 @@ class _GasTabState extends State<GasTab> {
 
   // Gas Price Section
   Widget _buildGasPriceSection() {
-    final priceDiff = this._congestionData.currentGasPrice -
-        this._congestionData.averageGasPrice;
+    final priceDiff = _congestionData.currentGasPrice -
+        _congestionData.averageGasPrice;
     final priceDiffPercentage =
-        (priceDiff / this._congestionData.averageGasPrice * 100).abs();
+        (priceDiff / _congestionData.averageGasPrice * 100).abs();
 
     return Card(
       elevation: 3,
@@ -226,7 +226,7 @@ class _GasTabState extends State<GasTab> {
             SizedBox(
               height: 200,
               child: GasPriceChart(
-                gasPrices: this._congestionData.historicalGasPrices,
+                gasPrices: _congestionData.historicalGasPrices,
               ),
             ),
             const SizedBox(height: 16),
@@ -235,12 +235,12 @@ class _GasTabState extends State<GasTab> {
               children: [
                 _buildGasInfoItem(
                   'Current',
-                  '${this._congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
+                  '${_congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
                   _getGasPriceColor(priceDiffPercentage, priceDiff),
                 ),
                 _buildGasInfoItem(
                   'Average (24h)',
-                  '${this._congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
+                  '${_congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
                   Colors.blue,
                 ),
                 _buildGasInfoItem(

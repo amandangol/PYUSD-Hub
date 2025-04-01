@@ -5,7 +5,7 @@ import '../provider/trace_provider.dart';
 import 'trace_screen.dart';
 
 class TraceHomeScreen extends StatelessWidget {
-  const TraceHomeScreen({Key? key}) : super(key: key);
+  const TraceHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +297,7 @@ class TraceHomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Documentation',
+              'FYI',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

@@ -47,14 +47,14 @@ class AnalysisModeSelector extends StatelessWidget {
               onModeChanged(newSelection.first);
             },
             style: ButtonStyle(
-              backgroundColor: MaterialStateProperty.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return Theme.of(context).colorScheme.primaryContainer;
                 }
                 return null;
               }),
-              foregroundColor: MaterialStateProperty.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return Theme.of(context).colorScheme.onPrimaryContainer;
                 }
                 return null;

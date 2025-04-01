@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
 
+import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
 
 class TransactionTraceScreen extends StatefulWidget {
@@ -12,10 +12,10 @@ class TransactionTraceScreen extends StatefulWidget {
   final String? heroTag;
 
   const TransactionTraceScreen({
-    Key? key,
+    super.key,
     required this.txHash,
     this.heroTag,
-  }) : super(key: key);
+  });
 
   @override
   State<TransactionTraceScreen> createState() => _TransactionTraceScreenState();
@@ -68,15 +68,15 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction Trace'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadTraceData,
-          ),
-        ],
+      appBar: PyusdAppBar(
+        title: 'Transaction Trace',
+        isDarkMode: isDarkMode,
+        showLogo: false,
+        onBackPressed: () => Navigator.pop(context),
+        onRefreshPressed: _loadTraceData,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -92,9 +92,11 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                         const SizedBox(height: 16),
                         Text(_errorMessage, textAlign: TextAlign.center),
                         const SizedBox(height: 24),
-                        ElevatedButton(
+                        TraceButton(
+                          text: 'Retry',
                           onPressed: _loadTraceData,
-                          child: const Text('Retry'),
+                          backgroundColor: Colors.blue,
+                          icon: Icons.refresh,
                         ),
                       ],
                     ),
@@ -263,41 +265,25 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
   }
 
   Widget _buildInfoRow(String label, String value, bool copyable) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label + ':',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-            ),
-          ),
-        ),
-        if (copyable)
-          IconButton(
-            icon: const Icon(Icons.copy, size: 18),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: value));
-              SnackbarUtil.showSnackbar(
-                context: context,
-                message: '$label copied to clipboard',
-              );
-            },
-          ),
-      ],
+    return PyusdListTile(
+      title: label,
+      subtitle: value,
+      trailing: copyable
+          ? IconButton(
+              icon: const Icon(Icons.copy, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: value));
+                SnackbarUtil.showSnackbar(
+                  context: context,
+                  message: '$label copied to clipboard',
+                );
+              },
+            )
+          : null,
+      contentPadding: EdgeInsets.zero,
+      showDivider: false,
     );
   }
 
@@ -345,7 +331,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
     // Extract trace data for visualization
     final traceData = _traceData['trace'];
 
-    if (traceData == null || !(traceData is List) || traceData.isEmpty) {
+    if (traceData == null || traceData is! List || traceData.isEmpty) {
       return Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -400,7 +386,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: (traceData as List).length,
+              itemCount: (traceData).length,
               itemBuilder: (context, index) {
                 final trace = traceData[index];
                 final action = trace['action'] ?? {};
@@ -490,24 +476,21 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    ElevatedButton.icon(
+                    TraceButton(
+                      text: 'Copy JSON',
                       onPressed: () {
-                        final jsonString = const JsonEncoder.withIndent('  ')
-                            .convert(_traceData);
+                        final jsonString =
+                            FormatterUtils.formatJson(_traceData);
                         Clipboard.setData(ClipboardData(text: jsonString));
                         SnackbarUtil.showSnackbar(
                           context: context,
                           message: 'Raw trace data copied to clipboard',
                         );
                       },
-                      icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('Copy JSON'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                      ),
+                      icon: Icons.copy,
+                      backgroundColor: Colors.blue,
+                      horizontalPadding: 16,
+                      verticalPadding: 8,
                     ),
                   ],
                 ),
@@ -521,7 +504,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                   height: 300,
                   child: SingleChildScrollView(
                     child: Text(
-                      const JsonEncoder.withIndent('  ').convert(_traceData),
+                      FormatterUtils.formatJson(_traceData),
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 12,
@@ -557,15 +540,6 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
   }
 
   String _formatEthValue(String hexValue) {
-    final value = FormatterUtils.parseHexSafely(hexValue) ?? 0;
-    final ethValue = value / 1e18;
-
-    if (ethValue == 0) {
-      return '0 ETH';
-    } else if (ethValue < 0.000001) {
-      return '< 0.000001 ETH';
-    } else {
-      return '${ethValue.toStringAsFixed(6)} ETH';
-    }
+    return FormatterUtils.formatEthFromHex(hexValue);
   }
 }

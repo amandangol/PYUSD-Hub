@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
 
@@ -142,50 +141,18 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final bool isDarkMode = theme.brightness == Brightness.dark;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Block #${widget.blockNumber}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadBlockData,
-          ),
-          IconButton(
-            icon: const Icon(Icons.open_in_new),
-            onPressed: () async {
-              final url = 'https://etherscan.io/block/${widget.blockNumber}';
-              if (await canLaunchUrl(Uri.parse(url))) {
-                await launchUrl(Uri.parse(url));
-              } else {
-                if (context.mounted) {
-                  SnackbarUtil.showSnackbar(
-                    context: context,
-                    message: 'Could not open Etherscan',
-                    isError: true,
-                  );
-                }
-              }
-            },
-          ),
-        ],
+      appBar: PyusdAppBar(
+        title: 'Block #${widget.blockNumber}',
+        isDarkMode: isDarkMode,
+        showLogo: false,
+        onBackPressed: () => Navigator.pop(context),
+        onRefreshPressed: _loadBlockData,
       ),
       body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading block data...',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : _hasError
               ? Center(
                   child: Padding(
@@ -198,31 +165,37 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                         const SizedBox(height: 16),
                         Text(_errorMessage, textAlign: TextAlign.center),
                         const SizedBox(height: 24),
-                        ElevatedButton(
+                        TraceButton(
+                          text: 'Retry',
                           onPressed: _loadBlockData,
-                          child: const Text('Retry'),
+                          backgroundColor: Colors.blue,
+                          icon: Icons.refresh,
                         ),
                       ],
                     ),
                   ),
                 )
-              : CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _buildBlockInfoCard(),
-                    ),
-                    SliverToBoxAdapter(
-                      child: _buildSearchAndFilter(),
-                    ),
-                    SliverToBoxAdapter(
-                      child: _buildTransactionStats(),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      sliver: _buildTransactionsList(),
-                    ),
-                  ],
-                ),
+              : _buildBlockContent(),
+    );
+  }
+
+  Widget _buildBlockContent() {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: _buildBlockInfoCard(),
+        ),
+        SliverToBoxAdapter(
+          child: _buildSearchAndFilter(),
+        ),
+        SliverToBoxAdapter(
+          child: _buildTransactionStats(),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          sliver: _buildTransactionsList(),
+        ),
+      ],
     );
   }
 
@@ -328,6 +301,22 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
             _buildCopyableRow('Parent Hash', parentHash),
             const SizedBox(height: 8),
             _buildCopyableRow('Miner', miner),
+            const SizedBox(height: 8),
+            TraceButton(
+              text: 'Copy to Clipboard',
+              onPressed: () {
+                final blockJson = FormatterUtils.formatJson(_blockData);
+                Clipboard.setData(ClipboardData(text: blockJson));
+                SnackbarUtil.showSnackbar(
+                  context: context,
+                  message: 'Block data copied to clipboard',
+                );
+              },
+              backgroundColor: Colors.blue,
+              icon: Icons.copy,
+              horizontalPadding: 12,
+              verticalPadding: 8,
+            ),
           ],
         ),
       ),
@@ -403,46 +392,38 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search by hash, from, or to address',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        setState(() {
-                          _searchController.clear();
-                        });
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            onChanged: (value) {
-              setState(() {});
-            },
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
-              const Text(
-                'Show only PYUSD transactions',
-                style: TextStyle(fontWeight: FontWeight.w500),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search transactions...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      // Refresh the filtered list
+                    });
+                  },
+                ),
               ),
-              const Spacer(),
-              Switch(
-                value: _showOnlyPyusd,
-                onChanged: (value) {
+              const SizedBox(width: 8),
+              TraceButton(
+                text: 'PYUSD Only',
+                onPressed: () {
                   setState(() {
-                    _showOnlyPyusd = value;
+                    _showOnlyPyusd = !_showOnlyPyusd;
                   });
                 },
-                activeColor: Colors.green,
+                backgroundColor: _showOnlyPyusd ? Colors.green : Colors.grey,
+                icon: Icons.filter_list,
+                horizontalPadding: 12,
+                verticalPadding: 8,
               ),
             ],
           ),
@@ -653,12 +634,6 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
           final value = _safeToString(tx['value']);
           final gasPrice = _safeToString(tx['gasPrice']);
           final isPyusdTx = to.toLowerCase() == _pyusdContractAddress;
-
-          // Find trace for this transaction
-          final traceData = _traces.firstWhere(
-            (t) => t['txHash'] == hash,
-            orElse: () => <String, dynamic>{},
-          );
 
           // Create a unique hero tag for each transaction
           final heroTag = 'block_${widget.blockNumber}_tx_$hash';

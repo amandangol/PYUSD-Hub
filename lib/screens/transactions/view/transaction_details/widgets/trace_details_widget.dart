@@ -72,7 +72,7 @@ class TraceDetailsWidget extends StatelessWidget {
   }
 
   Widget _buildHistoricalTraceErrorState(BuildContext context) {
-    final transactionAge = "older"; // This could be dynamic based on actual age
+    const transactionAge = "older"; // This could be dynamic based on actual age
 
     return Center(
       child: Padding(

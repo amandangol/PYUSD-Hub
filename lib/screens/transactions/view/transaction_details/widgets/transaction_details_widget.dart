@@ -249,7 +249,7 @@ class TransactionDetailsWidget extends StatelessWidget {
       icon: title == 'From' ? Icons.arrow_upward : Icons.arrow_downward,
       title: title,
       value: FormatterUtils.formatHash(address),
-      infoMessage: '${title} address of the transaction',
+      infoMessage: '$title address of the transaction',
       textColor: isCurrentAddress ? primaryColor : textColor,
       subtitleColor: subtitleColor,
       valueColor: isCurrentAddress ? primaryColor : null,
@@ -686,7 +686,7 @@ class TransactionDetailsWidget extends StatelessWidget {
 
     if (analysis.isEmpty) {
       analysis.add(
-        Text(
+        const Text(
           '✓ No security concerns detected',
           style: TextStyle(
             fontSize: 13,
@@ -918,7 +918,7 @@ class TransactionDetailsWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TransactionSectionHeader(
+        const TransactionSectionHeader(
           icon: Icons.error_outline,
           title: 'Error Information',
           iconColor: Colors.red,

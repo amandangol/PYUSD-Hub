@@ -346,7 +346,7 @@ class TraceProvider with ChangeNotifier {
         try {
           // Extract recipient address (32 bytes after method ID)
           final String recipient =
-              '0x' + txData['input'].toString().substring(34, 74);
+              '0x${txData['input'].toString().substring(34, 74)}';
 
           // Extract value (32 bytes after recipient)
           final String valueHex = txData['input'].toString().substring(74);

@@ -12,7 +12,7 @@ class AppBottomNavigation extends StatelessWidget {
     final navigationProvider = context.watch<NavigationProvider>();
 
     // Define screens for bottom navigation with metadata - matching the ones in MainApp
-    final List<Map<String, dynamic>> _screens = [
+    final List<Map<String, dynamic>> screens = [
       {
         'icon': Icons.network_check,
         'label': 'Network',
@@ -61,11 +61,11 @@ class AppBottomNavigation extends StatelessWidget {
         unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
-        items: _screens.map((screen) {
+        items: screens.map((screen) {
           return BottomNavigationBarItem(
             icon: Icon(
               screen['icon'] as IconData,
-              color: navigationProvider.currentIndex == _screens.indexOf(screen)
+              color: navigationProvider.currentIndex == screens.indexOf(screen)
                   ? screen['color'] as Color
                   : null,
             ),

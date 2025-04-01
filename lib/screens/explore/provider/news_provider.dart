@@ -32,7 +32,9 @@ class NewsProvider with ChangeNotifier, ProviderUtils {
   // Getters
   List<Map<String, dynamic>> get news => _news;
   NewsLoadingState get loadingState => _loadingState;
+  @override
   bool get isLoading => _loadingState == NewsLoadingState.loading;
+  @override
   String? get error => _error;
 
   // Determine if a refresh is needed
