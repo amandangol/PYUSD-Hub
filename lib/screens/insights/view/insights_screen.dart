@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../settings/view/pyusd_info_screen.dart';
 import '../provider/insights_provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../widgets/exchangelist_screen.dart';
@@ -54,6 +55,8 @@ class InsightsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildPriceCard(context, provider, theme),
+                        const SizedBox(height: 16),
+                        _buildPyusdInfoSection(context, theme),
                         const SizedBox(height: 16),
                         _buildMarketStatsGrid(context, provider, theme),
                         const SizedBox(height: 16),
@@ -363,64 +366,8 @@ class InsightsScreen extends StatelessWidget {
 
   Widget _buildPriceChart(
       BuildContext context, InsightsProvider provider, ThemeData theme) {
-    final sparklineData = provider.marketData['sparkline_7d'] as List? ?? [];
-    if (sparklineData.isEmpty) {
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.show_chart,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '7-Day Price History',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Icon(
-                Icons.timeline_outlined,
-                size: 48,
-                color: theme.colorScheme.primary.withOpacity(0.3),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Chart data not available',
-                style: theme.textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Find min and max values for better chart scaling
-    double minValue = double.infinity;
-    double maxValue = 0;
-    for (var value in sparklineData) {
-      if (value < minValue) minValue = value.toDouble();
-      if (value > maxValue) maxValue = value.toDouble();
-    }
-
-    // Add some padding to min/max
-    final padding = (maxValue - minValue) * 0.1;
-    minValue = (minValue - padding).clamp(0, double.infinity);
-    maxValue = maxValue + padding;
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final selectedTimeFrame = provider.selectedTimeFrame;
 
     return Card(
       elevation: 2,
@@ -433,131 +380,220 @@ class InsightsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.show_chart,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Text(
-                  '7-Day Price History',
+                  'Price History',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                Row(
+                  children: [
+                    _buildTimeFrameButton(
+                        context, '1D', TimeFrame.day, provider, theme),
+                    _buildTimeFrameButton(
+                        context, '1W', TimeFrame.week, provider, theme),
+                    _buildTimeFrameButton(
+                        context, '1M', TimeFrame.month, provider, theme),
+                    _buildTimeFrameButton(
+                        context, '3M', TimeFrame.threeMonths, provider, theme),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             SizedBox(
-              height: 220,
-              child: LineChart(
-                LineChartData(
-                  minY: minValue,
-                  maxY: maxValue,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: (maxValue - minValue) / 4,
-                    getDrawingHorizontalLine: (value) {
-                      return FlLine(
-                        color: theme.dividerColor.withOpacity(0.3),
-                        strokeWidth: 1,
-                      );
-                    },
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        getTitlesWidget: (value, meta) {
-                          // Show day markers (assuming 168 hourly data points for 7 days)
-                          if (sparklineData.length >= 168) {
-                            if (value.toInt() % 24 == 0) {
-                              final dayIndex = value.toInt() ~/ 24;
-                              final daysAgo = 7 - dayIndex;
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  daysAgo == 0 ? 'Today' : '$daysAgo d',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              );
-                            }
-                          }
-                          return const SizedBox();
-                        },
+              height: 200,
+              child: provider.getChartData(selectedTimeFrame).isEmpty
+                  ? Center(
+                      child: Text(
+                        'No chart data available',
+                        style: theme.textTheme.bodyMedium,
                       ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Text(
-                              '\$${value.toStringAsFixed(3)}',
-                              style: theme.textTheme.bodySmall,
+                    )
+                  : LineChart(
+                      LineChartData(
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: true,
+                          horizontalInterval: 0.005,
+                          verticalInterval: 1,
+                          getDrawingHorizontalLine: (value) {
+                            return FlLine(
+                              color: theme.dividerColor.withOpacity(0.3),
+                              strokeWidth: 1,
+                            );
+                          },
+                          getDrawingVerticalLine: (value) {
+                            return FlLine(
+                              color: theme.dividerColor.withOpacity(0.3),
+                              strokeWidth: 1,
+                            );
+                          },
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 30,
+                              interval:
+                                  provider.getXAxisInterval(selectedTimeFrame),
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+                                final data =
+                                    provider.getChartData(selectedTimeFrame);
+                                if (index < 0 || index >= data.length) {
+                                  return const SizedBox();
+                                }
+                                return SideTitleWidget(
+                                  axisSide: meta.axisSide,
+                                  child: Text(
+                                    provider.getFormattedDateForChart(
+                                        index, selectedTimeFrame, data.length),
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: sparklineData.asMap().entries.map((entry) {
-                        return FlSpot(
-                          entry.key.toDouble(),
-                          entry.value.toDouble(),
-                        );
-                      }).toList(),
-                      isCurved: true,
-                      color: theme.colorScheme.primary,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                      ),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((touchedSpot) {
-                          return LineTooltipItem(
-                            '\$${touchedSpot.y.toStringAsFixed(4)}',
-                            TextStyle(
-                              color: theme.textTheme.bodyLarge?.color,
-                              fontWeight: FontWeight.bold,
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 0.01,
+                              getTitlesWidget: (value, meta) {
+                                return SideTitleWidget(
+                                  axisSide: meta.axisSide,
+                                  child: Text(
+                                    '\$${value.toStringAsFixed(2)}',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                );
+                              },
+                              reservedSize: 42,
                             ),
-                          );
-                        }).toList();
-                      },
+                          ),
+                        ),
+                        borderData: FlBorderData(
+                          show: true,
+                          border: Border.all(
+                            color: theme.dividerColor.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        minX: 0,
+                        maxX: provider
+                                .getChartData(selectedTimeFrame)
+                                .length
+                                .toDouble() -
+                            1,
+                        minY: provider.getChartMinMax(selectedTimeFrame)[0],
+                        maxY: provider.getChartMinMax(selectedTimeFrame)[1],
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: List.generate(
+                              provider.getChartData(selectedTimeFrame).length,
+                              (index) => FlSpot(
+                                index.toDouble(),
+                                provider.getChartData(selectedTimeFrame)[index],
+                              ),
+                            ),
+                            isCurved: true,
+                            color: theme.colorScheme.primary,
+                            barWidth: 2,
+                            isStrokeCapRound: true,
+                            dotData: const FlDotData(show: false),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: theme.colorScheme.primary.withOpacity(0.2),
+                            ),
+                          ),
+                        ],
+                        lineTouchData: LineTouchData(
+                          touchTooltipData: LineTouchTooltipData(
+                            tooltipRoundedRadius: 8,
+                            getTooltipItems: (touchedSpots) {
+                              return touchedSpots.map((touchedSpot) {
+                                final index = touchedSpot.x.toInt();
+                                final data =
+                                    provider.getChartData(selectedTimeFrame);
+                                if (index < 0 || index >= data.length) {
+                                  return null;
+                                }
+                                return LineTooltipItem(
+                                  '\$${touchedSpot.y.toStringAsFixed(4)}',
+                                  TextStyle(
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text:
+                                          '\n${provider.getFormattedDateForTooltip(index, selectedTimeFrame)}',
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList();
+                            },
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeFrameButton(BuildContext context, String text,
+      TimeFrame timeFrame, InsightsProvider provider, ThemeData theme) {
+    final isSelected = provider.selectedTimeFrame == timeFrame;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: InkWell(
+        onTap: () => provider.setTimeFrame(timeFrame),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color:
+                  isSelected ? theme.colorScheme.primary : theme.dividerColor,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: isSelected
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurface,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 12,
+            ),
+          ),
         ),
       ),
     );
@@ -839,6 +875,101 @@ class InsightsScreen extends StatelessWidget {
             'Market data is provided for informational purposes only and is not financial advice. Data may be delayed or inaccurate.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPyusdInfoSection(BuildContext context, ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'PYUSD Information',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PyusdInfoScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('View All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: PyusdInfoScreen.qaItems.take(3).map((item) {
+                return Container(
+                  width: 250,
+                  margin: const EdgeInsets.only(right: 12),
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PyusdInfoScreen(),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: item.iconColor.withOpacity(0.2),
+                              child: Icon(
+                                item.icon,
+                                color: item.iconColor,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              item.question,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              item.answer,
+                              style: theme.textTheme.bodyMedium,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],

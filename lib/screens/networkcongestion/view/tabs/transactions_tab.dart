@@ -107,57 +107,44 @@ class _TransactionsTabState extends State<TransactionsTab> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Transaction statistics in a grid
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+            Column(
               children: [
-                if (data.confirmedPyusdTxCount > 0)
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.4,
-                    child: StatsCard(
-                      title: 'Transactions',
-                      value: FormatterUtils.formatLargeNumber(
-                          data.confirmedPyusdTxCount),
-                      icon: Icons.swap_horiz,
-                      color: Colors.blue,
-                      description: 'PYUSD txs',
-                    ),
-                  ),
-                if (totalVolume > 0)
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.4,
-                    child: StatsCard(
-                      title: 'Volume',
-                      value: formattedVolume,
-                      icon: Icons.attach_money,
-                      color: Colors.green,
-                      description: 'PYUSD transferred',
-                    ),
-                  ),
-                if (data.blockTime > 0)
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.4,
-                    child: StatsCard(
-                      title: 'Avg Confirmation',
-                      value: '${data.blockTime.toStringAsFixed(1)}s',
-                      icon: Icons.access_time,
-                      color: Colors.orange,
-                      description: 'Per block',
-                    ),
-                  ),
-                if (uniqueAddresses > 0)
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.4,
-                    child: StatsCard(
-                      title: 'Active Users',
-                      value: FormatterUtils.formatLargeNumber(uniqueAddresses),
-                      icon: Icons.people,
-                      color: Colors.purple,
-                      description: 'Unique wallets',
-                    ),
-                  ),
+                StatsCard(
+                  title: 'Transactions',
+                  value: FormatterUtils.formatLargeNumber(
+                      data.confirmedPyusdTxCount),
+                  icon: Icons.swap_horiz,
+                  color: Colors.blue,
+                  description: 'PYUSD txs',
+                  isListView: true,
+                ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Volume',
+                  value: formattedVolume,
+                  icon: Icons.attach_money,
+                  color: Colors.green,
+                  description: 'PYUSD transferred',
+                  isListView: true,
+                ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Avg Confirmation',
+                  value: '${data.blockTime.toStringAsFixed(1)}s',
+                  icon: Icons.access_time,
+                  color: Colors.orange,
+                  description: 'Per block',
+                  isListView: true,
+                ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Active Users',
+                  value: FormatterUtils.formatLargeNumber(uniqueAddresses),
+                  icon: Icons.people,
+                  color: Colors.purple,
+                  description: 'Unique wallets',
+                  isListView: true,
+                ),
               ],
             ),
           ],

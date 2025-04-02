@@ -83,7 +83,25 @@ class MarketService {
         throw Exception('Failed to fetch detailed PYUSD data');
       }
 
+      // Fetch market chart data for different time frames
+      final dayData =
+          await _apiGet('coins/$_pyusdId/market_chart?vs_currency=usd&days=1');
+      final weekData =
+          await _apiGet('coins/$_pyusdId/market_chart?vs_currency=usd&days=7');
+      final monthData =
+          await _apiGet('coins/$_pyusdId/market_chart?vs_currency=usd&days=30');
+      final threeMonthsData =
+          await _apiGet('coins/$_pyusdId/market_chart?vs_currency=usd&days=90');
+
       final marketData = detailData['market_data'];
+
+      // Process price history data
+      final Map<String, List<double>> priceHistory = {
+        'day': _processPriceData(dayData),
+        'week': _processPriceData(weekData),
+        'month': _processPriceData(monthData),
+        'three_months': _processPriceData(threeMonthsData),
+      };
 
       return {
         'current_price': simpleData[_pyusdId]['usd'] ?? 1.0,
@@ -94,17 +112,27 @@ class MarketService {
         'total_supply': marketData['total_supply'] ?? 0.0,
         'price_change_7d': marketData['price_change_percentage_7d'] ?? 0.0,
         'price_change_30d': marketData['price_change_percentage_30d'] ?? 0.0,
-        'sparkline_7d':
-            detailData['market_data']['sparkline_7d']['price'] ?? [],
+        'sparkline_7d': marketData['sparkline_7d']['price'] ?? [],
         'supported_chains': ['Ethereum', 'Solana'],
         'last_updated': DateTime.now().toIso8601String(),
         'data_source': 'CoinGecko',
         'is_real_data': true,
+        'price_history': priceHistory,
       };
     } catch (e) {
       debugPrint('PYUSD market data fetch error: $e');
       rethrow; // Let the provider handle the error
     }
+  }
+
+  // Helper method to process price data from market chart API
+  List<double> _processPriceData(Map<String, dynamic>? chartData) {
+    if (chartData == null || !chartData.containsKey('prices')) {
+      return [];
+    }
+
+    final List<dynamic> prices = chartData['prices'];
+    return prices.map<double>((price) => (price[1] as num).toDouble()).toList();
   }
 
   Future<List<Map<String, dynamic>>> fetchExchangeData() async {

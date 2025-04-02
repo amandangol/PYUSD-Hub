@@ -7,86 +7,86 @@ class PyusdInfoScreen extends StatefulWidget {
   // Static list of Q&A items
   static final List<QAItem> qaItems = [
     QAItem(
-      question: "What is PYUSD?",
+      question: "What is PayPal USD?",
       answer:
-          "PYUSD is a regulated USD-backed stablecoin issued by Paxos. It maintains a 1:1 value with the US Dollar and is fully backed by cash, cash equivalents, and US Treasury bills.",
+          "PayPal USD is a regulated USD-backed stablecoin issued by Paxos. It maintains a 1:1 value with the US Dollar and is fully backed by cash, cash equivalents, and US Treasury bills.",
       icon: Icons.currency_exchange,
       iconColor: Colors.green,
     ),
     QAItem(
-      question: "When was PYUSD launched?",
+      question: "When was PayPal USD launched?",
       answer:
-          "PYUSD was launched in August 2023 as a collaborative effort between Paxos and PayPal, providing a regulated stablecoin option in the cryptocurrency ecosystem.",
+          "PayPal USD was launched in August 2023 as a collaborative effort between Paxos and PayPal, providing a regulated stablecoin option in the cryptocurrency ecosystem.",
       icon: Icons.calendar_today,
       iconColor: Colors.blue,
     ),
     QAItem(
-      question: "How does PYUSD impact the Ethereum network?",
+      question: "How does PayPal USD impact the Ethereum network?",
       answer:
-          "PYUSD facilitates increased activity on Ethereum by integrating with DeFi applications and payment services, enabling seamless transactions for users and businesses.",
+          "PayPal USD facilitates increased activity on Ethereum by integrating with DeFi applications and payment services, enabling seamless transactions for users and businesses.",
       icon: Icons.trending_up,
       iconColor: Colors.purple,
     ),
     QAItem(
-      question: "What makes PYUSD different from other stablecoins?",
+      question: "What makes PayPal USD different from other stablecoins?",
       answer:
-          "PYUSD is regulated by the NYDFS, undergoes monthly attestations, and is backed by highly liquid assets. Its integration with PayPal enhances accessibility and adoption in traditional finance.",
+          "PayPal USD is regulated by the NYDFS, undergoes monthly attestations, and is backed by highly liquid assets. Its integration with PayPal enhances accessibility and adoption in traditional finance.",
       icon: Icons.verified,
       iconColor: Colors.teal,
     ),
     QAItem(
-      question: "Where can PYUSD be used?",
+      question: "Where can PayPal USD be used?",
       answer:
-          "PYUSD can be used across the Ethereum ecosystem, including DeFi protocols, exchanges, and payment services. It is also integrated with PayPal for user-friendly transactions.",
+          "PayPal USD can be used across the Ethereum ecosystem, including DeFi protocols, exchanges, and payment services. It is also integrated with PayPal for user-friendly transactions.",
       icon: Icons.store,
       iconColor: Colors.indigo,
     ),
     QAItem(
-      question: "How is PYUSD's adoption growing?",
+      question: "How is PayPal USD's adoption growing?",
       answer:
-          "Since its launch, PYUSD has seen steady growth in market capitalization and usage, with multiple DeFi protocols and exchanges supporting it for trading, liquidity pools, and lending markets.",
+          "Since its launch, PayPal USD has seen steady growth in market capitalization and usage, with multiple DeFi protocols and exchanges supporting it for trading, liquidity pools, and lending markets.",
       icon: Icons.group_add,
       iconColor: Colors.amber,
     ),
     QAItem(
-      question: "How is PYUSD secured?",
+      question: "How is PayPal USD secured?",
       answer:
-          "PYUSD is secured through regular third-party attestations verifying its reserves. Additionally, it follows ERC-20 security standards, with Paxos implementing further protections as the issuer.",
+          "PayPal USD is secured through regular third-party attestations verifying its reserves. Additionally, it follows ERC-20 security standards, with Paxos implementing further protections as the issuer.",
       icon: Icons.security,
       iconColor: Colors.red,
     ),
     QAItem(
-      question: "What is the transaction fee for PYUSD?",
+      question: "What is the transaction fee for PayPal USD?",
       answer:
-          "PYUSD transaction fees depend on Ethereum gas fees. Since it's an ERC-20 token, costs vary with network congestion. PayPal may also impose additional fees for conversions and transactions.",
+          "PayPal USD transaction fees depend on Ethereum gas fees. Since it's an ERC-20 token, costs vary with network congestion. PayPal may also impose additional fees for conversions and transactions.",
       icon: Icons.paid,
       iconColor: Colors.orange,
     ),
     QAItem(
-      question: "Can I earn interest on my PYUSD?",
+      question: "Can I earn interest on my PayPal USD?",
       answer:
-          "Yes, PYUSD holders can earn interest through DeFi platforms offering lending, staking, and liquidity pools. However, returns depend on market conditions and platform-specific terms.",
+          "Yes, PayPal USD holders can earn interest through DeFi platforms offering lending, staking, and liquidity pools. However, returns depend on market conditions and platform-specific terms.",
       icon: Icons.savings,
       iconColor: Colors.green,
     ),
     QAItem(
-      question: "Is PYUSD available globally?",
+      question: "Is PayPal USD available globally?",
       answer:
-          "PYUSD availability depends on regional regulations. Initially available to US customers through PayPal, it may expand internationally based on compliance approvals.",
+          "PayPal USD availability depends on regional regulations. Initially available to US customers through PayPal, it may expand internationally based on compliance approvals.",
       icon: Icons.public,
       iconColor: Colors.blue,
     ),
     QAItem(
-      question: "Who issues PYUSD, and is it regulated?",
+      question: "Who issues PayPal USD, and is it regulated?",
       answer:
-          "PYUSD is issued by Paxos Trust Company and regulated by the NYDFS. It undergoes monthly attestations to ensure full USD backing.",
+          "PayPal USD is issued by Paxos Trust Company and regulated by the NYDFS. It undergoes monthly attestations to ensure full USD backing.",
       icon: Icons.policy,
       iconColor: Colors.deepPurple,
     ),
     QAItem(
-      question: "Is PYUSD available on multiple blockchains?",
+      question: "Is PayPal USD available on multiple blockchains?",
       answer:
-          "Currently, PYUSD is an ERC-20 token on Ethereum. Future expansion to other networks depends on adoption and regulatory considerations.",
+          "Currently, PayPal USD is an ERC-20 token on Ethereum. Future expansion to other networks depends on adoption and regulatory considerations.",
       icon: Icons.code,
       iconColor: Colors.brown,
     ),

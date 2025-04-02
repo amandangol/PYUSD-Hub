@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../../../utils/snackbar_utils.dart';
@@ -136,18 +137,17 @@ class BalanceCard extends StatelessWidget {
                 color: isDarkMode ? _paypalLightBlue : _paypalBlue,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.account_balance_wallet,
-                color: Colors.white,
-                size: 16,
+              child: Image.asset(
+                "assets/images/pyusd_logo.png",
+                height: 16,
               ),
             ),
             const SizedBox(width: 8),
             Text(
-              'PYUSD',
+              'PayPal USD',
               style: TextStyle(
                 color: isDarkMode ? Colors.white : _paypalBlue,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
               ),
@@ -337,10 +337,10 @@ class BalanceCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.currency_exchange,
-            color: isDarkMode ? Colors.white70 : Colors.black54,
-            size: 14,
+          SvgPicture.asset(
+            'assets/svg/ethereum_logo.svg',
+            width: 17,
+            height: 17,
           ),
           const SizedBox(width: 6),
           Text(

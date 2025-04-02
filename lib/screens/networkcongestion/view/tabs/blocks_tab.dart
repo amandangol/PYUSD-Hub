@@ -127,49 +127,42 @@ class _BlocksTabState extends State<BlocksTab> {
             const SizedBox(height: 16),
 
             // Block statistics in a grid
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
+            Column(
               children: [
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.4,
-                  child: StatsCard(
-                    title: 'Block Time',
-                    value: '${data.blockTime.toStringAsFixed(1)}s',
-                    icon: Icons.access_time,
-                    color: Colors.blue,
-                    description: 'Average',
-                  ),
+                StatsCard(
+                  title: 'Block Time',
+                  value: '${data.blockTime.toStringAsFixed(1)}s',
+                  icon: Icons.access_time,
+                  color: Colors.blue,
+                  description: 'Average',
+                  isListView: true,
                 ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.4,
-                  child: StatsCard(
-                    title: 'Gas Usage',
-                    value: '$gasUsagePercentage%',
-                    icon: Icons.local_gas_station,
-                    color: Colors.orange,
-                    description: 'Of limit',
-                  ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Gas Usage',
+                  value: '$gasUsagePercentage%',
+                  icon: Icons.local_gas_station,
+                  color: Colors.orange,
+                  description: 'Of limit',
+                  isListView: true,
                 ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.4,
-                  child: StatsCard(
-                    title: 'Gas Price',
-                    value: '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
-                    icon: Icons.monetization_on,
-                    color: Colors.green,
-                    description: 'Current',
-                  ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Gas Price',
+                  value: '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
+                  icon: Icons.monetization_on,
+                  color: Colors.green,
+                  description: 'Current',
+                  isListView: true,
                 ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.4,
-                  child: StatsCard(
-                    title: 'Blocks/Hour',
-                    value: '${data.blocksPerHour}',
-                    icon: Icons.speed,
-                    color: Colors.purple,
-                    description: 'Production rate',
-                  ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Blocks/Hour',
+                  value: '${data.blocksPerHour}',
+                  icon: Icons.speed,
+                  color: Colors.purple,
+                  description: 'Production rate',
+                  isListView: true,
                 ),
               ],
             ),
@@ -734,76 +727,5 @@ class _BlocksTabState extends State<BlocksTab> {
         ],
       ),
     );
-  }
-
-  // Format block timestamp
-  String _formatBlockTimestamp(String? timestamp) {
-    if (timestamp == null) return 'Unknown';
-
-    try {
-      final timestampInt = FormatterUtils.parseHexSafely(timestamp) ?? 0;
-      if (timestampInt == 0) return 'Unknown';
-
-      final dateTime = DateTime.fromMillisecondsSinceEpoch(timestampInt * 1000);
-      return DateFormat('MMM d, yyyy HH:mm:ss').format(dateTime);
-    } catch (e) {
-      return 'Invalid timestamp';
-    }
-  }
-
-  // Format gas used percentage
-  String _formatGasUsedPercentage(String? gasUsed, String? gasLimit) {
-    if (gasUsed == null || gasLimit == null) return '0%';
-
-    try {
-      final used = FormatterUtils.parseHexSafely(gasUsed) ?? 0;
-      final limit = FormatterUtils.parseHexSafely(gasLimit) ?? 1;
-
-      if (limit == 0) return '0%';
-
-      final percentage = (used / limit) * 100;
-      return '${percentage.toStringAsFixed(1)}%';
-    } catch (e) {
-      return '0%';
-    }
-  }
-
-  // Get block difficulty
-  String _formatBlockDifficulty(String? difficulty) {
-    if (difficulty == null) return 'N/A';
-
-    try {
-      final difficultyInt = FormatterUtils.parseHexSafely(difficulty) ?? 0;
-      if (difficultyInt == 0) return 'N/A';
-
-      if (difficultyInt > 1000000000000) {
-        return '${(difficultyInt / 1000000000000).toStringAsFixed(2)} T';
-      } else if (difficultyInt > 1000000000) {
-        return '${(difficultyInt / 1000000000).toStringAsFixed(2)} G';
-      } else if (difficultyInt > 1000000) {
-        return '${(difficultyInt / 1000000).toStringAsFixed(2)} M';
-      } else {
-        return difficultyInt.toString();
-      }
-    } catch (e) {
-      return 'N/A';
-    }
-  }
-
-  // Format transaction count
-  String _formatTransactionCount(dynamic transactions) {
-    if (transactions == null) return '0';
-
-    try {
-      if (transactions is String) {
-        final count = FormatterUtils.parseHexSafely(transactions) ?? 0;
-        return count.toString();
-      } else if (transactions is List) {
-        return transactions.length.toString();
-      }
-      return '0';
-    } catch (e) {
-      return '0';
-    }
   }
 }

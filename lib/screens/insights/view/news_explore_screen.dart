@@ -41,104 +41,6 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
     }
   }
 
-  Widget _buildQASection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'PYUSD Information',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PyusdInfoScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('View All'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: PyusdInfoScreen.qaItems.take(3).map((item) {
-                return Container(
-                  width: 250,
-                  margin: const EdgeInsets.only(right: 12),
-                  child: Card(
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const PyusdInfoScreen(),
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: item.iconColor.withOpacity(0.2),
-                              child: Icon(
-                                item.icon,
-                                color: item.iconColor,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              item.question,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              item.answer,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -159,11 +61,6 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
         onRefresh: () => context.read<NewsProvider>().refresh(),
         child: CustomScrollView(
           slivers: [
-            // QA Section
-            SliverToBoxAdapter(
-              child: _buildQASection(),
-            ),
-
             // News Section Header
             SliverPadding(
               padding: const EdgeInsets.all(16),
