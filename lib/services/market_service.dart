@@ -118,61 +118,25 @@ class MarketService {
 
       final List<dynamic> tickers = tickersData['tickers'];
 
-      // Extract unique exchange IDs from tickers
-      final Set<String> exchangeIds = tickers
-          .map<String>((ticker) => ticker['market']['identifier'].toString())
-          .toSet();
-
-      // Create a map to store exchange data
-      final Map<String, Map<String, dynamic>> exchangeInfo = {};
-
-      // For each exchange ID, fetch detailed info
-      for (String id in exchangeIds) {
-        try {
-          final exchangeData = await _apiGet('exchanges/$id');
-
-          if (exchangeData != null) {
-            exchangeInfo[id] = {
-              'name': exchangeData['name'],
-              'logo': exchangeData['image'],
-              'url': exchangeData['url'],
-              'trust_score': exchangeData['trust_score'],
-            };
-          } else {
-            // Fallback to hardcoded logos if API fails
-            exchangeInfo[id] = {
-              'name': id,
-              'logo': _getFallbackLogoUrl(id),
-              'trust_score': null,
-            };
-          }
-
-          // Add a small delay to avoid rate limiting
-          await Future.delayed(const Duration(milliseconds: 200));
-        } catch (e) {
-          debugPrint('Error fetching exchange $id: $e');
-          // Fallback to hardcoded logos
-          exchangeInfo[id] = {
-            'name': id,
-            'logo': _getFallbackLogoUrl(id),
-            'trust_score': null,
-          };
-        }
-      }
-
-      // Map tickers with exchange info
+      // Instead of fetching each exchange individually (which causes rate limiting),
+      // we'll use the data we already have and supplement with fallback logos
       return tickers.map<Map<String, dynamic>>((ticker) {
-        final exchangeId = ticker['market']['identifier'];
         final exchangeName = ticker['market']['name'];
-        final exchangeData = exchangeInfo[exchangeId] ?? {};
+        final exchangeId = ticker['market']['identifier'];
+
+        // Use fallback logo URLs directly instead of making additional API calls
+        final logoUrl = _getFallbackLogoUrl(exchangeName);
+        final exchangeUrl = _getExchangeUrl(exchangeName, ticker['trade_url']);
 
         return {
           'exchange': exchangeName,
           'pair': '${ticker['base']}/${ticker['target']}',
           'price': ticker['last'],
           'volume': ticker['converted_volume']['usd'] ?? ticker['volume'],
-          'trust_score': exchangeData['trust_score']?.toString() ?? 'N/A',
-          'logo_url': exchangeData['logo'] ?? _getFallbackLogoUrl(exchangeName),
+          'trust_score':
+              'N/A', // We don't have this without additional API calls
+          'logo_url': logoUrl,
+          'url': exchangeUrl,
           'last_updated': DateTime.now().toIso8601String(),
           'is_real_data': true,
         };
@@ -183,69 +147,117 @@ class MarketService {
     }
   }
 
-  // Fallback logo URLs for common exchanges
+  // Expanded fallback logo URLs for common exchanges using more reliable sources
   String _getFallbackLogoUrl(String exchangeName) {
     final Map<String, String> logoUrls = {
-      'binance':
-          'https://assets.coingecko.com/markets/images/52/small/binance.jpg?1519353250',
+      // Major exchanges using Cryptoicons.org (very reliable)
+      'binance': 'https://cryptoicons.org/api/icon/bnb/200',
       'coinbase':
           'https://assets.coingecko.com/markets/images/23/small/Coinbase_Coin_Primary.png?1621471875',
       'kraken':
-          'https://assets.coingecko.com/markets/images/29/small/kraken.jpg?1584251255',
-      'kucoin':
-          'https://assets.coingecko.com/markets/images/61/small/kucoin.png?1640584259',
-      'ftx':
-          'https://assets.coingecko.com/markets/images/451/small/FTX_Exchange.jpg?1564414329',
-      'huobi':
-          'https://assets.coingecko.com/markets/images/25/small/huobi.jpg?1605065662',
-      'htx':
-          'https://chainwire.org/wp-content/uploads/2025/02/featured_image_ID__Logo_1739290805eVbm1g3Gqv_1739290805Th3KKbad7S.jpg',
-      'okex':
-          'https://assets.coingecko.com/markets/images/96/small/okex.jpg?1519349636',
-      'bitfinex':
-          'https://assets.coingecko.com/markets/images/4/small/BItfinex.png?1615895883',
-      'gemini':
-          'https://assets.coingecko.com/markets/images/50/small/gemini.png?1605704107',
-      'bitstamp':
-          'https://assets.coingecko.com/markets/images/9/small/bitstamp.jpg?1519627979',
-      'gate.io':
-          'https://assets.coingecko.com/markets/images/60/small/gate_io_logo.jpg?1519353563',
-      'bittrex':
-          'https://assets.coingecko.com/markets/images/10/small/BG-color-250x250_icon.png?1596167574',
-      'bybit':
-          'https://assets.coingecko.com/markets/images/698/small/bybit_spot.png?1646064509',
-      'mexc':
-          'https://assets.coingecko.com/markets/images/405/small/MEXC_logo.jpg?1629378483',
-      'crypto.com':
-          'https://assets.coingecko.com/markets/images/589/small/crypto_com.jpg?1629861084',
+          'https://altcoinsbox.com/wp-content/uploads/photo-gallery/imported_from_media_libray/thumb/kraken-logo.webp?bwg=1678268855',
+      'huobi': 'https://cryptoicons.org/api/icon/ht/200',
+      'okex': 'https://cryptoicons.org/api/icon/okb/200',
+      'okx':
+          'https://altcoinsbox.com/wp-content/uploads/photo-gallery/imported_from_media_libray/thumb/full-okx-logo.webp?bwg=1678268855',
+      'hotcoin':
+          'https://play-lh.googleusercontent.com/HbJkWMMZCwJQcA6LARySFQ-oimSubel1f2b0YCXyDgPYeny4rkZKq0cAX208wNZofBDO=w240-h480-rw',
+
+      // Using Cryptologos.cc (very stable CDN)
+      'uniswap': 'https://cryptologos.cc/logos/uniswap-uni-logo.png',
+      'curve': 'https://cryptologos.cc/logos/curve-dao-token-crv-logo.png',
+      'orca': 'https://cryptologos.cc/logos/orca-orca-logo.png',
+      'raydium': 'https://cryptologos.cc/logos/raydium-ray-logo.png',
+      'bitget':
+          'https://cryptologos.cc/logos/bitget-token-new-bgb-logo.png?v=040',
+      'htx': 'https://cryptologos.cc/logos/htx-token-ht-logo.png?v=040',
+      'latoken': 'https://cryptologos.cc/logos/latoken-la-logo.png?v=040',
+      'kucoin': 'https://cryptologos.cc/logos/kucoin-token-kcs-logo.png?v=040',
+      'grovex':
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPGzinAdxmz_eOFtSfwN8BOe3XDvAJs0WxWQ&s',
+      // Using CDN-hosted logos from exchange websites (most reliable)
       'bullish':
           'https://pbs.twimg.com/profile_images/1675741304209408000/SMMO4Sd1_400x400.jpg',
-      'curve':
-          'https://assets.coingecko.com/markets/images/517/small/curve.png?1591605481',
-      'curve (ethereum)':
-          'https://assets.coingecko.com/markets/images/517/small/curve.png?1591605481',
-      'uniswap': 'https://cryptologos.cc/logos/uniswap-uni-logo.png?v=040',
-      'uniswap v3': 'https://cryptologos.cc/logos/uniswap-uni-logo.png?v=040',
-      'uniswap v3 (ethereum)':
-          'https://assets.coingecko.com/markets/images/535/small/uniswap-v3.png?1620778969',
-      'orca': 'https://cryptologos.cc/logos/orca-orca-logo.png?v=040',
-      'bitget':
-          'https://cryptologos.cc/logos/bitget-token-new-bgb-logo.svg?v=040',
-      'raydium': 'https://cryptologos.cc/logos/raydium-ray-logo.svg?v=040',
+      'bybit':
+          'https://assets.coingecko.com/markets/images/698/small/bybit_spot.png?1646064509',
+      'mexc': 'https://www.mexc.com/assets/images/logo/mexc-logo.svg',
+      'crypto.com':
+          'https://assets.coingecko.com/markets/images/589/small/crypto_com.jpg?1629861084',
+      'gate.io': 'https://www.gate.io/images/logo/gate-logo-black.svg',
+      'bitfinex': 'https://www.bitfinex.com/assets/bfx-stacked-darkmode.svg',
+
+      // Using GitHub repositories for logos (also reliable)
+      'gemini':
+          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xd0d6D6C5Fe4a677D343cC433536BB717bAe167dD/logo.png',
+      'bitstamp':
+          'https://raw.githubusercontent.com/trustwallet/assets/master/dapps/bitstamp.com.png',
+      'bittrex':
+          'https://raw.githubusercontent.com/trustwallet/assets/master/dapps/bittrex.com.png',
     };
 
     // Try exact match first
-    if (logoUrls.containsKey(exchangeName.toLowerCase())) {
-      return logoUrls[exchangeName.toLowerCase()]!;
+    final lowerName = exchangeName.toLowerCase();
+    if (logoUrls.containsKey(lowerName)) {
+      return logoUrls[lowerName]!;
     }
 
     // Try partial match
     for (var key in logoUrls.keys) {
-      if (exchangeName.toLowerCase().contains(key)) {
+      if (lowerName.contains(key)) {
         return logoUrls[key]!;
       }
     }
 
-    return '';
+    // Default to a generic cryptocurrency icon from a reliable source
+    return 'https://cryptoicons.org/api/icon/generic/200';
+  }
+
+  // Get exchange URL - first try the trade_url from API, then fallback to known URLs
+  String _getExchangeUrl(String exchangeName, String? tradeUrl) {
+    // If we have a valid trade URL from the API, use it
+    if (tradeUrl != null && tradeUrl.startsWith('http')) {
+      return tradeUrl;
+    }
+
+    // Fallback to known exchange URLs
+    final Map<String, String> exchangeUrls = {
+      'binance': 'https://www.binance.com/en/trade/PYUSD_USDT',
+      'coinbase': 'https://www.coinbase.com/price/paypal-usd',
+      'kraken': 'https://www.kraken.com/prices/pyusd-paypal-usd-price-chart',
+      'kucoin': 'https://www.kucoin.com/trade/PYUSD-USDT',
+      'bullish': 'https://exchange.bullish.com/trade/PYUSDUSDC',
+      'htx': 'https://www.htx.com/price/pyusd/',
+      'okx': 'https://www.okx.com/trade-spot/pyusd-usdt',
+      'bybit': 'https://www.bybit.com/en-US/trade/spot/PYUSD/USDT',
+      'gate.io': 'https://www.gate.io/trade/PYUSD_USDT',
+      'mexc': 'https://www.mexc.com/exchange/PYUSD_USDT',
+      'bitget': 'https://www.bitget.com/spot/PYUSDUSD',
+      'crypto.com': 'https://crypto.com/exchange/trade/spot/PYUSD_USDT',
+      'uniswap':
+          'https://app.uniswap.org/explore/tokens/ethereum/0x6c3ea9036406852006290770bedfcaba0e23a0e8',
+      'curve': 'https://curve.fi/dex/ethereum/pools/?search=pyusd',
+      'orca': 'https://www.orca.so/pools',
+      'raydium': 'https://raydium.io/swap/',
+      'bitfinex': 'https://trading.bitfinex.com/t/PYUSD:USD',
+      'gemini': 'https://www.gemini.com/prices/paypal-usd',
+      'bitstamp': 'https://www.bitstamp.net/markets/pyusd/usd/',
+      'bittrex': 'https://global.bittrex.com/Market/Index?MarketName=USD-PYUSD',
+    };
+
+    // Try exact match first
+    final lowerName = exchangeName.toLowerCase();
+    if (exchangeUrls.containsKey(lowerName)) {
+      return exchangeUrls[lowerName]!;
+    }
+
+    // Try partial match
+    for (var key in exchangeUrls.keys) {
+      if (lowerName.contains(key)) {
+        return exchangeUrls[key]!;
+      }
+    }
+
+    // Default to a search for the exchange
+    return 'https://www.google.com/search?q=${Uri.encodeComponent("$exchangeName PYUSD trading")}';
   }
 }

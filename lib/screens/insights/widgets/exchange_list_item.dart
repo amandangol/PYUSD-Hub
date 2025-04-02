@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ExchangeListItem extends StatelessWidget {
   final Map<String, dynamic> exchange;
   final bool isCompact;
 
   const ExchangeListItem({
-    Key? key,
+    super.key,
     required this.exchange,
     this.isCompact = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +21,7 @@ class ExchangeListItem extends StatelessWidget {
     final String pair = exchange['pair'] ?? 'PYUSD/USD';
     final String trustScore = exchange['trust_score'] ?? 'N/A';
     final String logoUrl = exchange['logo_url'] ?? '';
+    final String url = exchange['url'] ?? '';
 
     // Get trust score color
     Color trustScoreColor;
@@ -37,101 +39,133 @@ class ExchangeListItem extends StatelessWidget {
         trustScoreColor = Colors.grey;
     }
 
-    return Card(
-      elevation: isCompact ? 0 : 1,
-      margin: isCompact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isCompact
-            ? BorderSide(color: theme.dividerColor.withOpacity(0.1))
-            : BorderSide.none,
-      ),
-      child: Padding(
-        padding: isCompact
-            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
-            : const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            _buildExchangeLogo(exchangeName, logoUrl, theme),
-            SizedBox(width: isCompact ? 12 : 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        exchangeName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: isCompact ? 14 : null,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (trustScore != 'N/A')
-                        Container(
-                          width: isCompact ? 8 : 12,
-                          height: isCompact ? 8 : 12,
-                          decoration: BoxDecoration(
-                            color: trustScoreColor,
-                            shape: BoxShape.circle,
+    return InkWell(
+      onTap: () => _launchExchangeUrl(url, exchangeName),
+      borderRadius: BorderRadius.circular(12),
+      child: Card(
+        elevation: isCompact ? 0 : 1,
+        margin: isCompact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: isCompact
+              ? BorderSide(color: theme.dividerColor.withOpacity(0.1))
+              : BorderSide.none,
+        ),
+        child: Padding(
+          padding: isCompact
+              ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+              : const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              _buildExchangeLogo(exchangeName, logoUrl, theme),
+              SizedBox(width: isCompact ? 12 : 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          exchangeName,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isCompact ? 14 : null,
                           ),
                         ),
-                    ],
-                  ),
-                  SizedBox(height: isCompact ? 2 : 4),
+                        const SizedBox(width: 8),
+                        if (trustScore != 'N/A')
+                          Container(
+                            width: isCompact ? 8 : 12,
+                            height: isCompact ? 8 : 12,
+                            decoration: BoxDecoration(
+                              color: trustScoreColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: isCompact ? 2 : 4),
+                    Text(
+                      pair,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: isCompact ? 10 : null,
+                      ),
+                    ),
+                    SizedBox(height: isCompact ? 4 : 8),
+                    if (!isCompact)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Vol: \$${_formatNumber(volume)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
                   Text(
-                    pair,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: isCompact ? 10 : null,
+                    '\$${price.toStringAsFixed(4)}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isCompact ? 14 : null,
                     ),
                   ),
-                  SizedBox(height: isCompact ? 4 : 8),
+                  SizedBox(height: isCompact ? 2 : 4),
                   if (!isCompact)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Vol: \$${_formatNumber(volume)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    Text(
+                      'Price',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.textTheme.bodySmall?.color?.withOpacity(0.7),
                       ),
                     ),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '\$${price.toStringAsFixed(4)}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: isCompact ? 14 : null,
-                  ),
+              if (!isCompact) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.open_in_new,
+                  size: 16,
+                  color: theme.colorScheme.primary.withOpacity(0.7),
                 ),
-                SizedBox(height: isCompact ? 2 : 4),
-                if (!isCompact)
-                  Text(
-                    'Price',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
-                    ),
-                  ),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _launchExchangeUrl(String url, String exchangeName) async {
+    if (url.isEmpty) {
+      // Fallback to a Google search if no URL is available
+      url =
+          'https://www.google.com/search?q=${Uri.encodeComponent("$exchangeName PYUSD trading")}';
+    }
+
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        debugPrint('Could not launch $url');
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
   }
 
   Widget _buildExchangeLogo(
