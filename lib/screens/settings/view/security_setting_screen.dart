@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import '../../widgets/pyusd_components.dart';
-import '../authentication/provider/auth_provider.dart';
-import '../authentication/provider/security_setting_provider.dart';
-import '../authentication/provider/session_provider.dart';
+import '../../../widgets/pyusd_components.dart';
+import '../../authentication/provider/auth_provider.dart';
+import '../../authentication/provider/security_setting_provider.dart';
+import '../../authentication/provider/session_provider.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});

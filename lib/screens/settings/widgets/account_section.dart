@@ -1,8 +1,8 @@
 // lib/widgets/settings/account_section.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../utils/formatter_utils.dart';
-import '../../../utils/snackbar_utils.dart';
+import '../../../../utils/formatter_utils.dart';
+import '../../../../utils/snackbar_utils.dart';
 import '../../authentication/provider/auth_provider.dart';
 
 class AccountSection extends StatelessWidget {

@@ -24,7 +24,12 @@ class NewsProvider with ChangeNotifier, ProviderUtils {
     'crypto',
     'blockchain',
     'defi',
-    'web3'
+    'web3',
+    'stablecoin',
+    'google cloud',
+    'gcp',
+    'bounty',
+    'stackup'
   ];
 
   NewsProvider({required NewsService newsService}) : _newsService = newsService;
@@ -58,12 +63,16 @@ class NewsProvider with ChangeNotifier, ProviderUtils {
         notifyListeners();
       }
 
-      // Fetch articles
-      final articles = await _newsService.getCryptoNews();
+      // Fetch articles from multiple sources
+      final cryptoCompareArticles = await _newsService.getCryptoNews();
+      final coinpaprikaArticles = await _newsService.getCoinpaprikaNews();
+
+      // Combine articles from both sources
+      final allArticles = [...cryptoCompareArticles, ...coinpaprikaArticles];
 
       if (!disposed) {
         // Filter articles to include relevant crypto news
-        _news = articles.where((article) {
+        _news = allArticles.where((article) {
           final title = article['title']?.toLowerCase() ?? '';
           final description = article['description']?.toLowerCase() ?? '';
           final content = article['content']?.toLowerCase() ?? '';
@@ -73,6 +82,13 @@ class NewsProvider with ChangeNotifier, ProviderUtils {
               description.contains(keyword) ||
               content.contains(keyword));
         }).toList();
+
+        // Sort by published date (newest first)
+        _news.sort((a, b) {
+          final dateA = DateTime.parse(a['publishedAt']);
+          final dateB = DateTime.parse(b['publishedAt']);
+          return dateB.compareTo(dateA);
+        });
 
         _lastRefresh = DateTime.now();
         _loadingState = NewsLoadingState.loaded;

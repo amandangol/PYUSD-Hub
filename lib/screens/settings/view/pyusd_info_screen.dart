@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../widgets/pyusd_components.dart';
+import '../../../widgets/pyusd_components.dart';
 
 class PyusdInfoScreen extends StatefulWidget {
   const PyusdInfoScreen({super.key});

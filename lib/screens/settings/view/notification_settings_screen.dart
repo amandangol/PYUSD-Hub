@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../screens/networkcongestion/provider/network_congestion_provider.dart';
-import '../../widgets/pyusd_components.dart';
+import '../../networkcongestion/provider/network_congestion_provider.dart';
+import '../../../widgets/pyusd_components.dart';
 
 class NotificationSettingsScreen extends StatelessWidget {
   const NotificationSettingsScreen({super.key});

@@ -1,7 +1,7 @@
 // lib/widgets/settings/security_section.dart
 import 'package:flutter/material.dart';
 
-import '../../../utils/snackbar_utils.dart';
+import '../../../../utils/snackbar_utils.dart';
 
 class SecuritySection extends StatelessWidget {
   const SecuritySection({super.key});

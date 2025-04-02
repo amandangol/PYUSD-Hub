@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../screens/authentication/screen/splash_screen.dart';
 import '../screens/authentication/widget/activity_aware_widget.dart';
-import '../screens/settings/settings_screen.dart';
 import '../screens/authentication/screen/login_screen.dart';
 import '../screens/authentication/screen/onboarding_screen.dart';
 import '../screens/authentication/screen/create_wallet_screen.dart';
 import '../screens/authentication/screen/import_wallet_screen.dart';
 import '../screens/authentication/screen/mnemonic_screen.dart';
+import '../screens/settings/view/settings_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';

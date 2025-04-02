@@ -19,8 +19,8 @@ class AppBottomNavigation extends StatelessWidget {
         'color': Colors.blue,
       },
       {
-        'icon': Icons.explore,
-        'label': 'Explore',
+        'icon': Icons.insights,
+        'label': 'Insights',
         'color': Colors.green,
       },
       {

@@ -1,8 +1,8 @@
 // lib/widgets/settings/network_section.dart
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../providers/network_provider.dart';
-import '../../../utils/snackbar_utils.dart';
+import '../../../../providers/network_provider.dart';
+import '../../../../utils/snackbar_utils.dart';
 
 class NetworkSection extends StatelessWidget {
   final NetworkProvider networkProvider;

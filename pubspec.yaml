@@ -69,6 +69,7 @@ dependencies:
   firebase_auth: ^5.5.1
   google_generative_ai: ^0.2.0
   flutter_markdown: ^0.7.6+2
+  flutter_svg: ^2.0.17
 
 dev_dependencies:
   flutter_test:
@@ -95,11 +96,10 @@ flutter:
   assets:
     - .env
     - assets/icon/icon.png
-    - assets/keys/service-account.json
-    - assets/keys/bigquery-service.json
     - assets/config/api_config.json
-    - assets/images/pyusdlogo.png
-    - assets/images/geminilogo.png
+    - assets/images/
+    - assets/svg/
+    
   #   - images/a_dot_ham.jpeg
 
 flutter_icons:

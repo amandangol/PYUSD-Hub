@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/screens/insights/provider/insights_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Firebase and App Configuration
@@ -15,8 +16,9 @@ import 'providers/gemini_provider.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
-import 'screens/explore/service/news_service.dart';
-import 'screens/explore/view/news_explore_screen.dart';
+import 'screens/insights/service/news_service.dart';
+import 'screens/insights/view/insights_screen.dart';
+import 'screens/insights/view/news_explore_screen.dart';
 import 'screens/trace/provider/trace_provider.dart';
 import 'screens/trace/view/trace_home_screen.dart';
 import 'screens/wallet/provider/walletscreen_provider.dart';
@@ -32,9 +34,8 @@ import 'services/notification_service.dart';
 // Screens
 import 'screens/wallet/view/wallet_screen.dart';
 import 'screens/networkcongestion/view/network_congestion_screen.dart';
-import 'screens/settings/settings_screen.dart';
-import 'screens/explore/provider/news_provider.dart';
-import 'screens/insights/provider/insights_provider.dart';
+import 'screens/settings/view/settings_screen.dart';
+import 'screens/insights/provider/news_provider.dart';
 import 'services/bigquery_service.dart';
 import 'providers/navigation_provider.dart';
 import 'widgets/bottom_navigation.dart';
@@ -133,24 +134,27 @@ class MyApp extends StatelessWidget {
             notificationService: NotificationService(),
           ),
         ),
-        Provider<MarketService>(create: (_) => MarketService()),
+        Provider<MarketService>(
+          create: (_) => MarketService(),
+        ),
         ChangeNotifierProvider<NetworkCongestionProvider>(
           create: (context) => NetworkCongestionProvider(),
+        ),
+        ChangeNotifierProxyProvider<MarketService, InsightsProvider>(
+          create: (context) => InsightsProvider(
+            context.read<MarketService>(),
+          ),
+          update: (context, marketService, previous) {
+            return previous ?? InsightsProvider(marketService);
+          },
         ),
         Provider<WalletService>(create: (_) => WalletService()),
         ChangeNotifierProvider<NewsProvider>(
           create: (context) => NewsProvider(
-            newsService: NewsService(
-              apiKey: const String.fromEnvironment('NEWS_API_KEY'),
-            ),
+            newsService: NewsService(),
           ),
         ),
         Provider<BigQueryService>(create: (_) => BigQueryService()),
-        ChangeNotifierProvider<InsightsProvider>(
-          create: (context) => InsightsProvider(
-            context.read<BigQueryService>(),
-          ),
-        ),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
       ],
@@ -193,7 +197,7 @@ class _MainAppState extends State<MainApp> {
       'label': 'Explore',
       'icon': Icons.explore,
       'color': Colors.green,
-      'screen': const NewsExploreScreen(),
+      'screen': const InsightsScreen(),
     },
     {
       'label': 'Wallet',

@@ -1,6 +1,6 @@
 // lib/widgets/settings/appearance_section.dart
 import 'package:flutter/material.dart';
-import '../../../providers/theme_provider.dart';
+import '../../../../providers/theme_provider.dart';
 
 class AppearanceSection extends StatelessWidget {
   final ThemeProvider themeProvider;

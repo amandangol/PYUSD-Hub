@@ -4,7 +4,7 @@ import '../../../../services/market_service.dart';
 import '../../model/networkcongestion_model.dart';
 import '../widgets/gasprice_chart.dart';
 import '../../provider/network_congestion_provider.dart';
-import '../../../settings/notification_settings_screen.dart';
+import '../../../settings/view/notification_settings_screen.dart';
 
 class GasTab extends StatefulWidget {
   final NetworkCongestionData congestionData;
@@ -194,8 +194,8 @@ class _GasTabState extends State<GasTab> {
 
   // Gas Price Section
   Widget _buildGasPriceSection() {
-    final priceDiff = _congestionData.currentGasPrice -
-        _congestionData.averageGasPrice;
+    final priceDiff =
+        _congestionData.currentGasPrice - _congestionData.averageGasPrice;
     final priceDiffPercentage =
         (priceDiff / _congestionData.averageGasPrice * 100).abs();
 

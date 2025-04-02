@@ -30,6 +30,7 @@ class _WalletScreenState extends State<WalletScreen>
   Timer? _debounceTimer;
   Timer? _refreshTimer;
   AnimationController? _refreshIndicatorController;
+  NetworkProvider? _networkProvider;
 
   @override
   void initState() {
@@ -41,11 +42,18 @@ class _WalletScreenState extends State<WalletScreen>
 
     // Listen for network changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final networkProvider =
-          Provider.of<NetworkProvider>(context, listen: false);
-      networkProvider.addListener(_onNetworkChanged);
+      if (!mounted) return;
+      _networkProvider = Provider.of<NetworkProvider>(context, listen: false);
+      _networkProvider?.addListener(_onNetworkChanged);
       _initializeData();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store a reference to the provider here to safely use in dispose
+    _networkProvider = Provider.of<NetworkProvider>(context, listen: false);
   }
 
   void _initializeData() {
@@ -57,9 +65,11 @@ class _WalletScreenState extends State<WalletScreen>
 
   @override
   void dispose() {
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
-    networkProvider.removeListener(_onNetworkChanged);
+    // Safely remove listener using the stored reference
+    if (_networkProvider != null) {
+      _networkProvider!.removeListener(_onNetworkChanged);
+    }
+
     _debounceTimer?.cancel();
     _scrollController.dispose();
     _refreshTimer?.cancel();

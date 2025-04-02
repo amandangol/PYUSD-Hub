@@ -13,6 +13,7 @@ class TraceHomeScreen extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final traceProvider = Provider.of<TraceProvider>(context);
     final recentTraces = traceProvider.recentTraces;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: PyusdAppBar(
@@ -26,7 +27,7 @@ class TraceHomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header section
-              _buildHeaderSection(context),
+              _buildHeaderSection(context, theme),
               const SizedBox(height: 24),
 
               // Main features section
@@ -103,17 +104,23 @@ class TraceHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderSection(BuildContext context) {
+  Widget _buildHeaderSection(BuildContext context, ThemeData theme) {
+    final isDarkMode = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withOpacity(0.7),
-          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  theme.colorScheme.primary.withOpacity(0.2),
+                  theme.colorScheme.primary.withOpacity(0.05),
+                ]
+              : [
+                  theme.colorScheme.primary.withOpacity(0.1),
+                  theme.colorScheme.primary.withOpacity(0.1),
+                ],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -122,33 +129,38 @@ class TraceHomeScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.account_tree_outlined,
-                color: Colors.white,
-                size: 32,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.account_tree_outlined,
+                  color: theme.colorScheme.secondary,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
                 'PYUSD Blockchain Tracer',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             'Analyze transactions, trace blocks, and inspect PYUSD transfers on the Ethereum blockchain with powerful tracing tools.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white.withOpacity(0.9),
-                ),
+            style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
           TraceButton(
             text: 'Explore Tracing Tools',
             onPressed: () => _navigateToTraceScreen(context, 0),
-            backgroundColor: Colors.transparent,
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.5),
             icon: Icons.explore,
           ),
         ],
@@ -165,6 +177,7 @@ class TraceHomeScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -192,8 +205,7 @@ class TraceHomeScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -208,9 +220,8 @@ class TraceHomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 description,
-                style: TextStyle(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: isDarkMode ? Colors.white70 : Colors.black87,
-                  fontSize: 14,
                 ),
               ),
             ],
@@ -227,6 +238,7 @@ class TraceHomeScreen extends StatelessWidget {
   ) {
     // Show only the 3 most recent traces
     final traces = recentTraces.take(3).toList();
+    final theme = Theme.of(context);
 
     return Column(
       children: traces.map((trace) {
@@ -263,16 +275,19 @@ class TraceHomeScreen extends StatelessWidget {
 
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor:
-                Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+            child: Icon(icon, color: theme.colorScheme.primary),
           ),
-          title: Text(title),
+          title: Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           subtitle: Text(
             '$subtitle • ${_formatTimeAgo(timestamp)}',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
             ),
           ),
           trailing: Icon(
@@ -287,6 +302,8 @@ class TraceHomeScreen extends StatelessWidget {
   }
 
   Widget _buildDocumentationSection(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -297,9 +314,7 @@ class TraceHomeScreen extends StatelessWidget {
           children: [
             Text(
               'FYI',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
+              style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 3),
             ),
             const SizedBox(height: 12),
@@ -334,6 +349,8 @@ class TraceHomeScreen extends StatelessWidget {
     required String title,
     required String description,
   }) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -341,18 +358,15 @@ class TraceHomeScreen extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             description,
-            style: TextStyle(
-              fontSize: 13,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white70
-                  : Colors.black87,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
             ),
           ),
         ],
