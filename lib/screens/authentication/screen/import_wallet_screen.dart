@@ -116,7 +116,7 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF252543) : Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
@@ -134,35 +134,26 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? theme.colorScheme.primary.withOpacity(0.2)
-                            : const Color(0xFF3D56F0).withOpacity(0.1),
+                        color: theme.colorScheme.primary.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.shield_rounded,
-                        color: isDarkMode
-                            ? theme.colorScheme.primary
-                            : const Color(0xFF3D56F0),
+                        color: theme.colorScheme.primary,
                         size: 20,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'Security Tips',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
-                      ),
+                      style: theme.textTheme.titleLarge,
                     ),
                   ],
                 ),
                 IconButton(
                   icon: Icon(
                     Icons.close,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -215,7 +206,7 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
     final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF1A1A2E) : Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: PyusdAppBar(
         showLogo: false,
         isDarkMode: isDarkMode,

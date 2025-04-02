@@ -22,6 +22,24 @@ class StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    // Adjust colors based on theme
+    final cardColor = isDarkMode ? theme.colorScheme.surface : Colors.white;
+    final borderColor =
+        isDarkMode ? color.withOpacity(0.3) : color.withOpacity(0.2);
+    final shadowColor =
+        isDarkMode ? color.withOpacity(0.2) : color.withOpacity(0.15);
+    final titleColor = isDarkMode
+        ? theme.colorScheme.onSurface.withOpacity(0.7)
+        : Colors.black54;
+    final valueColor = color;
+    final descriptionColor =
+        isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.5) : Colors.grey;
+    final iconBackgroundColor =
+        isDarkMode ? color.withOpacity(0.15) : color.withOpacity(0.1);
+
     return Container(
       width: width ?? (isListView ? double.infinity : 90),
       padding: EdgeInsets.symmetric(
@@ -29,25 +47,42 @@ class StatsCard extends StatelessWidget {
         horizontal: isListView ? 12 : 6,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.15),
+            color: shadowColor,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: borderColor,
           width: 1,
         ),
       ),
-      child: isListView ? _buildListViewLayout() : _buildGridViewLayout(),
+      child: isListView
+          ? _buildListViewLayout(
+              titleColor: titleColor,
+              valueColor: valueColor,
+              descriptionColor: descriptionColor,
+              iconBackgroundColor: iconBackgroundColor,
+            )
+          : _buildGridViewLayout(
+              titleColor: titleColor,
+              valueColor: valueColor,
+              descriptionColor: descriptionColor,
+              iconBackgroundColor: iconBackgroundColor,
+            ),
     );
   }
 
-  Widget _buildGridViewLayout() {
+  Widget _buildGridViewLayout({
+    required Color titleColor,
+    required Color valueColor,
+    required Color descriptionColor,
+    required Color iconBackgroundColor,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -56,7 +91,7 @@ class StatsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: iconBackgroundColor,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 14),
@@ -66,10 +101,10 @@ class StatsCard extends StatelessWidget {
         // Title
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w500,
-            color: Colors.black54,
+            color: titleColor,
           ),
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -83,7 +118,7 @@ class StatsCard extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: valueColor,
           ),
           textAlign: TextAlign.center,
         ),
@@ -91,9 +126,9 @@ class StatsCard extends StatelessWidget {
         // Description
         Text(
           description,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9,
-            color: Colors.grey,
+            color: descriptionColor,
           ),
           textAlign: TextAlign.center,
           maxLines: 1,
@@ -103,14 +138,19 @@ class StatsCard extends StatelessWidget {
     );
   }
 
-  Widget _buildListViewLayout() {
+  Widget _buildListViewLayout({
+    required Color titleColor,
+    required Color valueColor,
+    required Color descriptionColor,
+    required Color iconBackgroundColor,
+  }) {
     return Row(
       children: [
         // Icon with circular background
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: iconBackgroundColor,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 18),
@@ -125,10 +165,10 @@ class StatsCard extends StatelessWidget {
               // Title
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black54,
+                  color: titleColor,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -140,7 +180,7 @@ class StatsCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: color,
+                  color: valueColor,
                 ),
               ),
             ],
@@ -151,14 +191,14 @@ class StatsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: iconBackgroundColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             description,
             style: TextStyle(
               fontSize: 10,
-              color: color,
+              color: valueColor,
               fontWeight: FontWeight.w500,
             ),
             maxLines: 1,

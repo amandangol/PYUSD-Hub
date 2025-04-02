@@ -7,6 +7,7 @@ import '../../authentication/provider/auth_provider.dart';
 import '../../authentication/model/wallet.dart';
 import '../../authentication/widget/pin_input_widget.dart.dart';
 import '../../../utils/snackbar_utils.dart';
+import '../../insights/view/news_explore_screen.dart';
 import 'notification_settings_screen.dart';
 import '../../../routes/app_routes.dart';
 import 'pyusd_info_screen.dart';
@@ -54,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cardColor = theme.colorScheme.surface;
     final textColor = theme.colorScheme.onSurface;
     final primaryColor = theme.colorScheme.primary;
+    final dividerColor = theme.dividerTheme.color ?? theme.dividerColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -71,8 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Account section
               Text(
                 'ACCOUNT',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -80,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -89,18 +90,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     // Wallet address
                     ListTile(
-                      title: const Text('Wallet Address'),
+                      title: Text('Wallet Address',
+                          style: theme.textTheme.titleMedium),
                       subtitle: Text(
                         FormatterUtils.formatAddress(
                             authProvider.wallet?.address ?? ''),
-                        style: TextStyle(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontFamily: 'monospace',
                           color: textColor.withOpacity(0.7),
                         ),
                       ),
                       trailing: Icon(Icons.copy, color: primaryColor),
                       onTap: () {
-                        // Copy address logic
                         Clipboard.setData(
                           ClipboardData(
                               text: authProvider.wallet?.address ?? ''),
@@ -111,21 +112,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: dividerColor),
                     ListTile(
-                      title: const Text('Export Private Key'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title: Text('Export Private Key',
+                          style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
-                        // Navigate to private key export with security checks
                         _showPrivateKeyDialog(context, authProvider.wallet);
                       },
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: dividerColor),
                     ListTile(
-                      title: const Text('Backup Recovery Phrase'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title: Text('Backup Recovery Phrase',
+                          style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
-                        // Navigate to recovery phrase backup with security checks
                         _showRecoveryPhraseDialog(context, authProvider.wallet);
                       },
                     ),
@@ -136,8 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Appearance section
               Text(
                 'APPEARANCE',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -145,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -153,10 +155,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     SwitchListTile(
-                      title: const Text('Dark Mode'),
+                      title:
+                          Text('Dark Mode', style: theme.textTheme.titleMedium),
                       subtitle: Text(
                         'Use dark theme for the app',
-                        style: TextStyle(color: textColor.withOpacity(0.7)),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: textColor.withOpacity(0.7),
+                        ),
                       ),
                       secondary: Icon(
                         themeProvider.isDarkMode
@@ -166,14 +171,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: themeProvider.isDarkMode,
                       onChanged: (bool value) {
-                        // Toggle theme using the provider
                         themeProvider.toggleTheme();
-
-                        // Force rebuild of the entire app to apply theme changes
                         setState(() {});
                       },
                       activeColor: primaryColor,
-                      inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                      inactiveTrackColor: theme.disabledColor.withOpacity(0.3),
                     ),
                   ],
                 ),
@@ -182,8 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Security section
               Text(
                 'SECURITY',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -191,7 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -199,8 +200,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      title: const Text('Security Settings'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title: Text('Security Settings',
+                          style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
                         Navigator.push(
                             context,
@@ -217,8 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Notifications section
               Text(
                 'NOTIFICATIONS',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -226,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -234,12 +236,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      title: const Text('Notification Settings'),
+                      title: Text('Notification Settings',
+                          style: theme.textTheme.titleMedium),
                       subtitle: Text(
                         'Configure gas price alerts and other notifications',
-                        style: TextStyle(color: textColor.withOpacity(0.7)),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: textColor.withOpacity(0.7),
+                        ),
                       ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -257,8 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Network section
               Text(
                 'FAUCET',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -266,7 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -279,12 +284,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Icon(Icons.water_drop, color: primaryColor, size: 20),
                           const SizedBox(width: 8),
-                          const Text('Faucets'),
+                          Text('Faucets', style: theme.textTheme.titleMedium),
                         ],
                       ),
                       subtitle: Text(
                         'Get testnet tokens',
-                        style: TextStyle(color: textColor.withOpacity(0.7)),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: textColor.withOpacity(0.7),
+                        ),
                       ),
                       children: [
                         ListTile(
@@ -330,12 +337,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
-
-              // About section
+              // News & Updates section
               Text(
-                'ABOUT',
-                style: TextStyle(
-                  fontSize: 14,
+                'NEWS & UPDATES',
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -343,7 +348,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.newspaper, color: primaryColor),
+                      title: Text('PYUSD News',
+                          style: theme.textTheme.titleMedium),
+                      subtitle:
+                          Text('Latest updates about PYUSD and crypto markets',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: textColor.withOpacity(0.7),
+                              )),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NewsExploreScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // About section
+              Text(
+                'ABOUT',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                color: cardColor,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -352,10 +399,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     ListTile(
                       leading: Icon(Icons.question_answer, color: primaryColor),
-                      title: const Text('PYUSD Information'),
-                      subtitle: const Text(
-                          'Learn about PYUSD performance & adoption'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title: Text('PYUSD Information',
+                          style: theme.textTheme.titleMedium),
+                      subtitle: Text('Learn about PYUSD performance & adoption',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: textColor.withOpacity(0.7),
+                          )),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -365,10 +416,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: dividerColor),
                     ListTile(
-                      title: const Text('Privacy Policy'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title: Text('Privacy Policy',
+                          style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
                         // Navigate to Privacy Policy
                         SnackbarUtil.showSnackbar(
@@ -377,10 +430,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: dividerColor),
                     ListTile(
-                      title: const Text('Terms of Service'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title: Text('Terms of Service',
+                          style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
                         // Navigate to Terms of Service
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -390,10 +445,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: dividerColor),
                     ListTile(
-                      title: const Text('Support'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      title:
+                          Text('Support', style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
                         // Navigate to Support screen or launch support link
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -403,10 +460,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: dividerColor),
                     ListTile(
                       leading: const Icon(Icons.info_outline),
-                      title: const Text('About this app'),
+                      title: Text('About this app',
+                          style: theme.textTheme.titleMedium),
                       onTap: () => _showAboutDialog(context),
                     ),
                   ],
@@ -416,8 +474,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Danger zone
               Text(
                 'DANGER ZONE',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.error,
                 ),
@@ -425,14 +482,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
-                elevation: 2,
+                elevation: theme.cardTheme.elevation ?? 2,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: ListTile(
                   title: Text(
                     'Log Out',
-                    style: TextStyle(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),
                   ),
@@ -451,9 +508,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Center(
                 child: Text(
                   '© 2025 PYUSD Wallet',
-                  style: TextStyle(
+                  style: theme.textTheme.bodySmall?.copyWith(
                     color: textColor.withOpacity(0.5),
-                    fontSize: 12,
                   ),
                 ),
               ),
@@ -831,7 +887,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Navigate to onboarding screen
               if (context.mounted) {
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRoutes.onboarding,
+                  AppRoutes.walletSelection,
                   (route) => false,
                 );
               }

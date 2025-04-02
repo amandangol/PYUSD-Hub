@@ -337,11 +337,12 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Widget _buildInfoSection(String title, String description, IconData icon) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     final cardColor = isDarkMode
-        ? Colors.blue.shade900.withOpacity(0.3)
-        : Colors.blue.shade50;
-    final textColor = isDarkMode ? Colors.blue.shade100 : Colors.blue.shade900;
+        ? theme.colorScheme.surface.withOpacity(0.3)
+        : theme.colorScheme.primary.withOpacity(0.05);
+    final textColor = theme.colorScheme.primary;
 
     return Card(
       color: cardColor,
@@ -369,7 +370,7 @@ class _TraceScreenState extends State<TraceScreen>
                   Text(
                     description,
                     style: TextStyle(
-                      color: textColor,
+                      color: theme.colorScheme.onSurface,
                       fontSize: 13,
                     ),
                   ),
@@ -383,7 +384,8 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Widget _buildTransactionTraceTab() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final errorColor = theme.colorScheme.error;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -415,13 +417,15 @@ class _TraceScreenState extends State<TraceScreen>
             icon: Icons.search,
             onPressed: _traceTransaction,
             isLoading: _isLoadingTx,
+            backgroundColor: theme.colorScheme.primary,
+            textColor: theme.colorScheme.onPrimary,
           ),
           if (_txError.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: Text(
                 _txError,
-                style: const TextStyle(color: Colors.red),
+                style: TextStyle(color: errorColor),
               ),
             ),
         ],

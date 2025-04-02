@@ -29,8 +29,7 @@ class NotificationSettingsScreen extends StatelessWidget {
               // Gas Price Alerts section
               Text(
                 'GAS PRICE ALERTS',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -125,8 +124,7 @@ class NotificationSettingsScreen extends StatelessWidget {
               // Transaction Notifications section
               Text(
                 'TRANSACTION NOTIFICATIONS',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -184,8 +182,7 @@ class NotificationSettingsScreen extends StatelessWidget {
               // Notification Preferences section
               Text(
                 'NOTIFICATION PREFERENCES',
-                style: TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),

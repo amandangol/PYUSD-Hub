@@ -6,7 +6,7 @@ import '../provider/auth_provider.dart';
 import '../widget/pin_input_widget.dart.dart';
 import '../../../providers/navigation_provider.dart';
 import '../../../routes/app_routes.dart';
-import '../../../screens/authentication/screen/onboarding_screen.dart';
+import 'wallet_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -153,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (BuildContext dialogContext) => PyusdDialog(
         title: 'Reset Wallet Access',
         content:
-            'You will be redirected to the onboarding screen to create a new wallet or import an existing one. Your current wallet data will remain on the device but you will need to import it again.',
+            'You will be redirected to the wallet selection screen to create a new wallet or import an existing one. Your current wallet data will remain on the device but you will need to import it again.',
         confirmText: 'Continue',
         cancelText: 'Cancel',
         onConfirm: () {
@@ -175,7 +175,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => const OnboardingScreen(forceOnboarding: true),
+            builder: (_) =>
+                const WalletSelectionScreen(forceNavigateToSelect: true),
           ),
         );
       });
@@ -191,13 +192,15 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final walletAddress =
-        Provider.of<AuthProvider>(context).wallet?.address ?? '';
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final walletAddress = authProvider.wallet?.address ?? '';
     final shortenedAddress = walletAddress.isNotEmpty
-        ? '${walletAddress.substring(0, 7)}...${walletAddress.substring(walletAddress.length - 4)}'
+        ? '${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}'
         : '';
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

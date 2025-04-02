@@ -399,22 +399,23 @@ class _MnemonicConfirmationScreenState
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
+              color: theme.colorScheme.error.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber),
+              border:
+                  Border.all(color: theme.colorScheme.error.withOpacity(0.5)),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.warning_amber_rounded,
-                  color: Colors.amber[800],
+                  color: theme.colorScheme.error,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Never share your recovery phrase with anyone and keep it in a safe place.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.amber[800],
+                      color: theme.colorScheme.error,
                     ),
                   ),
                 ),

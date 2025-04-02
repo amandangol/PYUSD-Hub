@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/screens/insights/provider/insights_provider.dart';
+import 'package:pyusd_hub/screens/onboarding/provider/onboarding_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Firebase and App Configuration
@@ -85,6 +86,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(
             value: themeProvider..setDarkMode(initialThemeIsDark)),
+        ChangeNotifierProvider<OnboardingProvider>(
+          create: (context) => OnboardingProvider(),
+        ),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(
           create: (context) => SessionProvider(context.read<AuthProvider>()),

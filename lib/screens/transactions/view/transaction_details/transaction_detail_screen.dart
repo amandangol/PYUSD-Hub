@@ -269,15 +269,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
     final theme = Theme.of(context);
 
     // Get colors from theme
-    final primaryColor =
-        widget.isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
-    final backgroundColor =
-        widget.isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
-    final cardColor =
-        widget.isDarkMode ? const Color(0xFF252547) : Colors.white;
+    final primaryColor = theme.colorScheme.primary;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
     final textColor =
-        widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E);
-    final subtitleColor = widget.isDarkMode ? Colors.white70 : Colors.black54;
+        theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface;
+    final subtitleColor = theme.textTheme.bodySmall?.color ??
+        theme.colorScheme.onSurface.withOpacity(0.7);
 
     // Determine transaction status color
     final statusColor = _getStatusColor(widget.transaction.status);
@@ -429,13 +427,19 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         foregroundColor: textColor,
         elevation: 0,
       ),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading transaction details...'),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading transaction details...',
+              style: TextStyle(color: textColor),
+            ),
           ],
         ),
       ),
@@ -444,6 +448,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
   Widget _buildErrorView(
       Color backgroundColor, Color textColor, Color primaryColor) {
+    final theme = Theme.of(context);
+
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: SizedBox(
@@ -455,13 +461,13 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
               Icon(
                 Icons.error_outline,
                 size: 48,
-                color: widget.isDarkMode ? Colors.white54 : Colors.black38,
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
               ),
               const SizedBox(height: 16),
               Text(
                 'Transaction details not available',
                 style: TextStyle(
-                  color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 24),
@@ -469,7 +475,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
                 onPressed: _fetchTransactionDetails,
                 text: 'Retry',
                 backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor: theme.colorScheme.onPrimary,
               ),
             ],
           ),
@@ -525,13 +531,15 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   }
 
   Color _getStatusColor(TransactionStatus status) {
+    final theme = Theme.of(context);
+
     switch (status) {
       case TransactionStatus.confirmed:
-        return Colors.green;
+        return theme.colorScheme.tertiary ?? Colors.green;
       case TransactionStatus.pending:
-        return Colors.orange;
+        return theme.colorScheme.secondary ?? Colors.orange;
       case TransactionStatus.failed:
-        return Colors.red;
+        return theme.colorScheme.error;
     }
   }
 }

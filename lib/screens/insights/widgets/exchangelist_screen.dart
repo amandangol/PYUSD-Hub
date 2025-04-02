@@ -12,6 +12,7 @@ class ExchangeListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     debugPrint('Full Exchange List: ${exchanges.toString()}');
 
@@ -20,6 +21,8 @@ class ExchangeListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('PYUSD Exchanges'),
         elevation: 0,
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurface,
       ),
       body: exchanges.isEmpty
           ? Center(

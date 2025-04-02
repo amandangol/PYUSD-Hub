@@ -29,12 +29,11 @@ class TraceInputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final inputFillColor =
-        isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100;
-    final borderColor =
-        isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
-    final labelColor = isDarkMode ? Colors.blue.shade200 : Colors.blue.shade700;
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final inputFillColor = theme.colorScheme.surface.withOpacity(0.5);
+    final borderColor = theme.colorScheme.outline;
+    final labelColor = theme.colorScheme.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,15 +48,17 @@ class TraceInputField extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
                 color: labelColor,
-                fontSize: 14,
               ),
             ),
-            if (!isRequired)
-              const Text(
-                ' (Optional)',
-                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+            if (isRequired)
+              Text(
+                ' *',
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
           ],
         ),
@@ -66,17 +67,11 @@ class TraceInputField extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: TextStyle(
-              color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade400,
-              fontSize: 13,
-            ),
             filled: true,
             fillColor: inputFillColor,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: borderColor, width: 1),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -85,7 +80,7 @@ class TraceInputField extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide:
-                  BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                  BorderSide(color: theme.colorScheme.primary, width: 2),
             ),
             prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 18) : null,
             suffixIcon: Row(
@@ -110,14 +105,14 @@ class TraceInputField extends StatelessWidget {
             helperText: helperText,
             helperStyle: TextStyle(
               fontSize: 12,
-              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
           maxLines: isMultiline ? 3 : 1,
           style: TextStyle(
             fontFamily: 'monospace',
             fontSize: 14,
-            color: isDarkMode ? Colors.grey.shade200 : Colors.grey.shade800,
+            color: theme.colorScheme.onSurface,
           ),
           onChanged: (_) {
             (context as Element).markNeedsBuild();
@@ -253,6 +248,10 @@ class TraceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final defaultBackgroundColor = theme.colorScheme.primary;
+    final defaultTextColor = theme.colorScheme.onPrimary;
+
     final buttonStyle = isOutlined
         ? OutlinedButton.styleFrom(
             side: BorderSide(color: backgroundColor),

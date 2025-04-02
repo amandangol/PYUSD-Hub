@@ -13,6 +13,7 @@ import 'widgets/recipent_card.dart';
 import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';
 import 'widgets/gas_selection_sheet.dart';
+import 'dart:async';
 
 class SendTransactionScreen extends StatefulWidget {
   const SendTransactionScreen({super.key});
@@ -40,19 +41,47 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   Map<String, GasOption> _gasOptions = {};
   bool _isLoadingGasPrice = false;
 
+  // Add a debounce timer for gas estimation
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
     _loadGasOptions();
+
+    // Add listeners for text fields to optimize gas estimation
+    _addressController.addListener(_onAddressChanged);
+    _amountController.addListener(_onAmountChanged);
   }
 
   @override
   void dispose() {
     _mounted = false;
+    _addressController.removeListener(_onAddressChanged);
+    _amountController.removeListener(_onAmountChanged);
     _addressController.dispose();
     _amountController.dispose();
     _amountFocusNode.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  // Debounced address change handler
+  void _onAddressChanged() {
+    _validateAddress(_addressController.text);
+  }
+
+  // Debounced amount change handler
+  void _onAmountChanged() {
+    _debounceGasEstimation();
+  }
+
+  // Debounce gas estimation to prevent too many calls
+  void _debounceGasEstimation() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _estimateGasFee();
+    });
   }
 
   // Safe setState that checks if mounted first
@@ -70,8 +99,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     setState(() => _isLoadingGasPrice = true);
 
     try {
-      final transactionProvider =
-          Provider.of<TransactionProvider>(context, listen: false);
+      final transactionProvider = context.read<TransactionProvider>();
       final options = await transactionProvider.getGasOptions();
 
       if (mounted) {
@@ -81,10 +109,15 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           _gasPrice = _selectedGasOption!.price;
           _isLoadingGasPrice = false;
         });
+
+        // Estimate gas after loading gas options
+        _estimateGasFee();
       }
     } catch (e) {
       print('Error loading gas options: $e');
-      setState(() => _isLoadingGasPrice = false);
+      if (mounted) {
+        setState(() => _isLoadingGasPrice = false);
+      }
     }
   }
 
@@ -450,17 +483,16 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final walletProvider = Provider.of<WalletStateProvider>(context);
-    final networkProvider = Provider.of<NetworkProvider>(context);
+    final walletProvider = context.watch<WalletStateProvider>();
+    final networkProvider = context.watch<NetworkProvider>();
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    // Determine available balance based on selected asset
+    // Memoize these calculations to avoid recalculating on every build
     final availableBalance = _selectedAsset == 'PYUSD'
         ? walletProvider.tokenBalance
         : walletProvider.ethBalance;
 
-    // For ETH transfers, calculate the max amount that can be sent considering gas fees
     final maxSendableEth = _selectedAsset == 'ETH' && _estimatedGasFee > 0
         ? (walletProvider.ethBalance - _estimatedGasFee)
             .clamp(0.0, double.infinity)
@@ -468,8 +500,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
 
     return WillPopScope(
       onWillPop: () async {
-        Navigator.of(context)
-            .pop(false); // Pass false to indicate no transaction was sent
+        Navigator.of(context).pop(false);
         return false;
       },
       child: Scaffold(
@@ -478,10 +509,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           title: 'Send $_selectedAsset',
           networkName: networkProvider.currentNetworkDisplayName,
           showLogo: false,
-          onBackPressed: () {
-            Navigator.of(context)
-                .pop(false); // Pass false to indicate no transaction was sent
-          },
+          onBackPressed: () => Navigator.of(context).pop(false),
         ),
         body: SafeArea(
           child: Form(
@@ -564,16 +592,18 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? const Color(0xFF252543)
-                            : Colors.grey[100],
+                        color: theme.colorScheme.surface.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.dividerTheme.color ?? Colors.transparent,
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
                             size: 20,
                           ),
                           const SizedBox(width: 8),
@@ -582,9 +612,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                               'Transaction requires ETH for gas fees regardless of which asset you send.',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontStyle: FontStyle.italic,
-                                color: isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black54,
                               ),
                             ),
                           ),
@@ -593,7 +620,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                     ),
 
                     // Faucet Section - Only show on Sepolia testnet
-
                     const SizedBox(height: 8),
                     if (networkProvider.currentNetwork.name
                         .toLowerCase()
@@ -601,10 +627,13 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? const Color(0xFF252543)
-                              : Colors.grey[100],
+                          color: theme.colorScheme.surface.withOpacity(0.7),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                theme.dividerTheme.color ?? Colors.transparent,
+                            width: 1,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,9 +642,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                               children: [
                                 Icon(
                                   Icons.water_drop,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black54,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.7),
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
@@ -623,9 +651,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                                   'Need tokens? Get them from the faucet:',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black54,
                                   ),
                                 ),
                               ],
@@ -641,9 +666,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                                   children: [
                                     Icon(
                                       Icons.link,
-                                      color: isDarkMode
-                                          ? Colors.blue[300]
-                                          : Colors.blue,
+                                      color: theme.colorScheme.primary,
                                       size: 16,
                                     ),
                                     const SizedBox(width: 4),
@@ -651,9 +674,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                                       'Sepolia ETH Faucet',
                                       style:
                                           theme.textTheme.bodySmall?.copyWith(
-                                        color: isDarkMode
-                                            ? Colors.blue[300]
-                                            : Colors.blue,
+                                        color: theme.colorScheme.primary,
                                         decoration: TextDecoration.underline,
                                       ),
                                     ),
@@ -671,9 +692,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                                   children: [
                                     Icon(
                                       Icons.link,
-                                      color: isDarkMode
-                                          ? Colors.blue[300]
-                                          : Colors.blue,
+                                      color: theme.colorScheme.primary,
                                       size: 16,
                                     ),
                                     const SizedBox(width: 4),
@@ -681,9 +700,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                                       'PYUSD Faucet',
                                       style:
                                           theme.textTheme.bodySmall?.copyWith(
-                                        color: isDarkMode
-                                            ? Colors.blue[300]
-                                            : Colors.blue,
+                                        color: theme.colorScheme.primary,
                                         decoration: TextDecoration.underline,
                                       ),
                                     ),

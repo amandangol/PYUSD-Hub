@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/screens/authentication/screen/login_screen.dart';
+import 'package:pyusd_hub/screens/onboarding/view/onboarding_screen.dart';
 import '../provider/auth_provider.dart';
-import 'login_screen.dart';
-import 'onboarding_screen.dart';
+import 'wallet_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -65,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
       } else {
         // If no wallet, go to onboarding
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (_) => const WalletSelectionScreen()),
         );
       }
     } catch (e) {

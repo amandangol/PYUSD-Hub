@@ -121,6 +121,12 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final textColor = theme.colorScheme.onSurface;
+
     return WillPopScope(
       onWillPop: () async {
         if (!_isDisposed) {
@@ -131,23 +137,29 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
         return true;
       },
       child: Scaffold(
+        backgroundColor: backgroundColor,
         appBar: AppBar(
+          backgroundColor: theme.appBarTheme.backgroundColor,
+          foregroundColor: theme.appBarTheme.foregroundColor,
           title: Row(
             children: [
               Image.asset(
                 'assets/images/pyusdlogo.png',
                 height: 24,
                 errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.paid, size: 24);
+                  return Icon(Icons.paid, size: 24, color: primaryColor);
                 },
               ),
               const SizedBox(width: 8),
-              const Text('ETH/PYUSD Network Activity'),
+              Text(
+                'ETH/PYUSD Network Activity',
+                style: theme.textTheme.titleLarge,
+              ),
             ],
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.location_city),
+              icon: Icon(Icons.location_city, color: theme.iconTheme.color),
               tooltip: 'PYUSD City View',
               onPressed: () {
                 Navigator.push(
@@ -161,26 +173,44 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
           ],
           bottom: TabBar(
             controller: _tabController,
-            tabs: const [
-              Tab(icon: Icon(Icons.dashboard), text: 'Overview'),
-              Tab(icon: Icon(Icons.local_gas_station), text: 'Gas'),
-              Tab(icon: Icon(Icons.storage), text: 'Blocks'),
-              Tab(icon: Icon(Icons.swap_horiz), text: 'Transactions'),
+            tabs: [
+              Tab(
+                  icon: Icon(Icons.dashboard,
+                      color: theme.tabBarTheme.labelColor),
+                  text: 'Overview'),
+              Tab(
+                  icon: Icon(Icons.local_gas_station,
+                      color: theme.tabBarTheme.labelColor),
+                  text: 'Gas'),
+              Tab(
+                  icon:
+                      Icon(Icons.storage, color: theme.tabBarTheme.labelColor),
+                  text: 'Blocks'),
+              Tab(
+                  icon: Icon(Icons.swap_horiz,
+                      color: theme.tabBarTheme.labelColor),
+                  text: 'Transactions'),
             ],
             isScrollable: false,
             indicatorWeight: 3,
+            indicatorColor: primaryColor,
+            labelColor: theme.tabBarTheme.labelColor,
+            unselectedLabelColor: theme.tabBarTheme.unselectedLabelColor,
           ),
         ),
         body: Consumer<NetworkCongestionProvider>(
           builder: (context, provider, child) {
             if (_isInitialLoading) {
-              return const Center(
+              return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Loading network data...'),
+                    CircularProgressIndicator(color: primaryColor),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Loading network data...',
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ],
                 ),
               );
@@ -211,8 +241,14 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
   }
 
   Widget _buildTabContent(int index, NetworkCongestionProvider provider) {
+    final theme = Theme.of(context);
+
     if (!_loadedTabs[index]) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: theme.colorScheme.primary,
+        ),
+      );
     }
 
     switch (index) {

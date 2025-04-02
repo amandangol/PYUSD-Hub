@@ -73,13 +73,13 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: PyusdAppBar(
+        isDarkMode: theme.brightness == Brightness.dark,
+        title: "Create Wallet",
         showLogo: false,
-        isDarkMode: isDarkMode,
-        title: "Create New Wallet",
       ),
       body: SafeArea(
         child: SingleChildScrollView(

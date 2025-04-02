@@ -6,6 +6,7 @@ import '../../authentication/provider/auth_provider.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../../utils/snackbar_utils.dart';
+import '../../onboarding/view/onboarding_screen.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../../transactions/provider/transaction_provider.dart';
 import '../../transactions/view/receive_transaction/receive_screen.dart';
@@ -141,9 +142,8 @@ class _WalletScreenState extends State<WalletScreen>
     // Use select instead of Provider.of where possible to minimize rebuilds
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final primaryColor =
-        isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
-    final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
+    final primaryColor = theme.colorScheme.primary;
+    final backgroundColor = theme.scaffoldBackgroundColor;
 
     // Get wallet address only once
     final currentWalletAddress = context.select<AuthProvider, String?>(
@@ -334,7 +334,17 @@ class _WalletScreenState extends State<WalletScreen>
 
   void _onNetworkChanged() {
     if (mounted) {
-      _refreshWalletData(forceRefresh: true);
+      // Clear any existing errors
+      setState(() {
+        _hasError = false;
+      });
+
+      // Add a small delay to allow the network change to complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _refreshWalletData(forceRefresh: true);
+        }
+      });
     }
   }
 }

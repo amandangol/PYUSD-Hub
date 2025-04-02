@@ -3,7 +3,7 @@ import '../main.dart';
 import '../screens/authentication/screen/splash_screen.dart';
 import '../screens/authentication/widget/activity_aware_widget.dart';
 import '../screens/authentication/screen/login_screen.dart';
-import '../screens/authentication/screen/onboarding_screen.dart';
+import '../screens/authentication/screen/wallet_selection_screen.dart';
 import '../screens/authentication/screen/create_wallet_screen.dart';
 import '../screens/authentication/screen/import_wallet_screen.dart';
 import '../screens/authentication/screen/mnemonic_screen.dart';
@@ -22,7 +22,7 @@ class AppRoutes {
 
   // Authentication routes
   static const String login = '/login';
-  static const String onboarding = '/onboarding';
+  static const String walletSelection = '/wallet-selection';
   static const String createWallet = '/create-wallet';
   static const String importWallet = '/import-wallet';
   static const String mnemonic = '/mnemonic';
@@ -70,12 +70,12 @@ class AppRoutes {
         builder: (_) => const ActivityAwareWidget(child: LoginScreen()),
         settings: settings,
       );
-    } else if (routeName == onboarding) {
+    } else if (routeName == walletSelection) {
       final args = settings.arguments as Map<String, dynamic>?;
       return MaterialPageRoute(
         builder: (_) => ActivityAwareWidget(
-          child: OnboardingScreen(
-            forceOnboarding: args?['forceOnboarding'] ?? false,
+          child: WalletSelectionScreen(
+            forceNavigateToSelect: args?['forceNavigateToSelect'] ?? false,
           ),
         ),
         settings: settings,
@@ -118,8 +118,8 @@ class AppRoutes {
       main: (context) => const ActivityAwareWidget(child: MainApp()),
       settings: (context) => const ActivityAwareWidget(child: SettingsScreen()),
       login: (context) => const ActivityAwareWidget(child: LoginScreen()),
-      onboarding: (context) =>
-          const ActivityAwareWidget(child: OnboardingScreen()),
+      walletSelection: (context) =>
+          const ActivityAwareWidget(child: WalletSelectionScreen()),
     };
   }
 }

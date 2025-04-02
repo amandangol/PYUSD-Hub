@@ -22,9 +22,7 @@ class ReceiveScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final walletProvider = Provider.of<WalletStateProvider>(context);
     final networkProvider = Provider.of<NetworkProvider>(context);
-
     final authProvider = Provider.of<AuthProvider>(context);
-
     final address = authProvider.getCurrentAddress() ?? '';
 
     // Get the token balance
@@ -35,14 +33,11 @@ class ReceiveScreen extends StatelessWidget {
     // Get theme information for styling
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-
-    // Define colors based on theme
-    final primaryColor =
-        isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
-    final backgroundColor = isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
-    final cardColor = isDarkMode ? const Color(0xFF252543) : Colors.white;
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF1A1A2E);
-    final secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final primaryColor = theme.colorScheme.primary;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final cardColor = theme.cardTheme.color;
+    final textColor = theme.textTheme.bodyLarge?.color;
+    final secondaryTextColor = theme.textTheme.bodySmall?.color;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -64,19 +59,14 @@ class ReceiveScreen extends StatelessWidget {
               children: [
                 Text(
                   'Your Wallet Address',
-                  style: TextStyle(
-                    fontSize: 24,
+                  style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Share this address to receive PYUSD',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: secondaryTextColor,
-                  ),
+                  style: theme.textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -87,9 +77,7 @@ class ReceiveScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: isDarkMode
-                            ? Colors.black.withOpacity(0.2)
-                            : Colors.grey.withOpacity(0.1),
+                        color: theme.shadowColor.withOpacity(0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -104,9 +92,7 @@ class ReceiveScreen extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? const Color(0xFF1A1A2E)
-                                : const Color(0xFFF5F7FF),
+                            color: theme.colorScheme.surface.withOpacity(0.7),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Column(
@@ -114,10 +100,7 @@ class ReceiveScreen extends StatelessWidget {
                             children: [
                               Text(
                                 'Available Balance',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: secondaryTextColor,
-                                ),
+                                style: theme.textTheme.bodySmall,
                               ),
                               const SizedBox(height: 4),
                               Row(
@@ -136,17 +119,16 @@ class ReceiveScreen extends StatelessWidget {
                                   else
                                     Text(
                                       tokenBalance.toStringAsFixed(2),
-                                      style: TextStyle(
-                                        fontSize: 24,
+                                      style: theme.textTheme.headlineMedium
+                                          ?.copyWith(
                                         fontWeight: FontWeight.bold,
-                                        color: textColor,
                                       ),
                                     ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'PYUSD',
-                                    style: TextStyle(
-                                      fontSize: 16,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w500,
                                       color: primaryColor,
                                     ),
@@ -158,15 +140,11 @@ class ReceiveScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Network: ',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: secondaryTextColor,
-                                    ),
+                                    style: theme.textTheme.bodySmall,
                                   ),
                                   Text(
                                     networkProvider.currentNetworkName,
-                                    style: TextStyle(
-                                      fontSize: 12,
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       fontWeight: FontWeight.w500,
                                       color: primaryColor,
                                     ),
@@ -186,8 +164,8 @@ class ReceiveScreen extends StatelessWidget {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color:
-                                  isDarkMode ? Colors.white24 : Colors.black12,
+                              color: theme.dividerTheme.color ??
+                                  Colors.transparent,
                               width: 1,
                             ),
                           ),
@@ -219,10 +197,7 @@ class ReceiveScreen extends StatelessWidget {
 
                         Text(
                           'Wallet Address',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: secondaryTextColor,
-                          ),
+                          style: theme.textTheme.bodySmall,
                         ),
 
                         const SizedBox(height: 8),
@@ -242,14 +217,11 @@ class ReceiveScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: isDarkMode
-                                  ? const Color(0xFF1A1A2E)
-                                  : const Color(0xFFF5F7FF),
+                              color: theme.colorScheme.surface.withOpacity(0.7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isDarkMode
-                                    ? Colors.white24
-                                    : Colors.black12,
+                                color: theme.dividerTheme.color ??
+                                    Colors.transparent,
                                 width: 1,
                               ),
                             ),
@@ -261,11 +233,10 @@ class ReceiveScreen extends StatelessWidget {
                                     address.isEmpty
                                         ? 'Loading...'
                                         : FormatterUtils.formatAddress(address),
-                                    style: TextStyle(
-                                      fontSize: 16,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
                                       fontFamily: 'monospace',
                                       fontWeight: FontWeight.w500,
-                                      color: textColor,
                                     ),
                                     textAlign: TextAlign.center,
                                     overflow: TextOverflow.ellipsis,
@@ -364,14 +335,10 @@ class ReceiveScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? Colors.amber.shade800.withOpacity(0.2)
-                        : Colors.amber.shade50,
+                    color: theme.colorScheme.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDarkMode
-                          ? Colors.amber.shade700
-                          : Colors.amber.shade200,
+                      color: theme.colorScheme.error.withOpacity(0.3),
                       width: 1,
                     ),
                   ),
@@ -379,19 +346,14 @@ class ReceiveScreen extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: isDarkMode
-                            ? Colors.amber.shade400
-                            : Colors.amber.shade800,
+                        color: theme.colorScheme.error,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Only send PYUSD/ETH to this address. Sending other assets may result in permanent loss.',
-                          style: TextStyle(
-                            color: isDarkMode
-                                ? Colors.amber.shade400
-                                : Colors.amber.shade800,
-                            fontSize: 14,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.error,
                           ),
                         ),
                       ),

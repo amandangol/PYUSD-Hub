@@ -14,6 +14,7 @@ class ExchangeListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     final String exchangeName = exchange['exchange'] ?? 'Unknown';
     final double volume = _parseDouble(exchange['volume']);
@@ -27,22 +28,26 @@ class ExchangeListItem extends StatelessWidget {
     Color trustScoreColor;
     switch (trustScore.toLowerCase()) {
       case 'green':
-        trustScoreColor = Colors.green;
+        trustScoreColor =
+            isDarkMode ? Colors.green.shade400 : Colors.green.shade700;
         break;
       case 'yellow':
-        trustScoreColor = Colors.amber;
+        trustScoreColor =
+            isDarkMode ? Colors.amber.shade400 : Colors.amber.shade700;
         break;
       case 'red':
-        trustScoreColor = Colors.red;
+        trustScoreColor =
+            isDarkMode ? Colors.red.shade400 : Colors.red.shade700;
         break;
       default:
-        trustScoreColor = Colors.grey;
+        trustScoreColor = theme.colorScheme.onSurfaceVariant;
     }
 
     return InkWell(
       onTap: () => _launchExchangeUrl(url, exchangeName),
       borderRadius: BorderRadius.circular(12),
       child: Card(
+        color: theme.colorScheme.surface,
         elevation: isCompact ? 0 : 1,
         margin: isCompact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 8),
         shape: RoundedRectangleBorder(

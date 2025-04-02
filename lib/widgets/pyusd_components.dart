@@ -30,6 +30,10 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+    final primaryColor = theme.colorScheme.primary;
+
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -38,7 +42,7 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
               ? IconButton(
                   icon: Icon(
                     Icons.arrow_back,
-                    color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                    color: textColor,
                   ),
                   onPressed: onBackPressed,
                 )
@@ -60,8 +64,8 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
             Text(
               title!,
               style: TextStyle(
+                color: textColor,
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
               ),
             ),
         ],
@@ -76,16 +80,12 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isDarkMode ? Colors.white : Colors.black87,
+                  color: textColor,
                 ),
               ),
-              backgroundColor: isDarkMode
-                  ? (networkName!.contains('Testnet')
-                      ? Colors.orange.withOpacity(0.2)
-                      : Colors.green.withOpacity(0.2))
-                  : (networkName!.contains('Testnet')
-                      ? Colors.orange.withOpacity(0.1)
-                      : Colors.green.withOpacity(0.1)),
+              backgroundColor: networkName!.contains('Testnet')
+                  ? Colors.orange.withOpacity(isDarkMode ? 0.2 : 0.1)
+                  : Colors.green.withOpacity(isDarkMode ? 0.2 : 0.1),
               side: BorderSide.none,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               visualDensity: VisualDensity.compact,
@@ -104,7 +104,7 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             icon: Icon(
               Icons.refresh,
-              color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+              color: textColor,
             ),
             onPressed: onRefreshPressed,
           ),
@@ -134,11 +134,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+
     return AppBar(
       title: Text(
         title,
         style: TextStyle(
-          color: isDarkMode ? Colors.white : Colors.black87,
+          color: textColor,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -148,7 +151,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           ? IconButton(
               icon: Icon(
                 Icons.arrow_back,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: textColor,
                 size: 20,
               ),
               onPressed: onBackPressed,
@@ -159,7 +162,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             icon: Icon(
               Icons.refresh,
-              color: isDarkMode ? Colors.white : Colors.black87,
+              color: textColor,
             ),
             onPressed: onRefreshPressed,
             tooltip: 'Refresh',
@@ -208,11 +211,8 @@ class PyusdButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    final defaultBackgroundColor =
-        isDarkMode ? theme.colorScheme.primary : const Color(0xFF3D56F0);
-    const defaultForegroundColor = Colors.white;
+    final defaultBackgroundColor = theme.colorScheme.primary;
+    final defaultForegroundColor = theme.colorScheme.onPrimary;
 
     Widget button = isOutlined
         ? OutlinedButton(
@@ -417,7 +417,6 @@ class PyusdDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
@@ -451,14 +450,14 @@ class PyusdDialog extends StatelessWidget {
             child: Text(
               cancelText!,
               style: TextStyle(
-                color: isDarkMode ? Colors.white70 : Colors.black54,
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-        ElevatedButton(
+        TextButton(
           onPressed: onConfirm,
-          style: ElevatedButton.styleFrom(
+          style: TextButton.styleFrom(
             backgroundColor: isDestructive
                 ? theme.colorScheme.error
                 : theme.colorScheme.primary,
@@ -466,7 +465,6 @@ class PyusdDialog extends StatelessWidget {
                 ? theme.colorScheme.onError
                 : theme.colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -474,13 +472,11 @@ class PyusdDialog extends StatelessWidget {
           child: Text(
             confirmText,
             style: const TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
       ],
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      actionsAlignment: MainAxisAlignment.end,
     );
   }
 }

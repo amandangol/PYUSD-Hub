@@ -6,16 +6,16 @@ import 'create_wallet_screen.dart';
 import 'import_wallet_screen.dart';
 import 'login_screen.dart';
 
-class OnboardingScreen extends StatefulWidget {
-  final bool forceOnboarding;
+class WalletSelectionScreen extends StatefulWidget {
+  final bool forceNavigateToSelect;
 
-  const OnboardingScreen({super.key, this.forceOnboarding = false});
+  const WalletSelectionScreen({super.key, this.forceNavigateToSelect = false});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<WalletSelectionScreen> createState() => _WalletSelectionScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
   bool _isLoading = false;
 
   @override
@@ -38,7 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     if (mounted) {
       // If we have a wallet, go to login screen unless force onboarding is true
-      if (!widget.forceOnboarding && authProvider.hasWallet) {
+      if (!widget.forceNavigateToSelect && authProvider.hasWallet) {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const LoginScreen()));
       }
@@ -76,16 +76,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
               ),
             )
-          : _buildOnboardingContent(theme),
+          : _buildWalletSelectionContent(theme),
     );
   }
 
   Widget _buildLoginOption() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final theme = Theme.of(context);
+    final authProvider = Provider.of<AuthProvider>(context);
 
-    // Only show this if a wallet exists but we're in forceOnboarding mode
-    if (widget.forceOnboarding && authProvider.wallet != null) {
+    if (widget.forceNavigateToSelect && authProvider.wallet != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 24.0),
         child: TextButton(
@@ -95,11 +94,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           },
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            foregroundColor: theme.colorScheme.primary,
           ),
           child: Text(
             'Log in with existing wallet',
             style: TextStyle(
-              color: theme.colorScheme.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -110,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildOnboardingContent(ThemeData theme) {
+  Widget _buildWalletSelectionContent(ThemeData theme) {
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(

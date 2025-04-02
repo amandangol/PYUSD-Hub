@@ -7,6 +7,7 @@ import '../provider/insights_provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../widgets/exchangelist_screen.dart';
 import '../widgets/exchange_list_item.dart';
+import 'news_explore_screen.dart';
 
 class InsightsScreen extends StatelessWidget {
   const InsightsScreen({super.key});
@@ -56,6 +57,8 @@ class InsightsScreen extends StatelessWidget {
                       children: [
                         _buildPriceCard(context, provider, theme),
                         const SizedBox(height: 16),
+                        _buildNewsSection(context, theme),
+                        const SizedBox(height: 16),
                         _buildPyusdInfoSection(context, theme),
                         const SizedBox(height: 16),
                         _buildMarketStatsGrid(context, provider, theme),
@@ -84,19 +87,28 @@ class InsightsScreen extends StatelessWidget {
     final dataSource = provider.marketData['data_source'] ?? 'Unknown';
     final lastUpdated =
         provider.getTimeAgo(provider.marketData['last_updated']);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       color: isRealData
-          ? Colors.green.withOpacity(0.1)
-          : Colors.orange.withOpacity(0.1),
+          ? (isDarkMode
+              ? Colors.green.shade900.withOpacity(0.3)
+              : Colors.green.withOpacity(0.1))
+          : (isDarkMode
+              ? Colors.orange.shade900.withOpacity(0.3)
+              : Colors.orange.withOpacity(0.1)),
       child: Row(
         children: [
           Icon(
             isRealData ? Icons.verified : Icons.warning,
-            color: isRealData ? Colors.green : Colors.orange,
-            size: 20,
+            color: isRealData
+                ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
+                : (isDarkMode
+                    ? Colors.orange.shade300
+                    : Colors.orange.shade700),
+            size: 18,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -973,6 +985,99 @@ class InsightsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNewsSection(BuildContext context, ThemeData theme) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NewsExploreScreen(),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.newspaper,
+                          color: Colors.blue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Latest News',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 16),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Stay updated with the latest news about PYUSD and the crypto market',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Chip(
+                    label: const Text('PYUSD'),
+                    backgroundColor: Colors.green.withOpacity(0.2),
+                    labelStyle: TextStyle(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Chip(
+                    label: const Text('Ethereum'),
+                    backgroundColor: Colors.purple.withOpacity(0.2),
+                    labelStyle: TextStyle(
+                      color: Colors.purple.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Chip(
+                    label: const Text('Market'),
+                    backgroundColor: Colors.orange.withOpacity(0.2),
+                    labelStyle: TextStyle(
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

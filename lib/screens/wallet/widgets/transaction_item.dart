@@ -28,6 +28,18 @@ class TransactionItem extends StatefulWidget {
 class _TransactionItemState extends State<TransactionItem> {
   bool _isLoading = false;
 
+  // Memoize formatted amount to avoid recalculating
+  late final String _formattedAmount;
+  late final bool _isIncoming;
+
+  @override
+  void initState() {
+    super.initState();
+    // Precalculate values that won't change
+    _isIncoming = widget.transaction.direction == TransactionDirection.incoming;
+    _formattedAmount = _formatAmount(widget.transaction);
+  }
+
   // Helper method to format amount
   String _formatAmount(TransactionModel tx) {
     if (tx.tokenSymbol == 'PYUSD') {
@@ -41,16 +53,6 @@ class _TransactionItemState extends State<TransactionItem> {
 
   @override
   Widget build(BuildContext context) {
-    // Use the transaction directly from props
-    final displayTransaction = widget.transaction;
-
-    // Determine if the transaction is incoming or outgoing
-    final bool isIncoming =
-        displayTransaction.direction == TransactionDirection.incoming;
-
-    // Format the amount string
-    final formattedAmount = _formatAmount(displayTransaction);
-
     return Card(
       color: widget.cardColor,
       elevation: 0,
@@ -59,7 +61,7 @@ class _TransactionItemState extends State<TransactionItem> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () => _handleTransactionTap(displayTransaction),
+        onTap: () => _handleTransactionTap(widget.transaction),
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
@@ -68,7 +70,7 @@ class _TransactionItemState extends State<TransactionItem> {
               child: Row(
                 children: [
                   // Transaction icon with animation for pending status
-                  _buildTransactionIcon(isIncoming, displayTransaction.status),
+                  _buildTransactionIcon(_isIncoming, widget.transaction.status),
                   const SizedBox(width: 12),
 
                   // Transaction details
@@ -76,68 +78,11 @@ class _TransactionItemState extends State<TransactionItem> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Text(
-                              isIncoming ? 'Received' : 'Sent',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: widget.isDarkMode
-                                    ? Colors.white
-                                    : Colors.black87,
-                              ),
-                            ),
-                            if (displayTransaction.tokenSymbol != null)
-                              Container(
-                                margin: const EdgeInsets.only(left: 8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  displayTransaction.tokenSymbol!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                        _buildTransactionHeader(),
                         const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                const BorderRadius.all(Radius.circular(8)),
-                            color: Colors.white.withOpacity(0.2),
-                          ),
-                          child: Text(
-                            FormatterUtils.formatHash(displayTransaction.hash),
-                            style: TextStyle(
-                              fontSize: 8,
-                              fontFamily: "monospace",
-                              color: widget.isDarkMode
-                                  ? Colors.white
-                                  : Colors.black87,
-                            ),
-                          ),
-                        ),
+                        _buildTransactionHash(),
                         const SizedBox(height: 4),
-                        Text(
-                          DateTimeUtils.formatDateTime(
-                              displayTransaction.timestamp),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: widget.isDarkMode
-                                ? Colors.white70
-                                : Colors.black54,
-                          ),
-                        ),
+                        _buildTransactionTimestamp(),
                       ],
                     ),
                   ),
@@ -147,17 +92,15 @@ class _TransactionItemState extends State<TransactionItem> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        formattedAmount,
+                        _formattedAmount,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: isIncoming ? Colors.green : Colors.red,
+                          color: _isIncoming ? Colors.green : Colors.red,
                         ),
                       ),
                       const SizedBox(height: 4),
-
-                      // Transaction status
-                      _buildStatusPill(displayTransaction.status),
+                      _buildStatusPill(widget.transaction.status),
                     ],
                   ),
                 ],
@@ -165,26 +108,90 @@ class _TransactionItemState extends State<TransactionItem> {
             ),
 
             // Loading indicator overlay
-            if (_isLoading)
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            if (_isLoading) _buildLoadingOverlay(),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Extract widgets to methods for better organization
+  Widget _buildTransactionHeader() {
+    return Row(
+      children: [
+        Text(
+          _isIncoming ? 'Received' : 'Sent',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: widget.isDarkMode ? Colors.white : Colors.black87,
+          ),
+        ),
+        if (widget.transaction.tokenSymbol != null)
+          Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              widget.transaction.tokenSymbol!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.blue,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionHash() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.all(Radius.circular(8)),
+        color: Colors.white.withOpacity(0.2),
+      ),
+      child: Text(
+        FormatterUtils.formatHash(widget.transaction.hash),
+        style: TextStyle(
+          fontSize: 8,
+          fontFamily: "monospace",
+          color: widget.isDarkMode ? Colors.white : Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionTimestamp() {
+    return Text(
+      DateTimeUtils.formatDateTime(widget.transaction.timestamp),
+      style: TextStyle(
+        fontSize: 12,
+        color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+      ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
         ),
       ),
     );

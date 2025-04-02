@@ -292,25 +292,34 @@ class TransactionProvider extends ChangeNotifier
     try {
       final currentNetwork = _networkProvider.currentNetwork;
 
-      final futures = await Future.wait([
-        _rpcService.getTransactions(
+      List<Map<String, dynamic>> ethTxs = [];
+      List<Map<String, dynamic>> tokenTxs = [];
+
+      try {
+        ethTxs = await _rpcService.getTransactions(
           address,
           currentNetwork,
           page: _currentPage,
           perPage: _perPage,
-        ),
-        _rpcService.getTokenTransactions(
+        );
+      } catch (e) {
+        print('Error fetching ETH transactions: $e');
+        // Continue with empty list
+      }
+
+      try {
+        tokenTxs = await _rpcService.getTokenTransactions(
           address,
           currentNetwork,
           page: _currentPage,
           perPage: _perPage,
-        ),
-      ]);
+        );
+      } catch (e) {
+        print('Error fetching token transactions: $e');
+        // Continue with empty list
+      }
 
       if (disposed) return;
-
-      final ethTxs = futures[0];
-      final tokenTxs = futures[1];
 
       final newTransactions =
           _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
@@ -589,34 +598,52 @@ class TransactionProvider extends ChangeNotifier
         _transactionsByNetwork[currentNetwork]?.clear();
       }
 
-      final futures = await Future.wait([
-        _rpcService.getTransactions(
+      List<Map<String, dynamic>> ethTxs = [];
+      List<Map<String, dynamic>> tokenTxs = [];
+      double ethBalance = 0.0;
+      double tokenBalance = 0.0;
+
+      // Use separate try-catch blocks to prevent one failure from affecting others
+      try {
+        ethTxs = await _rpcService.getTransactions(
           address,
           currentNetwork,
           page: _currentPage,
           perPage: _perPage,
-        ),
-        _rpcService.getTokenTransactions(
+        );
+      } catch (e) {
+        print('Error fetching ETH transactions: $e');
+      }
+
+      try {
+        tokenTxs = await _rpcService.getTokenTransactions(
           address,
           currentNetwork,
           page: _currentPage,
           perPage: _perPage,
-        ),
-        _rpcService.getEthBalance(rpcUrl, address),
-        _rpcService.getTokenBalance(
+        );
+      } catch (e) {
+        print('Error fetching token transactions: $e');
+      }
+
+      try {
+        ethBalance = await _rpcService.getEthBalance(rpcUrl, address);
+      } catch (e) {
+        print('Error fetching ETH balance: $e');
+      }
+
+      try {
+        tokenBalance = await _rpcService.getTokenBalance(
           rpcUrl,
           _tokenContractAddresses[currentNetwork] ?? '',
           address,
           decimals: 6,
-        ),
-      ]);
+        );
+      } catch (e) {
+        print('Error fetching token balance: $e');
+      }
 
       if (disposed) return;
-
-      final ethTxs = futures[0] as List<Map<String, dynamic>>;
-      final tokenTxs = futures[1] as List<Map<String, dynamic>>;
-      final ethBalance = futures[2] as double;
-      final tokenBalance = futures[3] as double;
 
       final newTransactions = _processTransactions(
         ethTxs,

@@ -32,10 +32,9 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor =
-        widget.isDarkMode ? const Color(0xFF252543) : Colors.grey.shade50;
-    final backgroundColor =
-        widget.isDarkMode ? const Color(0xFF1A1A2E) : Colors.white;
+    final theme = Theme.of(context);
+    final cardColor = theme.cardTheme.color;
+    final backgroundColor = theme.scaffoldBackgroundColor;
 
     final filteredTransactions = _getFilteredTransactions();
 
@@ -43,11 +42,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(theme),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         child: filteredTransactions.isEmpty
-            ? _buildEmptyState()
+            ? _buildEmptyState(theme)
             : ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: filteredTransactions.length,
@@ -59,7 +58,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       transaction: tx,
                       currentAddress: widget.currentAddress,
                       isDarkMode: widget.isDarkMode,
-                      cardColor: cardColor,
+                      cardColor: cardColor!,
                     ),
                   );
                 },
@@ -68,7 +67,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(ThemeData theme) {
+    final textColor = theme.textTheme.titleLarge?.color;
+    final dropdownBackgroundColor = widget.isDarkMode
+        ? theme.colorScheme.surface.withOpacity(0.5)
+        : theme.colorScheme.surface;
+    final dropdownBorderColor =
+        widget.isDarkMode ? theme.dividerTheme.color : theme.dividerTheme.color;
+
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -76,9 +82,8 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         children: [
           Text(
             'All Transactions',
-            style: TextStyle(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
-              color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
             ),
           ),
           const Spacer(),
@@ -86,14 +91,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: widget.isDarkMode
-                  ? Colors.grey.shade800.withOpacity(0.5)
-                  : Colors.grey.shade100,
+              color: dropdownBackgroundColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: widget.isDarkMode
-                    ? Colors.grey.shade700
-                    : Colors.grey.shade300,
+                color: dropdownBorderColor ?? Colors.transparent,
                 width: 1,
               ),
             ),
@@ -102,26 +103,18 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               icon: Icon(
                 Icons.filter_list_rounded,
                 size: 20,
-                color: widget.isDarkMode ? Colors.white70 : Colors.black87,
+                color: textColor,
               ),
               underline: const SizedBox(),
               isDense: true,
-              style: TextStyle(
-                color: widget.isDarkMode ? Colors.white : Colors.black87,
-                fontSize: 14,
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
-              dropdownColor:
-                  widget.isDarkMode ? Colors.grey.shade800 : Colors.white,
+              dropdownColor: theme.colorScheme.surface,
               items: ['All', 'PYUSD', 'ETH'].map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      color: widget.isDarkMode ? Colors.white : Colors.black87,
-                    ),
-                  ),
+                  child: Text(value),
                 );
               }).toList(),
               onChanged: (String? newValue) {
@@ -135,20 +128,22 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           ),
           const SizedBox(width: 8),
           // Refresh button
-          _buildRefreshButton(),
+          _buildRefreshButton(theme),
         ],
       ),
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back,
-          color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+          color: textColor,
         ),
         onPressed: () => Navigator.pop(context),
       ),
     );
   }
 
-  Widget _buildRefreshButton() {
+  Widget _buildRefreshButton(ThemeData theme) {
+    final iconColor = theme.textTheme.titleLarge?.color;
+
     return IconButton(
       icon: _isRefreshing
           ? SizedBox(
@@ -157,13 +152,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                  theme.colorScheme.primary,
                 ),
               ),
             )
           : Icon(
               Icons.refresh,
-              color: widget.isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+              color: iconColor,
             ),
       onPressed: _isRefreshing ? null : _handleRefresh,
     );
@@ -204,7 +199,17 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(ThemeData theme) {
+    final primaryIconColor = widget.isDarkMode
+        ? theme.colorScheme.onSurface.withOpacity(0.38)
+        : theme.colorScheme.onSurface.withOpacity(0.26);
+    final primaryTextColor = widget.isDarkMode
+        ? theme.colorScheme.onSurface.withOpacity(0.7)
+        : theme.colorScheme.onSurface.withOpacity(0.54);
+    final secondaryTextColor = widget.isDarkMode
+        ? theme.colorScheme.onSurface.withOpacity(0.3)
+        : theme.colorScheme.onSurface.withOpacity(0.38);
+
     return ListView(
       children: [
         SizedBox(
@@ -217,22 +222,20 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               Icon(
                 Icons.receipt_long_rounded,
                 size: 80,
-                color: widget.isDarkMode ? Colors.white38 : Colors.black26,
+                color: primaryIconColor,
               ),
               const SizedBox(height: 24),
               Text(
                 EmptyStateUtils.getTransactionEmptyStateMessage(_filter),
-                style: TextStyle(
-                  fontSize: 20,
-                  color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: primaryTextColor,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Pull down to refresh',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: widget.isDarkMode ? Colors.white30 : Colors.black38,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: secondaryTextColor,
                 ),
               ),
             ],

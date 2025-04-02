@@ -296,11 +296,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    final onBackground = Theme.of(context).colorScheme.onSurface;
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final onBackground = theme.colorScheme.onSurface;
     final isDarkMode = theme.brightness == Brightness.dark;
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final dividerColor = theme.dividerTheme.color ?? theme.dividerColor;
 
     return ChangeNotifierProxyProvider<AuthProvider, SecuritySettingsProvider>(
       create: (ctx) => SecuritySettingsProvider(
@@ -330,11 +332,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.1),
+                              color: primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: primaryColor.withOpacity(0.2),
+                                width: 1,
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,8 +348,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                     const SizedBox(width: 8),
                                     Text(
                                       'Security Options',
-                                      style: TextStyle(
-                                        fontSize: 18,
+                                      style:
+                                          theme.textTheme.titleLarge?.copyWith(
                                         fontWeight: FontWeight.bold,
                                         color: onBackground,
                                       ),
@@ -356,8 +359,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                 const SizedBox(height: 16),
                                 Text(
                                   'Secure your wallet with multiple authentication methods',
-                                  style: TextStyle(
-                                    fontSize: 14,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
                                     color: onBackground.withOpacity(0.7),
                                   ),
                                 ),
@@ -370,8 +372,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                           // PIN Section
                           Text(
                             'PIN Protection',
-                            style: TextStyle(
-                              fontSize: 16,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: onBackground,
                             ),
@@ -379,8 +380,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                           const SizedBox(height: 8),
                           Text(
                             'Your PIN is required to access your wallet and confirm transactions',
-                            style: TextStyle(
-                              fontSize: 14,
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               color: onBackground.withOpacity(0.7),
                             ),
                           ),
@@ -396,8 +396,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                               children: [
                                 Text(
                                   'Biometric Authentication',
-                                  style: TextStyle(
-                                    fontSize: 16,
+                                  style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: onBackground,
                                   ),
@@ -405,8 +404,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                 const SizedBox(height: 8),
                                 Text(
                                   'Use fingerprint to quickly access your wallet',
-                                  style: TextStyle(
-                                    fontSize: 14,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
                                     color: onBackground.withOpacity(0.7),
                                   ),
                                 ),
@@ -464,8 +462,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             children: [
                               Text(
                                 'Auto-Lock',
-                                style: TextStyle(
-                                  fontSize: 16,
+                                style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: onBackground,
                                 ),
@@ -473,8 +470,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                               const SizedBox(height: 8),
                               Text(
                                 'Automatically lock your wallet after a period of inactivity',
-                                style: TextStyle(
-                                  fontSize: 14,
+                                style: theme.textTheme.bodyMedium?.copyWith(
                                   color: onBackground.withOpacity(0.7),
                                 ),
                               ),

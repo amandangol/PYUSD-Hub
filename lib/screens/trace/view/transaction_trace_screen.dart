@@ -662,6 +662,8 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                       style: TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 8),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 8),
                     Text(
                       'This may take a few moments',
                       style: TextStyle(

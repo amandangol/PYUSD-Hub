@@ -32,6 +32,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   List<TransactionModel> _filteredTransactions = [];
   WaletScreenProvider? _homeProvider;
   static const int _initialDisplayCount = 3;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -41,6 +42,7 @@ class _TransactionsSectionState extends State<TransactionsSection> {
       if (mounted) {
         _homeProvider = context.read<WaletScreenProvider>();
         _updateFilteredTransactions();
+        _isInitialized = true;
       }
     });
   }
@@ -48,8 +50,8 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   @override
   void didUpdateWidget(TransactionsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.transactions != oldWidget.transactions) {
-      print('Transactions updated in TransactionSection');
+    // Only update if transactions changed or not initialized yet
+    if (!_isInitialized || widget.transactions != oldWidget.transactions) {
       _updateFilteredTransactions();
     }
   }
@@ -57,15 +59,24 @@ class _TransactionsSectionState extends State<TransactionsSection> {
   void _updateFilteredTransactions() {
     if (!mounted) return;
 
-    final homeProvider = _homeProvider ?? context.read<WaletScreenProvider>();
-    final filtered =
-        homeProvider.getFilteredAndSortedTransactions(widget.transactions);
+    try {
+      final homeProvider = _homeProvider ?? context.read<WaletScreenProvider>();
+      final filtered =
+          homeProvider.getFilteredAndSortedTransactions(widget.transactions);
 
-    if (mounted) {
-      setState(() {
-        _filteredTransactions = filtered;
-        print('Filtered transactions updated: ${_filteredTransactions.length}');
-      });
+      if (mounted) {
+        setState(() {
+          _filteredTransactions = filtered;
+        });
+      }
+    } catch (e) {
+      print('Error updating filtered transactions: $e');
+      // Handle error gracefully
+      if (mounted) {
+        setState(() {
+          _filteredTransactions = [];
+        });
+      }
     }
   }
 
@@ -87,17 +98,25 @@ class _TransactionsSectionState extends State<TransactionsSection> {
 
     final displayTransactions =
         _filteredTransactions.take(_initialDisplayCount).toList();
-    print(
-        'Building TransactionSection with ${displayTransactions.length} transactions');
+
+    // CRITICAL FIX: Always prioritize the loading state check
+    if (widget.isLoading) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 16),
+          _buildLoadingState(),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeader(context),
         const SizedBox(height: 16),
-        if (widget.isLoading)
-          _buildLoadingState()
-        else if (displayTransactions.isEmpty)
+        if (displayTransactions.isEmpty)
           _buildEmptyState(currentFilter)
         else
           Column(
@@ -179,13 +198,16 @@ class _TransactionsSectionState extends State<TransactionsSection> {
     );
   }
 
-  // Optimize loading state with shimmer effect
+  // Improve the loading state with better shimmer effect
   Widget _buildLoadingState() {
     return Column(
       children: List.generate(
         3,
-        (index) => TransactionShimmerItem(
-          isDarkMode: widget.isDarkMode,
+        (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: TransactionShimmerItem(
+            isDarkMode: widget.isDarkMode,
+          ),
         ),
       ),
     );

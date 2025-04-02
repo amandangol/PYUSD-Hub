@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/screens/trace/widgets/trace_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../utils/formatter_utils.dart';
 import '../../../../utils/snackbar_utils.dart';
@@ -705,7 +706,7 @@ class _BlocksTabState extends State<BlocksTab> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
-          ElevatedButton(
+          TraceButton(
             onPressed: () {
               Navigator.pop(context);
               // Navigate to transaction trace screen
@@ -722,7 +723,8 @@ class _BlocksTabState extends State<BlocksTab> {
                     ));
               }
             },
-            child: const Text('Trace Transaction'),
+            text: 'Trace',
+            icon: Icons.search,
           ),
         ],
       ),

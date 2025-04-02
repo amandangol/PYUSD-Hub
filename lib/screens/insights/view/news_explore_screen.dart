@@ -7,7 +7,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../utils/snackbar_utils.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../provider/news_provider.dart';
-import '../../settings/view/pyusd_info_screen.dart';
 
 class NewsExploreScreen extends StatefulWidget {
   const NewsExploreScreen({super.key});
@@ -51,13 +50,13 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: PyusdAppBar(
-        title: 'PYUSD Insights',
+        title: 'Explore News',
         isDarkMode: isDarkMode,
-        showLogo: true,
+        showLogo: false,
         onRefreshPressed: context.read<NewsProvider>().refresh,
-        hasWallet: true,
       ),
       body: RefreshIndicator(
+        color: theme.colorScheme.primary,
         onRefresh: () => context.read<NewsProvider>().refresh(),
         child: CustomScrollView(
           slivers: [
@@ -148,6 +147,7 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                         child: Card(
+                          color: theme.colorScheme.surface,
                           elevation: 3,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),

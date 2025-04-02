@@ -41,13 +41,10 @@ class BalanceCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    // Colors
-    const paypalBlue = Color(0xFF142C8E);
-
     // Extract card content to improve readability
     return Card(
       elevation: 8,
-      shadowColor: Colors.black26,
+      shadowColor: isDarkMode ? Colors.black54 : Colors.black26,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -57,8 +54,8 @@ class BalanceCard extends StatelessWidget {
         child: Stack(
           children: [
             // Decorative elements
-            _buildDecorativeCircle(true, isDarkMode, paypalBlue),
-            _buildDecorativeCircle(false, isDarkMode, paypalBlue),
+            _buildDecorativeCircle(true, isDarkMode),
+            _buildDecorativeCircle(false, isDarkMode),
 
             // Card content
             Padding(
@@ -69,11 +66,11 @@ class BalanceCard extends StatelessWidget {
                 children: [
                   _buildCardHeader(context, isDarkMode),
                   const SizedBox(height: 24),
-                  _buildBalanceSection(context, isDarkMode, paypalBlue),
+                  _buildBalanceSection(context, isDarkMode),
                   const SizedBox(height: 24),
                   _buildDivider(isDarkMode),
                   const SizedBox(height: 16),
-                  _buildWalletAddressSection(context, isDarkMode, paypalBlue),
+                  _buildWalletAddressSection(context, isDarkMode),
                 ],
               ),
             ),
@@ -94,9 +91,11 @@ class BalanceCard extends StatelessWidget {
             ? const [_paypalBlue, _paypalLightBlue]
             : const [Colors.white, Color(0xFFF5F7FA)],
       ),
-      boxShadow: const [
+      boxShadow: [
         BoxShadow(
-          color: Color(0x0D000000), // Pre-calculated opacity
+          color: isDarkMode
+              ? Colors.black.withOpacity(0.2)
+              : const Color(0x0D000000), // Pre-calculated opacity
           blurRadius: 10,
           spreadRadius: 1,
         ),
@@ -104,7 +103,7 @@ class BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDecorativeCircle(bool isTop, bool isDarkMode, Color paypalBlue) {
+  Widget _buildDecorativeCircle(bool isTop, bool isDarkMode) {
     return Positioned(
       top: isTop ? -20 : null,
       right: isTop ? -20 : null,
@@ -116,8 +115,8 @@ class BalanceCard extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: isDarkMode
-              ? Colors.white.withOpacity(isTop ? 0.03 : 0.02)
-              : paypalBlue.withOpacity(isTop ? 0.05 : 0.03),
+              ? Colors.white.withOpacity(isTop ? 0.05 : 0.03)
+              : _paypalBlue.withOpacity(isTop ? 0.05 : 0.03),
         ),
       ),
     );
@@ -168,8 +167,7 @@ class BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBalanceSection(
-      BuildContext context, bool isDarkMode, Color paypalBlue) {
+  Widget _buildBalanceSection(BuildContext context, bool isDarkMode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -190,8 +188,7 @@ class BalanceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child:
-                          _buildBalanceDisplay(context, isDarkMode, paypalBlue),
+                      child: _buildBalanceDisplay(context, isDarkMode),
                     ),
                     _buildEthBalanceChip(context, isDarkMode),
                   ],
@@ -288,8 +285,7 @@ class BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBalanceDisplay(
-      BuildContext context, bool isDarkMode, Color paypalBlue) {
+  Widget _buildBalanceDisplay(BuildContext context, bool isDarkMode) {
     final isBalanceVisible = context.select<WaletScreenProvider, bool>(
       (provider) => provider.isBalanceVisible,
     );
@@ -339,18 +335,22 @@ class BalanceCard extends StatelessWidget {
         children: [
           SvgPicture.asset(
             'assets/svg/ethereum_logo.svg',
-            width: 17,
-            height: 17,
+            height: 14,
+            width: 14,
+            colorFilter: ColorFilter.mode(
+              isDarkMode ? Colors.white70 : Colors.black54,
+              BlendMode.srcIn,
+            ),
           ),
           const SizedBox(width: 6),
           Text(
             isBalanceVisible
                 ? '${(ethBalance ?? 0).toStringAsFixed(4)} ETH'
-                : '**** ETH',
+                : '**.** ETH',
             style: TextStyle(
-              color: isDarkMode ? Colors.white70 : Colors.black54,
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
             ),
           ),
         ],
@@ -362,33 +362,15 @@ class BalanceCard extends StatelessWidget {
     return Divider(
       color: isDarkMode
           ? Colors.white.withOpacity(0.1)
-          : Colors.black.withOpacity(0.05),
+          : Colors.black.withOpacity(0.1),
       thickness: 1,
     );
   }
 
-  Widget _buildWalletAddressSection(
-    BuildContext context,
-    bool isDarkMode,
-    Color paypalBlue,
-  ) {
+  Widget _buildWalletAddressSection(BuildContext context, bool isDarkMode) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isDarkMode
-                ? Colors.white.withOpacity(0.08)
-                : paypalBlue.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.account_balance_wallet_outlined,
-            color: isDarkMode ? Colors.white70 : paypalBlue,
-            size: 18,
-          ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,49 +379,48 @@ class BalanceCard extends StatelessWidget {
                 'Wallet Address',
                 style: TextStyle(
                   color: isDarkMode ? Colors.white70 : Colors.black54,
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                walletAddress.isEmpty
-                    ? 'No wallet connected'
-                    : '${walletAddress.substring(0, 10)}...${walletAddress.substring(walletAddress.length - 6)}',
+                _formatWalletAddress(walletAddress),
                 style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1,
-                    fontFamily: "monospace"),
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
           ),
         ),
-        InkWell(
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: walletAddress));
-            SnackbarUtil.showSnackbar(
-              context: context,
-              message: "Address copied to clipboard",
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isDarkMode
-                  ? Colors.white.withOpacity(0.08)
-                  : paypalBlue.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.copy_rounded,
-              color: isDarkMode ? Colors.white70 : paypalBlue,
-              size: 18,
-            ),
+        IconButton(
+          icon: Icon(
+            Icons.copy,
+            color: isDarkMode ? Colors.white70 : _paypalBlue,
+            size: 18,
           ),
+          onPressed: () => _copyWalletAddress(context),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          visualDensity: VisualDensity.compact,
         ),
       ],
+    );
+  }
+
+  String _formatWalletAddress(String address) {
+    if (address.length < 10) return address;
+    return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+  }
+
+  void _copyWalletAddress(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: walletAddress));
+    SnackbarUtil.showSnackbar(
+      context: context,
+      message: 'Wallet address copied to clipboard',
     );
   }
 }
