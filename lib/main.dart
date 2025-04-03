@@ -162,19 +162,16 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
       ],
-      child: Consumer<OnboardingProvider>(
-        builder: (context, onboardingProvider, child) {
+      child: Consumer2<ThemeProvider, SessionProvider>(
+        builder: (context, themeProvider, sessionProvider, child) {
           return MaterialApp(
             title: 'PYUSD Wallet & Analytics',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: context.watch<ThemeProvider>().isDarkMode
-                ? ThemeMode.dark
-                : ThemeMode.light,
-            navigatorKey: context.read<SessionProvider>().navigatorKey,
-            initialRoute: onboardingProvider.hasCompletedOnboarding
-                ? AppRoutes.splash
-                : AppRoutes.onboarding,
+            themeMode:
+                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            navigatorKey: sessionProvider.navigatorKey,
+            initialRoute: AppRoutes.splash,
             onGenerateRoute: AppRoutes.generateRoute,
             debugShowCheckedModeBanner: false,
           );

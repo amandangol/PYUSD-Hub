@@ -903,7 +903,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.of(dialogContext).pop();
 
               // Reset onboarding state when logging out
-              await onboardingProvider.resetOnboarding();
               await authProvider.logout();
 
               if (context.mounted) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../screens/authentication/screen/splash_screen.dart';
-import '../screens/authentication/widget/activity_aware_widget.dart';
 import '../screens/authentication/screen/login_screen.dart';
 import '../screens/authentication/screen/wallet_selection_screen.dart';
 import '../screens/authentication/screen/create_wallet_screen.dart';
@@ -34,72 +33,68 @@ class AppRoutes {
 
     if (routeName == splash) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: SplashScreen()),
+        builder: (_) => const SplashScreen(),
         settings: settings,
       );
     } else if (routeName == main) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: MainApp()),
+        builder: (_) => const MainApp(),
         settings: settings,
       );
     } else if (routeName == settings) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: SettingsScreen()),
+        builder: (_) => const SettingsScreen(),
         settings: settings,
       );
     } else if (routeName == wallet) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: MainApp()),
+        builder: (_) => const MainApp(),
         settings: settings,
       );
     } else if (routeName == network) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: MainApp()),
+        builder: (_) => const MainApp(),
         settings: settings,
       );
     } else if (routeName == explore) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: MainApp()),
+        builder: (_) => const MainApp(),
         settings: settings,
       );
     } else if (routeName == insights) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: MainApp()),
+        builder: (_) => const MainApp(),
         settings: settings,
       );
     } else if (routeName == login) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: LoginScreen()),
+        builder: (_) => const LoginScreen(),
         settings: settings,
       );
     } else if (routeName == walletSelection) {
       final args = settings.arguments as Map<String, dynamic>?;
       return MaterialPageRoute(
-        builder: (_) => ActivityAwareWidget(
-          child: WalletSelectionScreen(
-            forceNavigateToSelect: args?['forceNavigateToSelect'] ?? false,
-          ),
+        builder: (_) => WalletSelectionScreen(
+          forceNavigateToSelect: args?['forceNavigateToSelect'] ?? false,
         ),
         settings: settings,
       );
     } else if (routeName == createWallet) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: CreateWalletScreen()),
+        builder: (_) => const CreateWalletScreen(),
         settings: settings,
       );
     } else if (routeName == importWallet) {
       return MaterialPageRoute(
-        builder: (_) => const ActivityAwareWidget(child: ImportWalletScreen()),
+        builder: (_) => const ImportWalletScreen(),
         settings: settings,
       );
     } else if (routeName == mnemonic) {
       final args = settings.arguments as Map<String, dynamic>?;
       return MaterialPageRoute(
-        builder: (_) => ActivityAwareWidget(
-          child: MnemonicConfirmationScreen(
-            mnemonic: args?['mnemonic'] as String,
-            pin: args?['pin'] as String,
-          ),
+        builder: (_) => MnemonicConfirmationScreen(
+          mnemonic: args?['mnemonic'] as String,
+          pin: args?['pin'] as String,
         ),
         settings: settings,
       );
@@ -120,16 +115,13 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
-      splash: (context) => const ActivityAwareWidget(child: SplashScreen()),
-      main: (context) => const ActivityAwareWidget(child: MainApp()),
-      settings: (context) => const ActivityAwareWidget(child: SettingsScreen()),
-      login: (context) => const ActivityAwareWidget(child: LoginScreen()),
-      walletSelection: (context) =>
-          const ActivityAwareWidget(child: WalletSelectionScreen()),
-      createWallet: (context) =>
-          const ActivityAwareWidget(child: CreateWalletScreen()),
-      importWallet: (context) =>
-          const ActivityAwareWidget(child: ImportWalletScreen()),
+      splash: (context) => const SplashScreen(),
+      main: (context) => const MainApp(),
+      settings: (context) => const SettingsScreen(),
+      login: (context) => const LoginScreen(),
+      walletSelection: (context) => const WalletSelectionScreen(),
+      createWallet: (context) => const CreateWalletScreen(),
+      importWallet: (context) => const ImportWalletScreen(),
     };
   }
 }

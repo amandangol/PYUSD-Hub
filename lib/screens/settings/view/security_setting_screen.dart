@@ -599,67 +599,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                 ],
                               ),
                             ),
-
-                          const SizedBox(height: 32),
-
-                          // Auto-Lock Section
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Auto-Lock',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Automatically lock your wallet after a period of inactivity',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.7),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Consumer<SessionProvider>(
-                                builder: (context, sessionProvider, _) {
-                                  return DropdownButtonFormField<int>(
-                                    value: sessionProvider.autoLockDuration,
-                                    decoration: InputDecoration(
-                                      labelText: 'Auto-Lock Timer',
-                                      border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                      ),
-                                      prefixIcon: Icon(Icons.timer,
-                                          color: theme.colorScheme.primary),
-                                    ),
-                                    items: const [
-                                      DropdownMenuItem(
-                                          value: 1, child: Text('1 minute')),
-                                      DropdownMenuItem(
-                                          value: 5, child: Text('5 minutes')),
-                                      DropdownMenuItem(
-                                          value: 15, child: Text('15 minutes')),
-                                      DropdownMenuItem(
-                                          value: 30, child: Text('30 minutes')),
-                                      DropdownMenuItem(
-                                          value: 60, child: Text('1 hour')),
-                                      DropdownMenuItem(
-                                          value: 0, child: Text('Never')),
-                                    ],
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        sessionProvider
-                                            .setAutoLockDuration(value);
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
                         ],
                       ),
               ),
