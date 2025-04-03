@@ -518,8 +518,6 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
   }
 
   Widget _buildTraceVisualizationCard() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     Widget visualization;
 
     switch (widget.traceMethod) {

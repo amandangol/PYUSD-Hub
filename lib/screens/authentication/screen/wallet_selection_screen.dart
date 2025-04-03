@@ -37,7 +37,7 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
     await authProvider.initWallet();
 
     if (mounted) {
-      // If we have a wallet, go to login screen unless force onboarding is true
+      // If we have a wallet, go to login screen unless force wallet selection is true
       if (!widget.forceNavigateToSelect && authProvider.hasWallet) {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const LoginScreen()));
@@ -96,7 +96,7 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             foregroundColor: theme.colorScheme.primary,
           ),
-          child: Text(
+          child: const Text(
             'Log in with existing wallet',
             style: TextStyle(
               fontWeight: FontWeight.w600,

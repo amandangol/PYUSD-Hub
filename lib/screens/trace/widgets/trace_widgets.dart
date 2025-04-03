@@ -30,7 +30,6 @@ class TraceInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
     final inputFillColor = theme.colorScheme.surface.withOpacity(0.5);
     final borderColor = theme.colorScheme.outline;
     final labelColor = theme.colorScheme.primary;
@@ -248,10 +247,6 @@ class TraceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final defaultBackgroundColor = theme.colorScheme.primary;
-    final defaultTextColor = theme.colorScheme.onPrimary;
-
     final buttonStyle = isOutlined
         ? OutlinedButton.styleFrom(
             side: BorderSide(color: backgroundColor),

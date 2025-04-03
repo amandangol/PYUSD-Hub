@@ -35,12 +35,18 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
     if (_pinController.text != _confirmPinController.text) {
       setState(() {
         _pinMatch = false;
+        _errorMessage = "PINs don't match";
       });
-    } else {
-      setState(() {
-        _pinMatch = true;
-      });
+      return;
     }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final validation = authProvider.validatePIN(_pinController.text);
+
+    setState(() {
+      _pinMatch = validation.isValid;
+      _errorMessage = validation.error;
+    });
   }
 
   Future<void> _importWallet() async {
@@ -55,25 +61,23 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
       return;
     }
 
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final validation = authProvider.validatePIN(_pinController.text);
+    if (!validation.isValid) {
+      setState(() {
+        _errorMessage = validation.error;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final pin = _pinController.text.trim();
       final mnemonic = _mnemonicController.text.trim();
-
-      // Validate mnemonic before proceeding
-      if (!await _validateMnemonic(mnemonic)) {
-        setState(() {
-          _errorMessage =
-              "Invalid recovery phrase. Please check and try again.";
-          _isLoading = false;
-        });
-        return;
-      }
 
       await authProvider.importWalletFromMnemonic(mnemonic, pin);
 

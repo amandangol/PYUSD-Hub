@@ -7,6 +7,7 @@ import '../widget/pin_input_widget.dart.dart';
 import '../../../providers/navigation_provider.dart';
 import '../../../routes/app_routes.dart';
 import 'wallet_selection_screen.dart';
+import '../../../screens/onboarding/view/onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -158,13 +159,13 @@ class _LoginScreenState extends State<LoginScreen> {
         cancelText: 'Cancel',
         onConfirm: () {
           Navigator.of(dialogContext).pop();
-          _navigateToOnboarding();
+          _navigateToWalletSelection();
         },
       ),
     );
   }
 
-  void _navigateToOnboarding() {
+  void _navigateToWalletSelection() {
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -192,7 +193,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
     final authProvider = Provider.of<AuthProvider>(context);
     final walletAddress = authProvider.wallet?.address ?? '';
     final shortenedAddress = walletAddress.isNotEmpty
@@ -339,6 +339,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
+                  TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const FirstTimeOnboardingScreen(),
+                            ));
+                      },
+                      child: const Text('Test Onboarding')),
                   const SizedBox(height: 24),
                 ],
               ),

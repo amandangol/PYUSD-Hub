@@ -10,6 +10,9 @@ enum PinChangeStep {
 class SecuritySettingsProvider with ChangeNotifier {
   final AuthProvider _authProvider;
 
+  // Add a public getter for authProvider
+  AuthProvider get authProvider => _authProvider;
+
   // Biometrics state
   bool _isBiometricsAvailable = false;
   bool _isBiometricsEnabled = false;
@@ -17,6 +20,8 @@ class SecuritySettingsProvider with ChangeNotifier {
 
   // PIN state
   PinChangeStep _pinChangeStep = PinChangeStep.none;
+  bool _isPinVisible = false;
+  bool _isNewPinVisible = false;
   String? _currentPin;
   String? _error;
 
@@ -29,6 +34,8 @@ class SecuritySettingsProvider with ChangeNotifier {
   bool get isBiometricsEnabled => _isBiometricsEnabled;
   bool get isCheckingBiometrics => _isCheckingBiometrics;
   PinChangeStep get pinChangeStep => _pinChangeStep;
+  bool get isPinVisible => _isPinVisible;
+  bool get isNewPinVisible => _isNewPinVisible;
   String? get currentPin => _currentPin;
   String? get error => _error;
 
@@ -53,7 +60,30 @@ class SecuritySettingsProvider with ChangeNotifier {
 
   // Enable biometrics
   Future<bool> enableBiometrics(String pin) async {
+    // First validate PIN format
+    final validation = _authProvider.validatePIN(pin);
+    if (!validation.isValid) {
+      _error = validation.error;
+      notifyListeners();
+      return false;
+    }
+
+    // Verify if the entered PIN matches
+    final isPinValid = await _authProvider.authenticateWithPIN(pin);
+    if (!isPinValid) {
+      _error = 'Incorrect PIN';
+      notifyListeners();
+      return false;
+    }
+
     final success = await _authProvider.enableBiometrics(pin);
+    if (success) {
+      _isBiometricsEnabled = true;
+      _error = null;
+    } else {
+      _error = 'Failed to enable biometrics';
+    }
+    notifyListeners();
     return success;
   }
 
@@ -68,8 +98,11 @@ class SecuritySettingsProvider with ChangeNotifier {
     final success = await _authProvider.disableBiometrics();
     if (success) {
       _isBiometricsEnabled = false;
-      notifyListeners();
+      _error = null;
+    } else {
+      _error = 'Failed to disable biometrics';
     }
+    notifyListeners();
     return success;
   }
 
@@ -82,16 +115,49 @@ class SecuritySettingsProvider with ChangeNotifier {
   }
 
   // Set current PIN and move to next step
-  void setCurrentPin(String pin) {
+  Future<bool> setCurrentPin(String pin) async {
+    // First validate PIN format
+    final validation = _authProvider.validatePIN(pin);
+    if (!validation.isValid) {
+      _error = validation.error;
+      notifyListeners();
+      return false;
+    }
+
+    // Verify if the entered PIN matches the current PIN
+    final isPinValid = await _authProvider.authenticateWithPIN(pin);
+    if (!isPinValid) {
+      _error = 'Current PIN is incorrect';
+      notifyListeners();
+      return false;
+    }
+
     _currentPin = pin;
     _pinChangeStep = PinChangeStep.enterNew;
+    _error = null;
     notifyListeners();
+    return true;
   }
 
   // Change PIN
   Future<bool> changePin(String newPin) async {
     if (_currentPin == null) {
       _error = 'Current PIN is required';
+      notifyListeners();
+      return false;
+    }
+
+    // Validate new PIN
+    final validation = _authProvider.validatePIN(newPin);
+    if (!validation.isValid) {
+      _error = validation.error;
+      notifyListeners();
+      return false;
+    }
+
+    // Check if new PIN is same as current PIN
+    if (_currentPin == newPin) {
+      _error = 'New PIN must be different from current PIN';
       notifyListeners();
       return false;
     }
@@ -112,6 +178,25 @@ class SecuritySettingsProvider with ChangeNotifier {
   void resetPinChangeProcess() {
     _pinChangeStep = PinChangeStep.none;
     _currentPin = null;
+    _error = null;
+    _isPinVisible = false;
+    _isNewPinVisible = false;
+    notifyListeners();
+  }
+
+  // Add methods to toggle PIN visibility
+  void togglePinVisibility() {
+    _isPinVisible = !_isPinVisible;
+    notifyListeners();
+  }
+
+  void toggleNewPinVisibility() {
+    _isNewPinVisible = !_isNewPinVisible;
+    notifyListeners();
+  }
+
+  // Clear error message
+  void clearError() {
     _error = null;
     notifyListeners();
   }

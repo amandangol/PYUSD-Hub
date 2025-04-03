@@ -123,11 +123,20 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      // Validate PIN first
+      final validation = _authService.validatePIN(pin);
+      if (!validation.isValid) {
+        throw Exception(validation.error);
+      }
+
       // Create the wallet first
       _wallet = await _walletService.createWallet();
 
       // Set PIN for authentication
-      await _authService.setPIN(pin);
+      final pinResult = await _authService.setPIN(pin);
+      if (!pinResult.isValid) {
+        throw Exception(pinResult.error);
+      }
 
       // Encrypt wallet data with PIN
       await _walletService.encryptAndStoreWallet(_wallet!, pin);
@@ -136,6 +145,7 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
     } catch (e) {
       _setError('Failed to create wallet: $e');
+      throw e;
     } finally {
       _setLoading(false);
     }
@@ -147,6 +157,12 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      // Validate PIN first
+      final validation = _authService.validatePIN(pin);
+      if (!validation.isValid) {
+        throw Exception(validation.error);
+      }
+
       // Validate the mnemonic first
       final isValid = await _walletService.validateMnemonic(mnemonic);
       if (!isValid) {
@@ -460,5 +476,10 @@ class AuthProvider extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  // Add this method
+  PinValidationResult validatePIN(String pin) {
+    return _authService.validatePIN(pin);
   }
 }

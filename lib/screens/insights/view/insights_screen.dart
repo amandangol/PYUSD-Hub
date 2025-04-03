@@ -57,8 +57,8 @@ class InsightsScreen extends StatelessWidget {
                       children: [
                         _buildPriceCard(context, provider, theme),
                         const SizedBox(height: 16),
-                        _buildNewsSection(context, theme),
-                        const SizedBox(height: 16),
+                        // _buildNewsSection(context, theme),
+                        // const SizedBox(height: 16),
                         _buildPyusdInfoSection(context, theme),
                         const SizedBox(height: 16),
                         _buildMarketStatsGrid(context, provider, theme),
@@ -261,7 +261,6 @@ class InsightsScreen extends StatelessWidget {
   Widget _buildMarketStatsGrid(
       BuildContext context, InsightsProvider provider, ThemeData theme) {
     final marketData = provider.marketData;
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Card(
       elevation: 2,

@@ -162,16 +162,19 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
       ],
-      child: Consumer2<ThemeProvider, SessionProvider>(
-        builder: (context, themeProvider, sessionProvider, child) {
+      child: Consumer<OnboardingProvider>(
+        builder: (context, onboardingProvider, child) {
           return MaterialApp(
             title: 'PYUSD Wallet & Analytics',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode:
-                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            navigatorKey: sessionProvider.navigatorKey,
-            initialRoute: AppRoutes.splash,
+            themeMode: context.watch<ThemeProvider>().isDarkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
+            navigatorKey: context.read<SessionProvider>().navigatorKey,
+            initialRoute: onboardingProvider.hasCompletedOnboarding
+                ? AppRoutes.splash
+                : AppRoutes.onboarding,
             onGenerateRoute: AppRoutes.generateRoute,
             debugShowCheckedModeBanner: false,
           );
@@ -226,8 +229,11 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-    // Ensure we're on the wallet screen when the app starts
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initialize demo mode status
+      context.read<OnboardingProvider>().initializeDemoMode();
+
+      // Set initial screen
       context.read<NavigationProvider>().setWalletScreen();
     });
   }

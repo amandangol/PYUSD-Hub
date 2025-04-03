@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../routes/app_routes.dart';
-import '../../authentication/provider/auth_provider.dart';
 import '../provider/onboarding_provider.dart';
 
 class FirstTimeOnboardingScreen extends StatefulWidget {
-  const FirstTimeOnboardingScreen({Key? key}) : super(key: key);
+  const FirstTimeOnboardingScreen({super.key});
 
   @override
   State<FirstTimeOnboardingScreen> createState() =>
@@ -37,6 +36,27 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
     await provider.completeOnboarding();
     if (mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.walletSelection);
+    }
+  }
+
+  void _handleDemoMode(BuildContext context) async {
+    try {
+      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      await provider.completeOnboarding(demoMode: true);
+
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.main,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -404,7 +424,7 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () => _handleDemoMode(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: theme.colorScheme.secondary,
                 side: BorderSide(color: theme.colorScheme.secondary),
@@ -428,26 +448,44 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
   }
 
   void _handleCreateWallet(BuildContext context) async {
-    // Complete onboarding first
-    final provider = Provider.of<OnboardingProvider>(context, listen: false);
-    await provider.completeOnboarding();
+    try {
+      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      await provider.completeOnboarding();
 
-    if (mounted) {
-      // Navigate to create wallet screen
-      Navigator.pushNamedAndRemoveUntil(
-          context, AppRoutes.createWallet, (route) => false);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.createWallet,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
 
   void _handleImportWallet(BuildContext context) async {
-    // Complete onboarding first
-    final provider = Provider.of<OnboardingProvider>(context, listen: false);
-    await provider.completeOnboarding();
+    try {
+      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      await provider.completeOnboarding();
 
-    if (mounted) {
-      // Navigate to import wallet screen
-      Navigator.pushNamedAndRemoveUntil(
-          context, AppRoutes.importWallet, (route) => false);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.importWallet,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
 

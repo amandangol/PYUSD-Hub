@@ -20,9 +20,12 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
 
   Future<void> _createWallet() async {
     // Validate PIN
-    if (_pinController.text.length < 6) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final validation = authProvider.validatePIN(_pinController.text);
+
+    if (!validation.isValid) {
       setState(() {
-        _errorMessage = 'PIN must be at least 6 digits';
+        _errorMessage = validation.error;
       });
       return;
     }
@@ -56,7 +59,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Failed to create wallet: ${e.toString()}';
+          _errorMessage = e.toString();
           _isLoading = false;
         });
       }

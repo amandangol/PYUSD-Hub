@@ -8,9 +8,10 @@ import '../screens/authentication/screen/create_wallet_screen.dart';
 import '../screens/authentication/screen/import_wallet_screen.dart';
 import '../screens/authentication/screen/mnemonic_screen.dart';
 import '../screens/settings/view/settings_screen.dart';
+import '../screens/onboarding/view/onboarding_screen.dart';
 
 class AppRoutes {
-  static const String splash = '/';
+  static const String splash = '/splash';
   static const String main = '/main';
   static const String settings = '/settings';
   static const String wallet = '/wallet';
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String insights = '/insights';
   static const String aiInsights = '/ai-insights';
   static const String transactionAnalysis = '/transaction-analysis';
+  static const String onboarding = '/onboarding';
 
   // Authentication routes
   static const String login = '/login';
@@ -101,11 +103,15 @@ class AppRoutes {
         ),
         settings: settings,
       );
+    } else if (routeName == onboarding) {
+      return MaterialPageRoute(
+        builder: (_) => const FirstTimeOnboardingScreen(),
+      );
     } else {
       return MaterialPageRoute(
-        builder: (_) => Scaffold(
+        builder: (_) => const Scaffold(
           body: Center(
-            child: Text('No route defined for ${settings.name}'),
+            child: Text('Route not found!'),
           ),
         ),
       );
@@ -120,6 +126,10 @@ class AppRoutes {
       login: (context) => const ActivityAwareWidget(child: LoginScreen()),
       walletSelection: (context) =>
           const ActivityAwareWidget(child: WalletSelectionScreen()),
+      createWallet: (context) =>
+          const ActivityAwareWidget(child: CreateWalletScreen()),
+      importWallet: (context) =>
+          const ActivityAwareWidget(child: ImportWalletScreen()),
     };
   }
 }

@@ -434,8 +434,6 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Widget _buildBlockTraceTab() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -482,8 +480,6 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Widget _buildAdvancedTraceTab() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -534,10 +530,6 @@ class _TraceScreenState extends State<TraceScreen>
   }
 
   Widget _buildAdvancedMethodInputs() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final inputFillColor =
-        isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100;
-
     switch (_selectedAdvancedMethod) {
       case 'Replay Block Transactions':
         return TraceInputField(

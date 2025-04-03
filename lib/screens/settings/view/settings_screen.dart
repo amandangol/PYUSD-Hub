@@ -15,6 +15,7 @@ import 'security_setting_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../utils/formatter_utils.dart';
+import '../../onboarding/provider/onboarding_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -47,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final theme = Theme.of(context);
     final walletProvider = Provider.of<WalletStateProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
+    final onboardingProvider = Provider.of<OnboardingProvider>(context);
 
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = theme.brightness == Brightness.dark;
@@ -71,70 +73,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Account section
-              Text(
-                'ACCOUNT',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor,
+              if (!onboardingProvider.isDemoMode && authProvider.hasWallet)
+                Text(
+                  'ACCOUNT',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Card(
-                color: cardColor,
-                elevation: theme.cardTheme.elevation ?? 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Column(
-                  children: [
-                    // Wallet address
-                    ListTile(
-                      title: Text('Wallet Address',
-                          style: theme.textTheme.titleMedium),
-                      subtitle: Text(
-                        FormatterUtils.formatAddress(
-                            authProvider.wallet?.address ?? ''),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                          color: textColor.withOpacity(0.7),
+              if (!onboardingProvider.isDemoMode && authProvider.hasWallet)
+                const SizedBox(height: 8),
+              if (!onboardingProvider.isDemoMode && authProvider.hasWallet)
+                Card(
+                  color: cardColor,
+                  elevation: theme.cardTheme.elevation ?? 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    children: [
+                      // Wallet address
+                      if (!onboardingProvider.isDemoMode &&
+                          authProvider.hasWallet)
+                        ListTile(
+                          title: Text('Wallet Address',
+                              style: theme.textTheme.titleMedium),
+                          subtitle: Text(
+                            FormatterUtils.formatAddress(
+                                authProvider.wallet?.address ?? ''),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'monospace',
+                              color: textColor.withOpacity(0.7),
+                            ),
+                          ),
+                          trailing: Icon(Icons.copy, color: primaryColor),
+                          onTap: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                  text: authProvider.wallet?.address ?? ''),
+                            );
+                            SnackbarUtil.showSnackbar(
+                              context: context,
+                              message: "Address copied to clipboard",
+                            );
+                          },
                         ),
-                      ),
-                      trailing: Icon(Icons.copy, color: primaryColor),
-                      onTap: () {
-                        Clipboard.setData(
-                          ClipboardData(
-                              text: authProvider.wallet?.address ?? ''),
-                        );
-                        SnackbarUtil.showSnackbar(
-                          context: context,
-                          message: "Address copied to clipboard",
-                        );
-                      },
-                    ),
-                    Divider(height: 1, color: dividerColor),
-                    ListTile(
-                      title: Text('Export Private Key',
-                          style: theme.textTheme.titleMedium),
-                      trailing: Icon(Icons.arrow_forward_ios,
-                          size: 16, color: textColor.withOpacity(0.5)),
-                      onTap: () {
-                        _showPrivateKeyDialog(context, authProvider.wallet);
-                      },
-                    ),
-                    Divider(height: 1, color: dividerColor),
-                    ListTile(
-                      title: Text('Backup Recovery Phrase',
-                          style: theme.textTheme.titleMedium),
-                      trailing: Icon(Icons.arrow_forward_ios,
-                          size: 16, color: textColor.withOpacity(0.5)),
-                      onTap: () {
-                        _showRecoveryPhraseDialog(context, authProvider.wallet);
-                      },
-                    ),
-                  ],
+                      if (!onboardingProvider.isDemoMode &&
+                          authProvider.hasWallet)
+                        Divider(height: 1, color: dividerColor),
+                      if (!onboardingProvider.isDemoMode &&
+                          authProvider.hasWallet)
+                        ListTile(
+                          title: Text('Export Private Key',
+                              style: theme.textTheme.titleMedium),
+                          trailing: Icon(Icons.arrow_forward_ios,
+                              size: 16, color: textColor.withOpacity(0.5)),
+                          onTap: () {
+                            _showPrivateKeyDialog(context, authProvider.wallet);
+                          },
+                        ),
+                      if (!onboardingProvider.isDemoMode &&
+                          authProvider.hasWallet)
+                        Divider(height: 1, color: dividerColor),
+                      if (!onboardingProvider.isDemoMode &&
+                          authProvider.hasWallet)
+                        ListTile(
+                          title: Text('Backup Recovery Phrase',
+                              style: theme.textTheme.titleMedium),
+                          trailing: Icon(Icons.arrow_forward_ios,
+                              size: 16, color: textColor.withOpacity(0.5)),
+                          onTap: () {
+                            _showRecoveryPhraseDialog(
+                                context, authProvider.wallet);
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-              ),
 
               // Appearance section
               Text(
@@ -488,18 +504,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: ListTile(
                   title: Text(
-                    'Log Out',
+                    onboardingProvider.isDemoMode
+                        ? 'Exit Demo Mode'
+                        : 'Log Out',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),
                   ),
                   leading: Icon(
-                    Icons.logout,
+                    onboardingProvider.isDemoMode
+                        ? Icons.exit_to_app
+                        : Icons.logout,
                     color: theme.colorScheme.error,
                   ),
                   onTap: () {
-                    // Show confirmation dialog before deletion
-                    _showLogoutDialog(context, walletProvider);
+                    if (onboardingProvider.isDemoMode) {
+                      _showExitDemoDialog(context);
+                    } else {
+                      _showLogoutDialog(context);
+                    }
                   },
                 ),
               ),
@@ -848,9 +871,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showLogoutDialog(
-      BuildContext context, WalletStateProvider walletProvider) {
+  void _showLogoutDialog(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
 
     showDialog(
       context: context,
@@ -871,20 +895,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-            },
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
-              // Close the dialog first
               Navigator.of(dialogContext).pop();
 
-              // Log out the user
+              // Reset onboarding state when logging out
+              await onboardingProvider.resetOnboarding();
               await authProvider.logout();
 
-              // Navigate to onboarding screen
               if (context.mounted) {
                 Navigator.of(context).pushNamedAndRemoveUntil(
                   AppRoutes.walletSelection,
@@ -905,6 +926,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Log Out',
               style: TextStyle(color: Colors.white),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExitDemoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Demo Mode'),
+        content: const Text(
+          'Are you sure you want to exit demo mode? You will need to create or import a wallet to continue.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                )),
+            onPressed: () async {
+              final onboardingProvider =
+                  Provider.of<OnboardingProvider>(context, listen: false);
+              await onboardingProvider.exitDemoMode();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.walletSelection,
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Exit Demo Mode'),
           ),
         ],
       ),

@@ -4,6 +4,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:uuid/uuid.dart';
 
+class PinValidationResult {
+  final bool isValid;
+  final String? error;
+
+  const PinValidationResult({
+    required this.isValid,
+    this.error,
+  });
+}
+
 class AuthService {
   static const String _pinHashKey = 'pin_hash';
   static const String _pinSaltKey = 'pin_salt';
@@ -37,7 +47,12 @@ class AuthService {
   }
 
   // Set PIN
-  Future<void> setPIN(String pin) async {
+  Future<PinValidationResult> setPIN(String pin) async {
+    final validation = validatePIN(pin);
+    if (!validation.isValid) {
+      return validation;
+    }
+
     // Generate a random salt
     final salt = const Uuid().v4();
 
@@ -47,6 +62,8 @@ class AuthService {
     // Store the hash and salt
     await _secureStorage.write(key: _pinHashKey, value: hash);
     await _secureStorage.write(key: _pinSaltKey, value: salt);
+
+    return validation;
   }
 
   // Verify PIN
@@ -168,5 +185,45 @@ class AuthService {
     final bytes = utf8.encode(pin + salt);
     final digest = sha256.convert(bytes);
     return digest.toString();
+  }
+
+  PinValidationResult validatePIN(String pin) {
+    if (pin.isEmpty) {
+      return const PinValidationResult(
+        isValid: false,
+        error: 'PIN is required',
+      );
+    }
+
+    if (pin.length < 6) {
+      return const PinValidationResult(
+        isValid: false,
+        error: 'PIN must be at least 6 digits',
+      );
+    }
+
+    if (!RegExp(r'^\d+$').hasMatch(pin)) {
+      return const PinValidationResult(
+        isValid: false,
+        error: 'PIN must contain only numbers',
+      );
+    }
+
+    // Check for repeated numbers (e.g., 111111)
+    bool hasRepeated = false;
+    for (int i = 0; i < pin.length - 2; i++) {
+      if (pin[i] == pin[i + 1] && pin[i] == pin[i + 2]) {
+        hasRepeated = true;
+        break;
+      }
+    }
+    if (hasRepeated) {
+      return const PinValidationResult(
+        isValid: false,
+        error: 'PIN cannot contain repeated numbers',
+      );
+    }
+
+    return const PinValidationResult(isValid: true);
   }
 }

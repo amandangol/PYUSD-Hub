@@ -6,7 +6,6 @@ import '../../authentication/provider/auth_provider.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../../utils/snackbar_utils.dart';
-import '../../onboarding/view/onboarding_screen.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../../transactions/provider/transaction_provider.dart';
 import '../../transactions/view/receive_transaction/receive_screen.dart';
@@ -15,6 +14,7 @@ import '../widgets/action_button.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/network_status_card.dart';
 import '../widgets/transaction_section.dart';
+import '../../onboarding/provider/onboarding_provider.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -139,35 +139,30 @@ class _WalletScreenState extends State<WalletScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Use select instead of Provider.of where possible to minimize rebuilds
+    final onboardingProvider = Provider.of<OnboardingProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final primaryColor = theme.colorScheme.primary;
-    final backgroundColor = theme.scaffoldBackgroundColor;
 
-    // Get wallet address only once
-    final currentWalletAddress = context.select<AuthProvider, String?>(
-            (provider) => provider.getCurrentAddress()) ??
-        '';
+    // Show demo mode or no wallet view if in demo mode or no wallet
+    if (onboardingProvider.isDemoMode || !authProvider.hasWallet) {
+      return _buildDemoWalletView(context);
+    }
 
-    // Read network name once
-    final networkName = context.select<NetworkProvider, String>(
-        (provider) => provider.currentNetworkDisplayName);
-
+    // Original wallet screen implementation
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: PyusdAppBar(
         isDarkMode: isDarkMode,
         hasWallet: true,
         showLogo: true,
         title: "PYUSD Wallet",
-        networkName: networkName,
       ),
       body: _buildBody(
           isDarkMode: isDarkMode,
-          primaryColor: primaryColor,
-          walletAddress: currentWalletAddress,
-          networkName: networkName),
+          primaryColor: theme.colorScheme.primary,
+          walletAddress: authProvider.getCurrentAddress() ?? '',
+          networkName: _networkProvider?.currentNetworkDisplayName ?? ''),
     );
   }
 
@@ -345,6 +340,151 @@ class _WalletScreenState extends State<WalletScreen>
           _refreshWalletData(forceRefresh: true);
         }
       });
+    }
+  }
+
+  Widget _buildDemoWalletView(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: PyusdAppBar(
+        isDarkMode: isDarkMode,
+        showLogo: true,
+        title: "Demo Mode",
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 64,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Create or Import a Wallet',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'To access wallet features, you need to create a new wallet or import an existing one.',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Meanwhile, you can explore other features of the app in demo mode!',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _handleCreateWallet(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Create New Wallet'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => _handleImportWallet(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.primary,
+                    side: BorderSide(color: theme.colorScheme.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Import Existing Wallet'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleCreateWallet(BuildContext context) async {
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
+
+    // If in demo mode, exit demo mode first
+    if (onboardingProvider.isDemoMode) {
+      await onboardingProvider.exitDemoMode();
+    }
+
+    if (mounted) {
+      // Navigate to create wallet screen using string route
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/create-wallet',
+        (route) => false,
+      );
+    }
+  }
+
+  void _handleImportWallet(BuildContext context) async {
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
+
+    // If in demo mode, exit demo mode first
+    if (onboardingProvider.isDemoMode) {
+      await onboardingProvider.exitDemoMode();
+    }
+
+    if (mounted) {
+      // Navigate to import wallet screen using string route
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/import-wallet',
+        (route) => false,
+      );
     }
   }
 }
