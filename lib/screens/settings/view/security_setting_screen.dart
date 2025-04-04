@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pinput/pinput.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
+import '../../../routes/app_routes.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../authentication/provider/security_setting_provider.dart';
-import '../../authentication/provider/session_provider.dart';
 import '../../onboarding/provider/onboarding_provider.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -430,7 +430,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     final onboardingProvider = Provider.of<OnboardingProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
 
-    if (onboardingProvider.isDemoMode || !authProvider.hasWallet) {
+    // Check if we have a wallet and are authenticated
+    final hasAuthenticatedWallet =
+        authProvider.hasWallet && authProvider.isAuthenticated;
+
+    // Show demo view if in demo mode or no authenticated wallet
+    if (onboardingProvider.isDemoMode || !hasAuthenticatedWallet) {
       return _buildDemoSecurityView(context);
     }
 
@@ -612,6 +617,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   Widget _buildDemoSecurityView(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
+    final onboardingProvider = Provider.of<OnboardingProvider>(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -633,7 +639,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Security Features Unavailable in Demo Mode',
+                'Security Features Unavailable',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -641,39 +647,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Create or import a wallet to access security features like:',
+                onboardingProvider.isDemoMode
+                    ? 'Create or import a wallet to access security features'
+                    : 'Please authenticate to access security features',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              _buildFeatureItem(
-                context,
-                Icons.fingerprint,
-                'Biometric Authentication',
-                'Secure your wallet with fingerprint or face ID',
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureItem(
-                context,
-                Icons.pin,
-                'PIN Management',
-                'Change or reset your wallet PIN',
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureItem(
-                context,
-                Icons.lock_clock,
-                'Auto-Lock Settings',
-                'Configure automatic wallet locking',
-              ),
-              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Go back to settings
+                    if (onboardingProvider.isDemoMode) {
+                      _showExitDemoDialog(context);
+                    } else {
+                      Navigator.pop(context);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
@@ -682,7 +673,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Back to Settings'),
+                  child: Text(onboardingProvider.isDemoMode
+                      ? 'Exit Demo Mode'
+                      : 'Back to Settings'),
                 ),
               ),
             ],
@@ -692,56 +685,37 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
   }
 
-  Widget _buildFeatureItem(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String description,
-  ) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+  void _showExitDemoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit Demo Mode'),
+        content: const Text(
+          'Are you sure you want to exit demo mode? You will need to create or import a wallet to continue.',
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: theme.colorScheme.primary,
-              size: 24,
-            ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-              ],
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
+            onPressed: () async {
+              final onboardingProvider =
+                  Provider.of<OnboardingProvider>(context, listen: false);
+              await onboardingProvider.exitDemoMode();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.walletSelection,
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Exit Demo Mode'),
           ),
         ],
       ),

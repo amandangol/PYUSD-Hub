@@ -59,6 +59,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final primaryColor = theme.colorScheme.primary;
     final dividerColor = theme.dividerTheme.color ?? theme.dividerColor;
 
+    // Check if we have a wallet and are authenticated
+    final hasAuthenticatedWallet =
+        authProvider.hasWallet && authProvider.isAuthenticated;
+    final showWalletFeatures =
+        !onboardingProvider.isDemoMode && hasAuthenticatedWallet;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: PyusdAppBar(
@@ -72,8 +78,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Account section
-              if (!onboardingProvider.isDemoMode && authProvider.hasWallet)
+              // Account section - only show if has authenticated wallet
+              if (showWalletFeatures) ...[
                 Text(
                   'ACCOUNT',
                   style: theme.textTheme.labelLarge?.copyWith(
@@ -81,9 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: primaryColor,
                   ),
                 ),
-              if (!onboardingProvider.isDemoMode && authProvider.hasWallet)
                 const SizedBox(height: 8),
-              if (!onboardingProvider.isDemoMode && authProvider.hasWallet)
                 Card(
                   color: cardColor,
                   elevation: theme.cardTheme.elevation ?? 2,
@@ -94,8 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     children: [
                       // Wallet address
-                      if (!onboardingProvider.isDemoMode &&
-                          authProvider.hasWallet)
+                      if (showWalletFeatures)
                         ListTile(
                           title: Text('Wallet Address',
                               style: theme.textTheme.titleMedium),
@@ -119,11 +122,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             );
                           },
                         ),
-                      if (!onboardingProvider.isDemoMode &&
-                          authProvider.hasWallet)
+                      if (showWalletFeatures)
                         Divider(height: 1, color: dividerColor),
-                      if (!onboardingProvider.isDemoMode &&
-                          authProvider.hasWallet)
+                      if (showWalletFeatures)
                         ListTile(
                           title: Text('Export Private Key',
                               style: theme.textTheme.titleMedium),
@@ -133,11 +134,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             _showPrivateKeyDialog(context, authProvider.wallet);
                           },
                         ),
-                      if (!onboardingProvider.isDemoMode &&
-                          authProvider.hasWallet)
+                      if (showWalletFeatures)
                         Divider(height: 1, color: dividerColor),
-                      if (!onboardingProvider.isDemoMode &&
-                          authProvider.hasWallet)
+                      if (showWalletFeatures)
                         ListTile(
                           title: Text('Backup Recovery Phrase',
                               style: theme.textTheme.titleMedium),
@@ -151,6 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+              ],
 
               // Appearance section
               Text(
@@ -506,19 +506,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text(
                     onboardingProvider.isDemoMode
                         ? 'Exit Demo Mode'
-                        : 'Log Out',
+                        : hasAuthenticatedWallet
+                            ? 'Log Out'
+                            : 'Exit Demo Mode',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),
                   ),
                   leading: Icon(
-                    onboardingProvider.isDemoMode
+                    onboardingProvider.isDemoMode || !hasAuthenticatedWallet
                         ? Icons.exit_to_app
                         : Icons.logout,
                     color: theme.colorScheme.error,
                   ),
                   onTap: () {
-                    if (onboardingProvider.isDemoMode) {
+                    if (onboardingProvider.isDemoMode ||
+                        !hasAuthenticatedWallet) {
                       _showExitDemoDialog(context);
                     } else {
                       _showLogoutDialog(context);

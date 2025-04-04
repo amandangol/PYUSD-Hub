@@ -15,6 +15,9 @@ class FirstTimeOnboardingScreen extends StatefulWidget {
 class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
   final PageController _pageController = PageController();
 
+  // Update total pages to 5 to include more features
+  final int _totalPages = 5;
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -97,8 +100,9 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
                 },
                 children: [
                   _buildWelcomePage(theme),
-                  _buildSecurityPage(theme),
-                  _buildFeaturesPage(theme),
+                  _buildWalletFeaturesPage(theme),
+                  _buildInsightsPage(theme),
+                  _buildNetworkToolsPage(theme),
                   _buildGetStartedPage(theme),
                 ],
               ),
@@ -113,7 +117,7 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
-                      onboardingProvider.totalPages,
+                      _totalPages,
                       (index) => Container(
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         width: 10,
@@ -167,10 +171,17 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Welcome icon
-          Icon(
-            Icons.account_balance_wallet,
-            size: 100,
-            color: theme.colorScheme.primary,
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Image.asset(
+              "assets/images/pyusdlogo.png",
+              height: 64,
+            ),
           ),
           const SizedBox(height: 40),
 
@@ -220,91 +231,26 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
     );
   }
 
-  Widget _buildSecurityPage(ThemeData theme) {
+  Widget _buildWalletFeaturesPage(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Security icon
           Icon(
-            Icons.shield,
+            Icons.account_balance_wallet_outlined,
             size: 100,
             color: theme.colorScheme.primary,
           ),
           const SizedBox(height: 40),
-
-          // Title
           Text(
-            'Bank-Grade Security',
+            'Complete Wallet Management',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-
-          // Description
-          Text(
-            'Your security is our top priority',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-
-          // Security features
-          _buildFeatureItem(
-            theme,
-            Icons.fingerprint,
-            'Biometric Authentication',
-            'Secure access with fingerprint or face ID',
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureItem(
-            theme,
-            Icons.enhanced_encryption,
-            'Advanced Encryption',
-            'Military-grade encryption for your data',
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureItem(
-            theme,
-            Icons.key,
-            'Private Keys Never Leave Your Device',
-            'Your keys remain secure on your device',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturesPage(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Features icon
-          Icon(
-            Icons.auto_awesome,
-            size: 100,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 40),
-
-          // Title
-          Text(
-            'Powerful Features',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-
-          // Description
           Text(
             'Everything you need to manage your digital assets',
             style: theme.textTheme.bodyLarge?.copyWith(
@@ -313,27 +259,131 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
+          _buildFeatureItem(
+            theme,
+            Icons.swap_horiz,
+            'Send & Receive',
+            'Easily transfer PYUSD and ETH',
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureItem(
+            theme,
+            Icons.security,
+            'Secure Storage',
+            'Non-custodial wallet with biometric security',
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureItem(
+            theme,
+            Icons.history,
+            'Transaction History',
+            'Detailed transaction tracking and analysis',
+          ),
+        ],
+      ),
+    );
+  }
 
-          // App features
-          _buildFeatureItem(
-            theme,
-            Icons.account_balance_wallet,
-            'Wallet Management',
-            'Send, receive, and track your assets',
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureItem(
-            theme,
+  Widget _buildInsightsPage(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
             Icons.insights,
-            'Transaction Insights',
-            'Detailed analytics of your transactions',
+            size: 100,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 40),
+          Text(
+            'Market Insights & Analytics',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Stay informed with real-time market data',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          _buildFeatureItem(
+            theme,
+            Icons.show_chart,
+            'Price Tracking',
+            'Real-time PYUSD price and market data',
           ),
           const SizedBox(height: 16),
           _buildFeatureItem(
             theme,
-            Icons.network_check,
-            'Network Status',
-            'Real-time network congestion monitoring',
+            Icons.article,
+            'News Feed',
+            'Latest PYUSD and crypto market news',
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureItem(
+            theme,
+            Icons.analytics,
+            'Exchange Analytics',
+            'Track PYUSD trading across exchanges',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkToolsPage(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.hub,
+            size: 100,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 40),
+          Text(
+            'Advanced Network Tools',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Monitor and analyze network activity',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          _buildFeatureItem(
+            theme,
+            Icons.speed,
+            'Network Congestion',
+            'Real-time gas prices and network status',
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureItem(
+            theme,
+            Icons.account_tree,
+            'Transaction Tracing',
+            'Detailed transaction analysis tools',
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureItem(
+            theme,
+            Icons.location_city,
+            'PYUSD City View',
+            'Visualize network activity in 3D',
           ),
         ],
       ),
@@ -346,15 +396,12 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Get started icon
           Icon(
             Icons.rocket_launch,
             size: 100,
             color: theme.colorScheme.primary,
           ),
           const SizedBox(height: 40),
-
-          // Title
           Text(
             'Ready to Get Started?',
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -363,8 +410,6 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-
-          // Description
           Text(
             'Choose how you want to begin your journey',
             style: theme.textTheme.bodyLarge?.copyWith(
@@ -373,15 +418,12 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
-
-          // Options - Using ElevatedButton instead of PyusdButton to avoid layout issues
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () => _handleCreateWallet(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -397,7 +439,6 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
@@ -420,7 +461,6 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(

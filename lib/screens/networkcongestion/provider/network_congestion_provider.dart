@@ -30,6 +30,13 @@ class NetworkCongestionProvider with ChangeNotifier {
   bool _isFullyInitialized = false;
   bool _isInitializing = false;
 
+  bool _isWebSocketConnected = false;
+  String? _connectionError;
+
+  // Add getters
+  bool get isWebSocketConnected => _isWebSocketConnected;
+  String? get connectionError => _connectionError;
+
   // PYUSD Contract address on Ethereum mainnet
   final String _pyusdContractAddress =
       '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8';

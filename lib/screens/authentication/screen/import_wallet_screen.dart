@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import '../../../widgets/pyusd_components.dart';
+import '../../onboarding/provider/onboarding_provider.dart';
 import '../provider/auth_provider.dart';
 import '../service/wallet_service.dart';
 import '../widget/pin_input_widget.dart.dart';
@@ -80,6 +81,11 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
       final mnemonic = _mnemonicController.text.trim();
 
       await authProvider.importWalletFromMnemonic(mnemonic, pin);
+
+      // Complete onboarding
+      final onboardingProvider =
+          Provider.of<OnboardingProvider>(context, listen: false);
+      await onboardingProvider.completeOnboarding();
 
       if (mounted) {
         // Set the wallet screen before navigation

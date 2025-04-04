@@ -61,6 +61,17 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      // Check if onboarding is completed first
+      final prefs = await SharedPreferences.getInstance();
+      final hasCompletedOnboarding =
+          prefs.getBool('has_completed_onboarding') ?? false;
+
+      if (!hasCompletedOnboarding) {
+        _wallet = null;
+        _isAuthenticated = false;
+        return;
+      }
+
       // Check if biometrics is available
       _isBiometricsAvailable = await _authService.checkBiometrics();
 
@@ -68,7 +79,6 @@ class AuthProvider extends ChangeNotifier {
       bool hasPIN = await _authService.isPINSet();
 
       // Check if there's a saved authentication state
-      final prefs = await SharedPreferences.getInstance();
       bool savedAuthState = prefs.getBool('isAuthenticated') ?? false;
 
       if (hasPIN) {

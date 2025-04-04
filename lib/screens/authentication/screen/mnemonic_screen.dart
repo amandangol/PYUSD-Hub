@@ -4,6 +4,7 @@ import 'package:pyusd_hub/widgets/pyusd_components.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/navigation_provider.dart';
 import '../../../routes/app_routes.dart';
+import '../../onboarding/provider/onboarding_provider.dart';
 
 class MnemonicConfirmationScreen extends StatefulWidget {
   final String mnemonic;
@@ -119,17 +120,28 @@ class _MnemonicConfirmationScreenState
       _isConfirming = true;
     });
 
-    // Simulate a slight delay for a better UX
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      // Complete onboarding
+      final onboardingProvider =
+          Provider.of<OnboardingProvider>(context, listen: false);
+      await onboardingProvider.completeOnboarding();
 
-    if (mounted) {
       // Set the wallet screen before navigation
       context.read<NavigationProvider>().setWalletScreen();
+
       // Navigate to main app and clear the navigation stack
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.main,
-        (route) => false,
-      );
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.main,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error completing setup: $e')),
+        );
+      }
     }
   }
 

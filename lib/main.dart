@@ -1,13 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/screens/insights/provider/insights_provider.dart';
 import 'package:pyusd_hub/screens/onboarding/provider/onboarding_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Firebase and App Configuration
-import 'firebase_options.dart';
 
 // Providers
 import 'providers/network_provider.dart';
@@ -19,7 +15,6 @@ import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
 import 'screens/insights/service/news_service.dart';
 import 'screens/insights/view/insights_screen.dart';
-import 'screens/insights/view/news_explore_screen.dart';
 import 'screens/trace/provider/trace_provider.dart';
 import 'screens/trace/view/trace_home_screen.dart';
 import 'screens/wallet/provider/walletscreen_provider.dart';
@@ -48,11 +43,6 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
@@ -64,20 +54,27 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.initialize();
 
+  // Create and initialize OnboardingProvider
+  final onboardingProvider = OnboardingProvider();
+  await onboardingProvider.initialize();
+
   runApp(MyApp(
     initialThemeIsDark: isDarkMode,
     themeProvider: themeProvider,
+    onboardingProvider: onboardingProvider,
   ));
 }
 
 class MyApp extends StatelessWidget {
   final bool initialThemeIsDark;
   final ThemeProvider themeProvider;
+  final OnboardingProvider onboardingProvider;
 
   const MyApp({
     super.key,
     required this.initialThemeIsDark,
     required this.themeProvider,
+    required this.onboardingProvider,
   });
 
   @override
@@ -86,9 +83,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(
             value: themeProvider..setDarkMode(initialThemeIsDark)),
-        ChangeNotifierProvider<OnboardingProvider>(
-          create: (context) => OnboardingProvider(),
-        ),
+        ChangeNotifierProvider.value(value: onboardingProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(
           create: (context) => SessionProvider(context.read<AuthProvider>()),
@@ -171,7 +166,9 @@ class MyApp extends StatelessWidget {
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             navigatorKey: sessionProvider.navigatorKey,
-            initialRoute: AppRoutes.splash,
+            initialRoute: onboardingProvider.hasCompletedOnboarding
+                ? AppRoutes.splash
+                : AppRoutes.onboarding,
             onGenerateRoute: AppRoutes.generateRoute,
             debugShowCheckedModeBanner: false,
           );
@@ -226,11 +223,8 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
+    // Ensure we're on the wallet screen when the app starts
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Initialize demo mode status
-      context.read<OnboardingProvider>().initializeDemoMode();
-
-      // Set initial screen
       context.read<NavigationProvider>().setWalletScreen();
     });
   }

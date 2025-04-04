@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -185,12 +186,12 @@ class ExchangeListItem extends StatelessWidget {
       child: logoUrl.isNotEmpty
           ? ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                logoUrl,
+              child: CachedNetworkImage(
+                imageUrl: logoUrl,
                 width: 40,
                 height: 40,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+                errorWidget: (context, error, stackTrace) {
                   return _buildExchangeIcon(exchangeName, theme);
                 },
               ),

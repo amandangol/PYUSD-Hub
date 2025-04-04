@@ -5,9 +5,20 @@ class OnboardingProvider extends ChangeNotifier {
   int _currentPage = 0;
   final int totalPages = 4;
   bool _isDemoMode = false;
+  bool _hasCompletedOnboarding = false;
 
   int get currentPage => _currentPage;
   bool get isDemoMode => _isDemoMode;
+  bool get hasCompletedOnboarding => _hasCompletedOnboarding;
+
+  // Initialize provider and check if onboarding was completed
+  Future<void> initialize() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _hasCompletedOnboarding =
+        prefs.getBool('has_completed_onboarding') ?? false;
+    _isDemoMode = prefs.getBool('is_demo_mode') ?? false;
+    notifyListeners();
+  }
 
   void setPage(int page) {
     _currentPage = page;
@@ -18,7 +29,8 @@ class OnboardingProvider extends ChangeNotifier {
 
   Future<void> completeOnboarding({bool demoMode = false}) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('first_time_onboarding_completed', true);
+    await prefs.setBool('has_completed_onboarding', true);
+    _hasCompletedOnboarding = true;
     _isDemoMode = demoMode;
     await prefs.setBool('is_demo_mode', demoMode);
     notifyListeners();

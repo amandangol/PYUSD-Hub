@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../routes/app_routes.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../providers/network_provider.dart';
@@ -145,7 +146,16 @@ class _WalletScreenState extends State<WalletScreen>
     final isDarkMode = theme.brightness == Brightness.dark;
 
     // Show demo mode or no wallet view if in demo mode or no wallet
-    if (onboardingProvider.isDemoMode || !authProvider.hasWallet) {
+    if (!onboardingProvider.hasCompletedOnboarding) {
+      // Redirect to onboarding if not completed
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+      });
+      return const SizedBox.shrink();
+    }
+
+    // Check if we have a wallet and are authenticated
+    if (!authProvider.hasWallet || !authProvider.isAuthenticated) {
       return _buildDemoWalletView(context);
     }
 

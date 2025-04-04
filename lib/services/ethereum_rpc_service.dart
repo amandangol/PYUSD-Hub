@@ -270,16 +270,25 @@ class EthereumRpcService {
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (data['status'] != '1') {
-        if (data['message'] == 'No transactions found') {
+        if (data['message'] == 'No transactions found' ||
+            data['result'] is List && (data['result'] as List).isEmpty) {
           return [];
         }
+
+        if (data['message']?.toString().contains('rate limit') == true ||
+            data['message']?.toString().contains('Invalid API Key') == true) {
+          print(
+              'Etherscan API issue: ${data['message']} - returning empty list');
+          return [];
+        }
+
         throw Exception('Etherscan API error: ${data['message']}');
       }
 
       return List<Map<String, dynamic>>.from(data['result']);
     } catch (e) {
       print('Error fetching transactions: $e');
-      throw Exception('Failed to fetch transactions: $e');
+      return [];
     }
   }
 
@@ -309,16 +318,25 @@ class EthereumRpcService {
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       if (data['status'] != '1') {
-        if (data['message'] == 'No transactions found') {
+        if (data['message'] == 'No transactions found' ||
+            data['result'] is List && (data['result'] as List).isEmpty) {
           return [];
         }
+
+        if (data['message']?.toString().contains('rate limit') == true ||
+            data['message']?.toString().contains('Invalid API Key') == true) {
+          print(
+              'Etherscan API issue: ${data['message']} - returning empty list');
+          return [];
+        }
+
         throw Exception('Etherscan API error: ${data['message']}');
       }
 
       return List<Map<String, dynamic>>.from(data['result']);
     } catch (e) {
       print('Error fetching token transactions: $e');
-      throw Exception('Failed to fetch token transactions: $e');
+      return [];
     }
   }
 
