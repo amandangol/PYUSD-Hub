@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:pyusd_hub/screens/insights/provider/insights_provider.dart';
 import 'package:pyusd_hub/screens/onboarding/provider/onboarding_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -43,12 +45,17 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
-  final isDarkMode = prefs.getBool("theme") ?? true;
+  final isDarkMode = prefs.getBool("theme") ?? false;
 
   // Create and initialize ThemeProvider
   final themeProvider = ThemeProvider();
@@ -82,7 +89,8 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(
-            value: themeProvider..setDarkMode(initialThemeIsDark)),
+          value: themeProvider..setDarkMode(initialThemeIsDark),
+        ),
         ChangeNotifierProvider.value(value: onboardingProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(

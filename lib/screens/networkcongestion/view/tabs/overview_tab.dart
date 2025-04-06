@@ -5,31 +5,40 @@ import '../../../../widgets/common/info_dialog.dart';
 
 class OverviewTab extends StatelessWidget {
   final NetworkCongestionData congestionData;
+  final Future<void> Function() onRefresh;
 
-  const OverviewTab({super.key, required this.congestionData});
+  const OverviewTab({
+    super.key,
+    required this.congestionData,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Network Status Overview
-          _buildNetworkStatusSection(context),
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Network Status Overview
+            _buildNetworkStatusSection(context),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Network Queue Status
-          _buildNetworkQueueSection(context),
+            // Network Queue Status
+            _buildNetworkQueueSection(context),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Network Metrics
-          _buildNetworkMetricsSection(context),
+            // Network Metrics
+            _buildNetworkMetricsSection(context),
 
-          const SizedBox(height: 16),
-        ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

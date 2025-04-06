@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../providers/walletstate_provider.dart';
 import '../../transactions/model/transaction_model.dart';
+import '../../transactions/provider/transaction_provider.dart';
+import '../../transactions/provider/transactiondetail_provider.dart';
+import '../../../providers/network_provider.dart';
 
 class WaletScreenProvider with ChangeNotifier {
   // Shared Preferences keys
@@ -32,15 +36,24 @@ class WaletScreenProvider with ChangeNotifier {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
+  // Providers
+  TransactionProvider? _transactionProvider;
+  WalletStateProvider? _walletStateProvider;
+
   // Constructor
-  HomeScreenProvider() {
+  WaletScreenProvider() {
     _loadSavedStates();
   }
 
   // Initialize the provider
-  Future<void> initialize() async {
+  Future<void> initialize({
+    required TransactionProvider transactionProvider,
+    required WalletStateProvider walletStateProvider,
+  }) async {
     if (!_isInitialized) {
       _prefs = await SharedPreferences.getInstance();
+      _transactionProvider = transactionProvider;
+      _walletStateProvider = walletStateProvider;
       await _loadSavedStates();
       _isInitialized = true;
       notifyListeners();
@@ -64,6 +77,31 @@ class WaletScreenProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Refresh all data
+  Future<void> refreshAllData() async {
+    if (_isRefreshing) return;
+
+    _isRefreshing = true;
+    notifyListeners();
+
+    try {
+      // Refresh transactions and balances in parallel
+      await Future.wait([
+        _transactionProvider?.fetchTransactions(forceRefresh: true) ??
+            Future.value(),
+        _walletStateProvider?.refreshBalances() ?? Future.value(),
+      ]);
+
+      // Add a small delay to ensure smooth UI update
+      await Future.delayed(const Duration(milliseconds: 300));
+    } catch (e) {
+      print('Error refreshing data: $e');
+    } finally {
+      _isRefreshing = false;
+      notifyListeners();
+    }
+  }
+
   // Transaction filter methods
   Future<void> setTransactionFilter(String filter) async {
     if (filterOptions.contains(filter) && _currentFilter != filter) {
@@ -80,27 +118,38 @@ class WaletScreenProvider with ChangeNotifier {
   }) {
     final filterToUse = filterOverride ?? _currentFilter;
 
-    // Apply filter
+    // First, filter transactions based on current filter
     final filtered = transactions.where((tx) {
+      // Always show pending transactions regardless of filter
+      if (tx.status == TransactionStatus.pending) {
+        return true;
+      }
+
+      // Skip ETH gas fee transactions that are associated with PYUSD transactions
+      if (tx.tokenSymbol == 'ETH' && tx.amount == 0) {
+        // Check if this is a gas fee transaction for a PYUSD transaction
+        final hasPyusdTransaction = transactions.any((otherTx) =>
+            otherTx.hash == tx.hash &&
+            otherTx.tokenSymbol == 'PYUSD' &&
+            otherTx.timestamp == tx.timestamp);
+        if (hasPyusdTransaction) {
+          return false;
+        }
+      }
+
+      // Apply filter based on current selection
       switch (filterToUse) {
         case 'PYUSD':
           return tx.tokenSymbol == 'PYUSD';
         case 'ETH':
-          return tx.tokenSymbol == null || tx.tokenSymbol == 'ETH';
+          return tx.tokenSymbol == 'ETH';
         default:
-          return true; // 'All' case
+          return true;
       }
     }).toList();
 
-    // Sort transactions: Pending first, then by timestamp
-    filtered.sort((a, b) {
-      final aPending = a.status == TransactionStatus.pending ? 1 : 0;
-      final bPending = b.status == TransactionStatus.pending ? 1 : 0;
-      final pendingCompare = bPending - aPending;
-      return pendingCompare != 0
-          ? pendingCompare
-          : b.timestamp.compareTo(a.timestamp);
-    });
+    // Sort transactions by timestamp in descending order (newest first)
+    filtered.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     return filtered;
   }
@@ -116,14 +165,6 @@ class WaletScreenProvider with ChangeNotifier {
     if (_isNetworkSelectorVisible != isVisible) {
       _isNetworkSelectorVisible = isVisible;
       _prefs?.setBool(_networkSelectorKey, isVisible);
-      notifyListeners();
-    }
-  }
-
-  // Refresh state methods
-  void setRefreshing(bool refreshing) {
-    if (_isRefreshing != refreshing) {
-      _isRefreshing = refreshing;
       notifyListeners();
     }
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../services/notification_service.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../services/ethereum_rpc_service.dart';
+import '../../../services/firebase_transaction_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../../utils/provider_utils.dart';
@@ -16,6 +17,7 @@ class TransactionProvider extends ChangeNotifier
   final WalletStateProvider _walletProvider;
   final TransactionDetailProvider _detailProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
+  final FirebaseTransactionService _firebaseService;
   final NotificationService _notificationService;
 
   final Map<NetworkType, List<TransactionModel>> _transactionsByNetwork = {};
@@ -81,7 +83,8 @@ class TransactionProvider extends ChangeNotifier
         _networkProvider = networkProvider,
         _walletProvider = walletProvider,
         _detailProvider = detailProvider,
-        _notificationService = notificationService {
+        _notificationService = notificationService,
+        _firebaseService = FirebaseTransactionService(networkProvider) {
     _instance = this;
     _initializeTransactionMaps();
     _networkProvider.addListener(_onNetworkChanged);
@@ -156,119 +159,66 @@ class TransactionProvider extends ChangeNotifier
   }
 
   List<TransactionModel> _processTransactions(
-      List<Map<String, dynamic>> ethTxs,
-      List<Map<String, dynamic>> tokenTxs,
+      List<Map<String, dynamic>> transactions,
       String address,
       NetworkType currentNetwork) {
-    final Map<String, TransactionModel> processedTransactions = {};
-    final Set<String> processedHashes = {};
+    final List<TransactionModel> processedTransactions = [];
 
-    for (final tx in ethTxs) {
-      if (tx['hash'] == null) continue;
+    for (final tx in transactions) {
+      try {
+        final direction = tx['direction'] == 'normal'
+            ? (tx['from'].toString().toLowerCase() == address.toLowerCase()
+                ? TransactionDirection.outgoing
+                : TransactionDirection.incoming)
+            : TransactionDirection.outgoing;
 
-      final hash = tx['hash'];
-      processedHashes.add(hash);
+        final status = tx['status'] == 'confirmed'
+            ? TransactionStatus.confirmed
+            : tx['status'] == 'failed'
+                ? TransactionStatus.failed
+                : TransactionStatus.pending;
 
-      final direction = _compareAddresses(tx['from'] ?? '', address)
-          ? TransactionDirection.outgoing
-          : TransactionDirection.incoming;
+        final timestamp =
+            DateTime.fromMillisecondsSinceEpoch(tx['timestamp'] * 1000);
 
-      TransactionStatus status;
-      if (tx['blockNumber'] == null || tx['blockNumber'] == '0') {
-        status = TransactionStatus.pending;
-      } else if (int.parse(tx['isError'] ?? '0') == 1) {
-        status = TransactionStatus.failed;
-      } else {
-        status = TransactionStatus.confirmed;
+        // Convert numeric values to double
+        final amount = (tx['amount'] as num).toDouble();
+        final gasUsed = (tx['gasUsed'] as num).toDouble();
+        final gasLimit = (tx['gasLimit'] as num).toDouble();
+        final gasPrice = (tx['gasPrice'] as num).toDouble();
+        final confirmations = tx['confirmations'] as int;
+
+        // Get token details
+        final tokenSymbol = tx['tokenSymbol'] as String? ?? 'ETH';
+        final tokenName = tx['tokenName'] as String?;
+        final tokenDecimals = tx['tokenDecimals'] as int?;
+        final tokenContractAddress = tx['tokenContractAddress'] as String?;
+
+        processedTransactions.add(TransactionModel(
+          hash: tx['hash'] as String,
+          timestamp: timestamp,
+          from: tx['from'] as String,
+          to: tx['to'] as String,
+          amount: amount,
+          gasUsed: gasUsed,
+          gasLimit: gasLimit,
+          gasPrice: gasPrice,
+          status: status,
+          direction: direction,
+          confirmations: confirmations,
+          network: currentNetwork,
+          tokenSymbol: tokenSymbol,
+          tokenName: tokenName,
+          tokenDecimals: tokenDecimals,
+          tokenContractAddress: tokenContractAddress,
+        ));
+      } catch (e) {
+        print('Error processing transaction: $e');
+        continue;
       }
-
-      DateTime timestamp;
-      if (tx['timeStamp'] != null) {
-        timestamp = DateTime.fromMillisecondsSinceEpoch(
-            int.parse(tx['timeStamp']) * 1000);
-      } else {
-        timestamp = DateTime.now();
-      }
-
-      final value = tx['value'] ?? '0';
-      final gasUsed = tx['gasUsed'] ?? '0';
-      final gasLimit = tx['gasLimit'] ?? '0';
-      final gasPrice = tx['gasPrice'] ?? '0';
-      final confirmations = tx['confirmations'] ?? '0';
-
-      processedTransactions[hash] = TransactionModel(
-        hash: hash,
-        timestamp: timestamp,
-        from: tx['from'] ?? '',
-        to: tx['to'] ?? '',
-        amount: double.parse(value) / 1e18,
-        gasUsed: double.parse(gasUsed),
-        gasLimit: double.parse(gasLimit),
-        gasPrice: double.parse(gasPrice) / 1e9,
-        status: status,
-        direction: direction,
-        confirmations: int.parse(confirmations),
-        network: currentNetwork,
-        tokenSymbol: 'ETH',
-      );
     }
 
-    for (final tx in tokenTxs) {
-      if (tx['hash'] == null) continue;
-
-      final hash = tx['hash'];
-      processedHashes.add(hash);
-
-      final direction = _compareAddresses(tx['from'], address)
-          ? TransactionDirection.outgoing
-          : TransactionDirection.incoming;
-
-      TransactionStatus status;
-      if (tx['blockNumber'] == null || tx['blockNumber'] == '0') {
-        status = TransactionStatus.pending;
-      } else if (int.parse(tx['isError'] ?? '0') == 1) {
-        status = TransactionStatus.failed;
-      } else {
-        status = TransactionStatus.confirmed;
-      }
-
-      DateTime timestamp;
-      if (tx['timeStamp'] != null) {
-        timestamp = DateTime.fromMillisecondsSinceEpoch(
-            int.parse(tx['timeStamp']) * 1000);
-      } else {
-        timestamp = DateTime.now();
-      }
-
-      final decimals = int.parse(tx['tokenDecimal'] ?? '18');
-      final rawAmount = BigInt.tryParse(tx['value'] ?? '0') ?? BigInt.zero;
-      final tokenAmount =
-          rawAmount.toDouble() / BigInt.from(10).pow(decimals).toDouble();
-
-      processedTransactions[hash] = TransactionModel(
-        hash: hash,
-        timestamp: timestamp,
-        from: tx['from'] ?? '',
-        to: tx['to'] ?? '',
-        amount: tokenAmount,
-        gasUsed: double.tryParse(tx['gasUsed'] ?? '0') ?? 0.0,
-        gasLimit: double.tryParse(tx['gasLimit'] ?? '0') ?? 0.0,
-        gasPrice: double.tryParse(tx['gasPrice'] ?? '0') ?? 0.0 / 1e9,
-        status: status,
-        direction: direction,
-        confirmations: int.tryParse(tx['confirmations'] ?? '0') ?? 0,
-        tokenSymbol: tx['tokenSymbol'],
-        tokenName: tx['tokenName'],
-        tokenDecimals: decimals,
-        tokenContractAddress: tx['contractAddress'],
-        network: currentNetwork,
-      );
-    }
-
-    final result = processedTransactions.values.toList();
-    result.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    return result;
+    return processedTransactions;
   }
 
   Future<void> fetchTransactions({bool forceRefresh = false}) async {
@@ -292,38 +242,40 @@ class TransactionProvider extends ChangeNotifier
     try {
       final currentNetwork = _networkProvider.currentNetwork;
 
-      List<Map<String, dynamic>> ethTxs = [];
-      List<Map<String, dynamic>> tokenTxs = [];
+      // Get current pending transactions before refreshing
+      final currentPendingTransactions = _pendingTransactions.values
+          .where((tx) => tx.network == currentNetwork)
+          .toList();
 
-      try {
-        ethTxs = await _rpcService.getTransactions(
-          address,
-          currentNetwork,
-          page: _currentPage,
-          perPage: _perPage,
-        );
-      } catch (e) {
-        print('Error fetching ETH transactions: $e');
-        // Continue with empty list
+      // Check if we have cached data that's still valid
+      if (!forceRefresh &&
+          _transactionsByNetwork.containsKey(currentNetwork) &&
+          _transactionsByNetwork[currentNetwork]!.isNotEmpty &&
+          _lastRefresh != null) {
+        final cacheAge = DateTime.now().difference(_lastRefresh!);
+        if (cacheAge < const Duration(minutes: 5)) {
+          // Use cached data if it's less than 5 minutes old
+          _isFetchingTransactions = false;
+          safeNotifyListeners(this);
+          _isRefreshLocked = false;
+          return;
+        }
       }
 
-      try {
-        tokenTxs = await _rpcService.getTokenTransactions(
-          address,
-          currentNetwork,
-          page: _currentPage,
-          perPage: _perPage,
-        );
-      } catch (e) {
-        print('Error fetching token transactions: $e');
-        // Continue with empty list
-      }
+      // Use a more efficient approach to fetch transactions
+      final transactions = await _fetchAllTransactions(address, currentNetwork);
 
       if (disposed) return;
 
-      final newTransactions =
-          _processTransactions(ethTxs, tokenTxs, address, currentNetwork);
-      _updateTransactionState(newTransactions, currentNetwork, forceRefresh);
+      // Update transaction state while preserving pending transactions
+      _updateTransactionState(transactions, currentNetwork, forceRefresh);
+
+      // Restart monitoring for any pending transactions that were preserved
+      for (var pendingTx in currentPendingTransactions) {
+        if (_pendingTransactions.containsKey(pendingTx.hash)) {
+          _startTransactionMonitoring(pendingTx.hash);
+        }
+      }
 
       _lastSuccessfulRefresh = DateTime.now();
     } catch (e) {
@@ -337,16 +289,111 @@ class TransactionProvider extends ChangeNotifier
     }
   }
 
+  Future<List<TransactionModel>> _fetchAllTransactions(
+      String address, NetworkType network) async {
+    try {
+      // Get transactions from Firebase first
+      final firebaseTransactions = await _firebaseService.getTransactions();
+
+      // Get transactions from local storage
+      final cachedTransactions =
+          await _loadCachedTransactions(address, network);
+
+      // Only fetch from network if we need to
+      if (cachedTransactions.isEmpty ||
+          DateTime.now().difference(_lastSuccessfulRefresh ?? DateTime(2000)) >
+              const Duration(minutes: 5)) {
+        // Use the new Etherscan method to fetch transactions
+        final transactions = await _rpcService.getTransactionsFromEtherscan(
+          _networkProvider.currentRpcEndpoint,
+          address,
+          network,
+        );
+
+        final processedTransactions = _processTransactions(
+          transactions,
+          address,
+          network,
+        );
+
+        // Save confirmed and failed transactions to Firebase
+        for (final tx in processedTransactions) {
+          if (tx.status == TransactionStatus.confirmed ||
+              tx.status == TransactionStatus.failed) {
+            await _firebaseService.saveTransaction(tx);
+          }
+        }
+
+        // Cache the results
+        await _cacheTransactions(processedTransactions, address, network);
+
+        // Combine Firebase and new transactions
+        final allTransactions = [
+          ...firebaseTransactions,
+          ...processedTransactions
+        ];
+        return allTransactions;
+      }
+
+      return [...firebaseTransactions, ...cachedTransactions];
+    } catch (e) {
+      print('Error fetching all transactions: $e');
+      // Return cached transactions if available, otherwise empty list
+      return await _loadCachedTransactions(address, network);
+    }
+  }
+
+  Future<void> _cacheTransactions(List<TransactionModel> transactions,
+      String address, NetworkType network) async {
+    // Implementation depends on your caching strategy (shared_preferences, hive, etc.)
+    // This is a placeholder
+  }
+
+  Future<List<TransactionModel>> _loadCachedTransactions(
+      String address, NetworkType network) async {
+    // Implementation depends on your caching strategy
+    // This is a placeholder
+    return [];
+  }
+
   void _updateTransactionState(List<TransactionModel> newTransactions,
       NetworkType network, bool forceRefresh) {
+    // First, update the transaction cache
     for (var tx in newTransactions) {
       _transactionCache[tx.hash] = tx;
     }
 
+    // Get current pending transactions for this network
+    final currentPendingTransactions = _pendingTransactions.values
+        .where((tx) => tx.network == network)
+        .toList();
+
+    // Filter out any pending transactions that have been confirmed or failed
+    final updatedPendingTransactions =
+        currentPendingTransactions.where((pendingTx) {
+      final newTx = newTransactions.firstWhere(
+        (tx) => tx.hash == pendingTx.hash,
+        orElse: () => pendingTx,
+      );
+      return newTx.status == TransactionStatus.pending;
+    }).toList();
+
+    // Update pending transactions map
+    _pendingTransactions.clear();
+    for (var tx in updatedPendingTransactions) {
+      _pendingTransactions[tx.hash] = tx;
+    }
+
+    // Combine confirmed/failed transactions with pending ones
+    final allTransactions = [
+      ...updatedPendingTransactions,
+      ...newTransactions.where((tx) => tx.status != TransactionStatus.pending),
+    ];
+
     if (forceRefresh) {
-      _transactionsByNetwork[network] = newTransactions;
+      _transactionsByNetwork[network] = allTransactions;
     } else {
-      _transactionsByNetwork[network]?.addAll(newTransactions);
+      _transactionsByNetwork[network]?.addAll(allTransactions);
     }
 
     _hasMoreTransactions = newTransactions.length >= _perPage;
@@ -524,6 +571,8 @@ class TransactionProvider extends ChangeNotifier
 
   Future<void> _monitorInBackground(String txHash) async {
     Timer? monitoringTimer;
+    int retryCount = 0;
+    const maxRetries = 20; // Maximum number of retries (1 minute total)
 
     monitoringTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (!_activeMonitoring.containsKey(txHash) ||
@@ -559,18 +608,36 @@ class TransactionProvider extends ChangeNotifier
             _activeMonitoring[txHash] = false;
             timer.cancel();
 
+            // Force refresh to update the transaction list
             await refreshWalletData(forceRefresh: true);
             notifyListeners();
           }
         } else if (details?.status == TransactionStatus.failed) {
+          _pendingTransactions.remove(txHash);
           _activeMonitoring[txHash] = false;
           timer.cancel();
 
+          // Force refresh to update the transaction list
           await refreshWalletData(forceRefresh: true);
           notifyListeners();
+        } else {
+          // Transaction is still pending
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            // If we've reached max retries, stop monitoring but keep the transaction as pending
+            _activeMonitoring[txHash] = false;
+            timer.cancel();
+            print(
+                'Stopped monitoring transaction $txHash after $maxRetries retries');
+          }
         }
       } catch (e) {
         print('Background monitoring error for $txHash: $e');
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          _activeMonitoring[txHash] = false;
+          timer.cancel();
+        }
       }
     });
 
@@ -578,111 +645,7 @@ class TransactionProvider extends ChangeNotifier
   }
 
   Future<void> refreshWalletData({bool forceRefresh = false}) async {
-    if (disposed) return;
-
-    final address = _authProvider.getCurrentAddress();
-    if (address == null || address.isEmpty) return;
-
-    if (!forceRefresh && _isRefreshLocked) return;
-
-    _isRefreshLocked = true;
-    _isFetchingTransactions = true;
-    safeNotifyListeners(this);
-
-    try {
-      final currentNetwork = _networkProvider.currentNetwork;
-      final rpcUrl = _networkProvider.currentRpcEndpoint;
-
-      if (forceRefresh) {
-        _currentPage = 1;
-        _transactionsByNetwork[currentNetwork]?.clear();
-      }
-
-      List<Map<String, dynamic>> ethTxs = [];
-      List<Map<String, dynamic>> tokenTxs = [];
-      double ethBalance = 0.0;
-      double tokenBalance = 0.0;
-
-      // Use separate try-catch blocks to prevent one failure from affecting others
-      try {
-        ethTxs = await _rpcService.getTransactions(
-          address,
-          currentNetwork,
-          page: _currentPage,
-          perPage: _perPage,
-        );
-      } catch (e) {
-        print('Error fetching ETH transactions: $e');
-      }
-
-      try {
-        tokenTxs = await _rpcService.getTokenTransactions(
-          address,
-          currentNetwork,
-          page: _currentPage,
-          perPage: _perPage,
-        );
-      } catch (e) {
-        print('Error fetching token transactions: $e');
-      }
-
-      try {
-        ethBalance = await _rpcService.getEthBalance(rpcUrl, address);
-      } catch (e) {
-        print('Error fetching ETH balance: $e');
-      }
-
-      try {
-        tokenBalance = await _rpcService.getTokenBalance(
-          rpcUrl,
-          _tokenContractAddresses[currentNetwork] ?? '',
-          address,
-          decimals: 6,
-        );
-      } catch (e) {
-        print('Error fetching token balance: $e');
-      }
-
-      if (disposed) return;
-
-      final newTransactions = _processTransactions(
-        ethTxs,
-        tokenTxs,
-        address,
-        currentNetwork,
-      );
-
-      if (forceRefresh) {
-        _transactionsByNetwork[currentNetwork] = newTransactions;
-      } else {
-        _transactionsByNetwork[currentNetwork] = [
-          ...(_transactionsByNetwork[currentNetwork] ?? []),
-          ...newTransactions,
-        ];
-      }
-
-      _walletProvider.updateBalances(ethBalance, tokenBalance);
-
-      _hasMoreTransactions = newTransactions.length >= _perPage;
-      if (!forceRefresh) {
-        _currentPage++;
-      }
-
-      _lastSuccessfulRefresh = DateTime.now();
-    } catch (e) {
-      print('Error refreshing wallet data: $e');
-      setError(this, 'Failed to refresh wallet data: $e');
-    } finally {
-      _isRefreshLocked = false;
-      _isFetchingTransactions = false;
-      if (!disposed) {
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> forceRefresh() async {
-    await refreshWalletData(forceRefresh: true);
+    await fetchTransactions(forceRefresh: forceRefresh);
   }
 
   Future<int> estimateEthTransferGas(String toAddress, double amount) async {

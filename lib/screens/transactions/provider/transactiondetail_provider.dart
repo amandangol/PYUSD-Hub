@@ -12,8 +12,8 @@ class TransactionDetailProvider
         OngoingOperationUtils<TransactionDetailModel?> {
   final EthereumRpcService _rpcService = EthereumRpcService();
 
-  // Cache expiration time (1 hour)
-  static const Duration _cacheExpiration = Duration(hours: 1);
+  // Cache expiration time (5 minutes)
+  static const Duration _cacheExpiration = Duration(minutes: 5);
 
   // Cache for ongoing operations to prevent duplicate requests
   final Map<String, Future<TransactionDetailModel?>> _ongoingOperations = {};
@@ -24,6 +24,33 @@ class TransactionDetailProvider
   final Map<String, Map<String, dynamic>> _traceCache = {};
   static const Duration _traceCacheExpiration = Duration(minutes: 30);
 
+  final Map<String, TransactionDetailModel> _cachedDetails = {};
+  DateTime _lastFetchTime = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // Pre-fetch transaction details for recent transactions
+  Future<void> preFetchTransactionDetails({
+    required List<TransactionModel> transactions,
+    required String rpcUrl,
+    required NetworkType networkType,
+    required String currentAddress,
+  }) async {
+    if (disposed) return;
+
+    // Only pre-fetch the first 5 transactions
+    final transactionsToFetch = transactions.take(5).toList();
+
+    for (final tx in transactionsToFetch) {
+      if (!_cachedDetails.containsKey(tx.hash)) {
+        _getTransactionDetails(
+          txHash: tx.hash,
+          rpcUrl: rpcUrl,
+          networkType: networkType,
+          currentAddress: currentAddress,
+        );
+      }
+    }
+  }
+
   Future<TransactionDetailModel?> getTransactionDetails({
     required String txHash,
     required String rpcUrl,
@@ -33,54 +60,47 @@ class TransactionDetailProvider
   }) async {
     if (disposed) return null;
 
-    // Check if there's an ongoing operation for this transaction
+    // Check if we have a cached version that's still valid
+    if (!forceRefresh && _cachedDetails.containsKey(txHash)) {
+      final cachedDetail = _cachedDetails[txHash]!;
+      final cacheAge = DateTime.now().difference(cachedDetail.timestamp);
+      if (cacheAge < _cacheExpiration) {
+        return cachedDetail;
+      }
+    }
+
+    // Check if there's an ongoing operation for this hash
     if (_ongoingOperations.containsKey(txHash)) {
       return _ongoingOperations[txHash];
     }
 
-    // Check cache first if not forcing refresh
-    if (!forceRefresh) {
-      final cachedTransaction =
-          getCachedItem(txHash, expiration: _cacheExpiration);
-      if (cachedTransaction != null) return cachedTransaction;
-    }
-
-    // Create the future and store it in ongoing operations
-    final fetchFuture = _fetchTransactionDetails(
-      txHash: txHash,
-      rpcUrl: rpcUrl,
-      networkType: networkType,
-      currentAddress: currentAddress,
-    );
-
-    _ongoingOperations[txHash] = fetchFuture;
-
     try {
-      final result = await fetchFuture;
-      if (result != null && !disposed) {
-        cacheItem(txHash, result);
-      }
-      return result;
-    } finally {
-      if (!disposed) {
-        _ongoingOperations.remove(txHash);
-      }
+      final future = _getTransactionDetails(
+        txHash: txHash,
+        rpcUrl: rpcUrl,
+        networkType: networkType,
+        currentAddress: currentAddress,
+      );
+
+      _ongoingOperations[txHash] = future;
+      final details = await future;
+      _ongoingOperations.remove(txHash);
+
+      return details;
+    } catch (e) {
+      _ongoingOperations.remove(txHash);
+      print('Error getting transaction details: $e');
+      return null;
     }
   }
 
-  // Private method to actually fetch transaction details
-  Future<TransactionDetailModel?> _fetchTransactionDetails({
+  Future<TransactionDetailModel?> _getTransactionDetails({
     required String txHash,
     required String rpcUrl,
     required NetworkType networkType,
     required String currentAddress,
   }) async {
-    if (disposed) return null;
-
-    setLoadingState(this, true);
-
     try {
-      // Fetch transaction details from RPC service
       final details = await _rpcService.getTransactionDetails(
         rpcUrl,
         txHash,
@@ -88,14 +108,15 @@ class TransactionDetailProvider
         currentAddress,
       );
 
+      if (details != null) {
+        _cachedDetails[txHash] = details;
+        _lastFetchTime = DateTime.now();
+      }
+
       return details;
     } catch (e) {
-      setError(this, 'Error fetching transaction details: $e');
+      print('Error in _getTransactionDetails: $e');
       return null;
-    } finally {
-      if (!disposed) {
-        setLoadingState(this, false);
-      }
     }
   }
 
@@ -230,14 +251,14 @@ class TransactionDetailProvider
     return details?.errorMessage;
   }
 
-  // Check if transaction details are already cached
-  bool isTransactionCached(String txHash) {
-    return getCachedItem(txHash, expiration: _cacheExpiration) != null;
-  }
-
   // Get cached transaction details by hash
   TransactionDetailModel? getCachedTransactionDetails(String txHash) {
-    return getCachedItem(txHash, expiration: _cacheExpiration);
+    return _cachedDetails[txHash];
+  }
+
+  // Check if transaction details are already cached
+  bool isTransactionCached(String txHash) {
+    return _cachedDetails.containsKey(txHash);
   }
 
   Future<Map<String, dynamic>?> getTransactionTrace({
@@ -274,8 +295,23 @@ class TransactionDetailProvider
   }
 
   @override
+  void clearCache({String? key, Duration? olderThan}) {
+    if (key != null) {
+      _cachedDetails.remove(key);
+    } else if (olderThan != null) {
+      final cutoffTime = DateTime.now().subtract(olderThan);
+      _cachedDetails
+          .removeWhere((_, detail) => detail.timestamp.isBefore(cutoffTime));
+    } else {
+      _cachedDetails.clear();
+    }
+    notifyListeners();
+  }
+
+  @override
   void dispose() {
     _traceCache.clear();
+    _cachedDetails.clear();
     markDisposed();
     clearOngoingOperations();
     super.dispose();

@@ -28,7 +28,6 @@ class WalletStateProvider extends ChangeNotifier {
   bool _isDisposed = false;
 
   // Timer for auto-refresh
-  Timer? _refreshTimer;
   Timer? _debounceTimer;
 
   // Add refresh lock
@@ -66,13 +65,8 @@ class WalletStateProvider extends ChangeNotifier {
     // Listen for network changes
     _networkProvider.addListener(_onNetworkChanged);
 
-    // Start auto-refresh if wallet exists
-    if (_authProvider.hasWallet) {
-      _startAutoRefresh();
-    }
-
-    // Initial balance refresh
-    refreshBalances();
+    // Initial balance load
+    _loadInitialBalances();
   }
 
   // Initialize maps for all available networks
@@ -83,9 +77,20 @@ class WalletStateProvider extends ChangeNotifier {
     }
   }
 
+  // Load initial balances without refresh mechanism
+  void _loadInitialBalances() {
+    final address = _authProvider.getCurrentAddress();
+    if (address != null && address.isNotEmpty) {
+      _loadBalances(address);
+    }
+  }
+
   // Handle network change
   void _onNetworkChanged() {
-    refreshBalances(forceRefresh: true);
+    final address = _authProvider.getCurrentAddress();
+    if (address != null && address.isNotEmpty) {
+      _loadBalances(address);
+    }
   }
 
   // Get Sepolia faucet link
@@ -95,78 +100,39 @@ class WalletStateProvider extends ChangeNotifier {
     return 'https://sepolia-faucet.pk910.de/?address=$address';
   }
 
-  // Refresh balances with debouncing
-  Future<void> refreshBalances({bool forceRefresh = false}) async {
-    if (!_authProvider.hasWallet) return;
+  // Add refresh method for balances
+  Future<void> refreshBalances() async {
+    if (_isDisposed) return;
 
     final address = _authProvider.getCurrentAddress();
     if (address == null || address.isEmpty) return;
 
-    // Skip if already refreshing and not forced
-    if (_isBalanceRefreshing && !forceRefresh) return;
-
-    // Check minimum refresh interval unless forced
-    if (!forceRefresh && _lastSuccessfulRefresh != null) {
-      final timeSinceLastRefresh =
-          DateTime.now().difference(_lastSuccessfulRefresh!);
-      if (timeSinceLastRefresh < _minRefreshInterval) {
-        return;
-      }
-    }
-
     _isBalanceRefreshing = true;
     notifyListeners();
 
     try {
-      await _refreshBalances(address);
-      _lastSuccessfulRefresh = DateTime.now();
-      clearError();
+      await _loadBalances(address);
     } catch (e) {
-      if (!_isDisposed) {
-        _setError('Error refreshing balances: $e');
-      }
+      print('Error refreshing balances: $e');
     } finally {
       if (!_isDisposed) {
         _isBalanceRefreshing = false;
-        _isInitialLoad = false;
         notifyListeners();
       }
     }
   }
 
-  // Execute the actual refresh operation
-  Future<void> _executeRefresh(
-      String address, NetworkType currentNetwork) async {
+  // Load balances without refresh mechanism
+  Future<void> _loadBalances(String address) async {
+    if (_isDisposed) return;
+
     _isBalanceRefreshing = true;
     notifyListeners();
 
     try {
-      // Force a fresh fetch of balances
-      await _refreshBalances(address);
+      final rpcUrl = _networkProvider.currentRpcEndpoint;
+      final currentNetwork = _networkProvider.currentNetwork;
 
-      // Update cache timestamp
-      _lastRefreshTimes[currentNetwork] = DateTime.now();
-
-      clearError();
-    } catch (e) {
-      if (!_isDisposed) {
-        _setError('Error refreshing balances: $e');
-      }
-    } finally {
-      if (!_isDisposed) {
-        _isBalanceRefreshing = false;
-        _isInitialLoad = false;
-        notifyListeners();
-      }
-    }
-  }
-
-  // Refresh balances for current network
-  Future<void> _refreshBalances(String address) async {
-    final rpcUrl = _networkProvider.currentRpcEndpoint;
-    final currentNetwork = _networkProvider.currentNetwork;
-
-    try {
       // Create timeout futures
       final ethFuture = _rpcService
           .getEthBalance(rpcUrl, address)
@@ -188,13 +154,17 @@ class WalletStateProvider extends ChangeNotifier {
 
         // Cache the successful results
         _lastRefreshTimes[currentNetwork] = DateTime.now();
+        _isInitialLoad = false;
       }
     } catch (e) {
-      print('Error in _refreshBalances: $e');
+      print('Error in _loadBalances: $e');
       // If there's an error, keep the old values
-      // but still allow future refreshes
-      _isRefreshLocked = false;
-      rethrow;
+      _isInitialLoad = false;
+    } finally {
+      if (!_isDisposed) {
+        _isBalanceRefreshing = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -226,16 +196,6 @@ class WalletStateProvider extends ChangeNotifier {
     return ethBalance >= totalCost;
   }
 
-  // Auto-refresh timer setup
-  void _startAutoRefresh() {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (_authProvider.hasWallet) {
-        refreshBalances();
-      }
-    });
-  }
-
   // Helper methods
   void _setError(String? errorMsg) {
     _error = errorMsg;
@@ -251,27 +211,9 @@ class WalletStateProvider extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
-    _refreshTimer?.cancel();
     _debounceTimer?.cancel();
     _networkProvider.removeListener(_onNetworkChanged);
     super.dispose();
-  }
-
-  // Add method to manually check balance
-  Future<void> debugCheckBalance() async {
-    final address = _authProvider.getCurrentAddress();
-    if (address == null || address.isEmpty) {
-      print('Debug: No wallet address available');
-      return;
-    }
-
-    try {
-      print('\n=== Manual Balance Check ===');
-      print('Checking balance for address: $address');
-      await _refreshBalances(address);
-    } catch (e) {
-      print('Debug: Manual balance check failed: $e');
-    }
   }
 
   // Add method to update balances directly

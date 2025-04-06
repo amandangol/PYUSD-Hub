@@ -264,6 +264,16 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Check if network is currently switching
+    final isNetworkSwitching = context.select<NetworkProvider, bool>(
+      (provider) => provider.isSwitching,
+    );
+
+    // Add check for pending transactions
+    if (widget.transaction.status == TransactionStatus.pending) {
+      return _buildPendingTransactionView();
+    }
+
     final isIncoming =
         widget.transaction.direction == TransactionDirection.incoming;
     final theme = Theme.of(context);
@@ -280,8 +290,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
     // Determine transaction status color
     final statusColor = _getStatusColor(widget.transaction.status);
 
-    // Show a placeholder view while data is loading
-    if (_isInitializing && _detailedTransaction == null) {
+    // Show a placeholder view while data is loading or network is switching
+    if ((_isInitializing && _detailedTransaction == null) ||
+        isNetworkSwitching) {
       return _buildLoadingScreen(backgroundColor, textColor);
     }
 
@@ -541,5 +552,32 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       case TransactionStatus.failed:
         return theme.colorScheme.error;
     }
+  }
+
+  Widget _buildPendingTransactionView() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pending Transaction'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text('Transaction is pending confirmation...'),
+            const SizedBox(height: 8),
+            Text('Transaction Hash: ${widget.transaction.hash}'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _openBlockExplorer,
+              child: const Text('View on Block Explorer'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

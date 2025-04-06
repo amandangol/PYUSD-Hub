@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../providers/network_provider.dart';
@@ -6,6 +7,7 @@ enum TransactionDirection { incoming, outgoing }
 
 enum TransactionStatus { pending, confirmed, failed }
 
+@immutable
 class TransactionModel {
   final String hash;
   final DateTime timestamp;
@@ -45,14 +47,21 @@ class TransactionModel {
     this.data,
   });
 
-  // Fee calculation in ETH
-  double get fee => gasUsed * gasPrice / 1e9;
+  late final double fee = gasUsed * gasPrice / 1e9;
 
-  // Format timestamp to readable date
-  String get formattedDate =>
+  late final String formattedDate =
       DateFormat('MMM dd, yyyy HH:mm').format(timestamp);
 
-  // Clone with updated values
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TransactionModel &&
+          hash == other.hash &&
+          network == other.network;
+
+  @override
+  int get hashCode => hash.hashCode ^ network.hashCode;
+
   TransactionModel copyWith({
     String? hash,
     DateTime? timestamp,
@@ -114,7 +123,6 @@ class TransactionModel {
     };
   }
 
-// Create TransactionModel from JSON
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     return TransactionModel(
       hash: json['hash'],
@@ -137,7 +145,7 @@ class TransactionModel {
   }
 }
 
-// Add this model for transaction details
+@immutable
 class TransactionDetailModel extends TransactionModel {
   final String blockNumber;
   final int nonce;
@@ -182,8 +190,6 @@ class TransactionDetailModel extends TransactionModel {
     this.transactionTrace,
   });
 
-  // Clone with updated values
-  @override
   TransactionDetailModel copyWith({
     String? hash,
     DateTime? timestamp,

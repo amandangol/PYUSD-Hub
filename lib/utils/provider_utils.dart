@@ -6,49 +6,54 @@ mixin ProviderUtils {
   bool _isLoading = false;
   String? _error;
 
-  // Getters
+  // Use getters for immutable access
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get disposed => _disposed;
 
-  // Safe way to notify listeners preventing "called after dispose" errors
-  void safeNotifyListeners(ChangeNotifier provider) {
-    if (!_disposed) {
+  // Optimize notification by adding batch notification support
+  void safeNotifyListeners(ChangeNotifier provider, {bool batch = false}) {
+    if (!_disposed && !batch) {
       provider.notifyListeners();
     }
   }
 
-  // Set loading state and notify listeners
-  void setLoadingState(ChangeNotifier provider, bool loading) {
+  // Add batch operations support
+  void batchNotify(ChangeNotifier provider, void Function() operations) {
     if (_disposed) return;
 
-    if (_isLoading != loading) {
-      _isLoading = loading;
-      if (!loading) _error = null;
-      safeNotifyListeners(provider);
-    }
+    operations();
+    provider.notifyListeners();
   }
 
-  // Set error state and notify listeners
-  void setError(ChangeNotifier provider, String errorMsg) {
+  // Optimize state management
+  void setLoadingState(ChangeNotifier provider, bool loading,
+      {bool notify = true}) {
+    if (_disposed || _isLoading == loading) return;
+
+    _isLoading = loading;
+    if (!loading) _error = null;
+    if (notify) safeNotifyListeners(provider);
+  }
+
+  // Add error handling with optional notification
+  void setError(ChangeNotifier provider, String errorMsg,
+      {bool notify = true}) {
     if (_disposed) return;
 
     _error = errorMsg;
     print('Provider error: $errorMsg');
-    safeNotifyListeners(provider);
+    if (notify) safeNotifyListeners(provider);
   }
 
-  // Clear error state
-  void clearError(ChangeNotifier provider) {
-    if (_disposed) return;
+  // Add error clearing with optional notification
+  void clearError(ChangeNotifier provider, {bool notify = true}) {
+    if (_disposed || _error == null) return;
 
-    if (_error != null) {
-      _error = null;
-      safeNotifyListeners(provider);
-    }
+    _error = null;
+    if (notify) safeNotifyListeners(provider);
   }
 
-  // Mark as disposed
   void markDisposed() {
     _disposed = true;
   }
@@ -60,37 +65,64 @@ mixin CacheUtils<T> {
   final Map<String, DateTime> _cacheTimestamps = {};
   static const Duration defaultCacheExpiration = Duration(minutes: 10);
 
-  // Get cached item if not expired
-  T? getCachedItem(String key, {Duration? expiration}) {
-    if (_cache.containsKey(key)) {
+  // Add cache statistics
+  int get cacheSize => _cache.length;
+  DateTime? getItemTimestamp(String key) => _cacheTimestamps[key];
+
+  // Optimize cache retrieval with optional refresh check
+  T? getCachedItem(
+    String key, {
+    Duration? expiration,
+    bool checkExpiration = true,
+  }) {
+    if (!_cache.containsKey(key)) return null;
+
+    if (checkExpiration) {
       final timestamp = _cacheTimestamps[key];
-      if (timestamp != null &&
-          DateTime.now().difference(timestamp) <
+      if (timestamp == null ||
+          DateTime.now().difference(timestamp) >=
               (expiration ?? defaultCacheExpiration)) {
-        return _cache[key];
+        return null;
       }
     }
-    return null;
+    return _cache[key];
   }
 
-  // Cache an item
+  // Add batch caching support
+  void cacheItems(Map<String, T> items) {
+    final now = DateTime.now();
+    items.forEach((key, item) {
+      _cache[key] = item;
+      _cacheTimestamps[key] = now;
+    });
+  }
+
   void cacheItem(String key, T item) {
     _cache[key] = item;
     _cacheTimestamps[key] = DateTime.now();
   }
 
-  // Clear cache for a specific key or all cache
-  void clearCache({String? key}) {
+  // Add selective cache clearing
+  void clearCache({String? key, Duration? olderThan}) {
     if (key != null) {
       _cache.remove(key);
       _cacheTimestamps.remove(key);
+    } else if (olderThan != null) {
+      final threshold = DateTime.now().subtract(olderThan);
+      _cacheTimestamps.removeWhere((key, timestamp) {
+        if (timestamp.isBefore(threshold)) {
+          _cache.remove(key);
+          return true;
+        }
+        return false;
+      });
     } else {
       _cache.clear();
       _cacheTimestamps.clear();
     }
   }
 
-  // Clean expired cache entries
+  // Optimize cache cleanup
   void cleanExpiredCache({Duration? expiration}) {
     final now = DateTime.now();
     final expiredKeys = <String>[];
@@ -111,25 +143,29 @@ mixin CacheUtils<T> {
 /// A mixin that provides ongoing operation tracking functionality
 mixin OngoingOperationUtils<T> {
   final Map<String, Future<T>> _ongoingOperations = {};
+  final Set<String> _completedOperations = {};
 
-  // Check if an operation is ongoing
   bool isOperationOngoing(String key) => _ongoingOperations.containsKey(key);
+  bool isOperationCompleted(String key) => _completedOperations.contains(key);
 
-  // Get ongoing operation if exists
   Future<T>? getOngoingOperation(String key) => _ongoingOperations[key];
 
-  // Add ongoing operation
-  void addOngoingOperation(String key, Future<T> operation) {
+  // Add operation tracking with completion callback
+  void trackOperation(String key, Future<T> operation) {
     _ongoingOperations[key] = operation;
+
+    operation.whenComplete(() {
+      _ongoingOperations.remove(key);
+      _completedOperations.add(key);
+    });
   }
 
-  // Remove ongoing operation
   void removeOngoingOperation(String key) {
     _ongoingOperations.remove(key);
   }
 
-  // Clear all ongoing operations
   void clearOngoingOperations() {
     _ongoingOperations.clear();
+    _completedOperations.clear();
   }
 }

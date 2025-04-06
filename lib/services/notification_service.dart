@@ -91,7 +91,6 @@ class NotificationService {
     print('Status: $status');
     print('Amount: $amount $tokenSymbol');
 
-    // Ensure initialization is complete
     if (!_isInitialized) {
       await _initializeNotifications();
     }
@@ -99,25 +98,27 @@ class NotificationService {
     try {
       String title;
       String body;
+      String formattedAmount = amount.toStringAsFixed(
+          tokenSymbol == 'PYUSD' ? 2 : 6); // Format based on token type
 
       switch (status) {
         case TransactionStatus.confirmed:
           title = '✅ Transaction Confirmed';
-          body = 'Your transaction of $amount $tokenSymbol has been confirmed';
+          body =
+              'Your transaction of $formattedAmount $tokenSymbol has been confirmed. Please refresh the page to see the latest status.';
           break;
         case TransactionStatus.failed:
           title = '❌ Transaction Failed';
-          body = 'Transaction of $amount $tokenSymbol has failed';
+          body =
+              'Transaction of $formattedAmount $tokenSymbol has failed. Please refresh the page to see the latest status.';
           break;
         case TransactionStatus.pending:
           title = '⏳ Transaction Pending';
-          body = 'Your transaction of $amount $tokenSymbol is being processed';
+          body =
+              'Your transaction of $formattedAmount $tokenSymbol is being processed';
           break;
-        default:
-          return;
       }
 
-      // Create the notification details
       const androidDetails = AndroidNotificationDetails(
         'transaction_channel',
         'Transaction Notifications',
@@ -128,14 +129,12 @@ class NotificationService {
         showWhen: true,
         enableVibration: true,
         playSound: true,
-        icon: '@mipmap/ic_launcher',
       );
 
       const iOSDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
-        sound: 'default',
       );
 
       const details = NotificationDetails(
@@ -143,7 +142,6 @@ class NotificationService {
         iOS: iOSDetails,
       );
 
-      // Show the notification
       await _flutterLocalNotificationsPlugin.show(
         txHash.hashCode,
         title,
@@ -157,7 +155,6 @@ class NotificationService {
       print('Error showing notification: $e');
       print(e.toString());
     }
-    print('=== End Notification ===\n');
   }
 
   // Notify about low gas price

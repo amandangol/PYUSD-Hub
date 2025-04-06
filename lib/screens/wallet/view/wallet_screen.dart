@@ -9,8 +9,10 @@ import '../../../providers/walletstate_provider.dart';
 import '../../../utils/snackbar_utils.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../../transactions/provider/transaction_provider.dart';
+import '../../transactions/provider/transactiondetail_provider.dart';
 import '../../transactions/view/receive_transaction/receive_screen.dart';
 import '../../transactions/view/send_transaction/send_screen.dart';
+import '../provider/walletscreen_provider.dart';
 import '../widgets/action_button.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/network_status_card.dart';
@@ -27,20 +29,14 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen>
     with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
-  bool _isRefreshing = false;
   bool _hasError = false;
   Timer? _debounceTimer;
-  Timer? _refreshTimer;
-  AnimationController? _refreshIndicatorController;
   NetworkProvider? _networkProvider;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
-    _refreshIndicatorController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    );
 
     // Listen for network changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -58,11 +54,12 @@ class _WalletScreenState extends State<WalletScreen>
     _networkProvider = Provider.of<NetworkProvider>(context, listen: false);
   }
 
-  void _initializeData() {
+  Future<void> _initializeData() async {
     if (!mounted) return;
 
-    // Initial data load
-    _refreshWalletData(showLoadingIndicator: true);
+    final walletScreenProvider =
+        Provider.of<WaletScreenProvider>(context, listen: false);
+    await walletScreenProvider.refreshAllData();
   }
 
   @override
@@ -74,68 +71,20 @@ class _WalletScreenState extends State<WalletScreen>
 
     _debounceTimer?.cancel();
     _scrollController.dispose();
-    _refreshTimer?.cancel();
-    _refreshIndicatorController?.dispose();
     super.dispose();
   }
 
-  Future<void> _refreshWalletData({
-    bool forceRefresh = false,
-    bool showLoadingIndicator = true,
-  }) async {
-    if (_isRefreshing && !forceRefresh) return;
+  void _onNetworkChanged() {
     if (!mounted) return;
 
-    setState(() {
-      _isRefreshing = true;
-      _hasError = false;
+    // Cancel any existing debounce timer
+    _debounceTimer?.cancel();
+
+    // Set a debounce timer to prevent multiple refreshes
+    _debounceTimer = Timer(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      // Network change handling is now managed by providers
     });
-
-    if (showLoadingIndicator) {
-      _refreshIndicatorController?.repeat();
-    }
-
-    try {
-      final transactionProvider =
-          Provider.of<TransactionProvider>(context, listen: false);
-      final walletProvider =
-          Provider.of<WalletStateProvider>(context, listen: false);
-
-      // Start both refreshes immediately and wait for them to complete
-      final balanceFuture =
-          walletProvider.refreshBalances(forceRefresh: forceRefresh);
-      final transactionsFuture =
-          transactionProvider.refreshWalletData(forceRefresh: forceRefresh);
-
-      // Use Future.wait with a timeout
-      await Future.wait(
-        [balanceFuture, transactionsFuture],
-        eagerError: false, // Continue even if one fails
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          // Handle timeout gracefully
-          print('Refresh timeout - some operations may not have completed');
-          return [null, null];
-        },
-      );
-    } catch (e) {
-      print('Error refreshing wallet data: $e');
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-        });
-        if (showLoadingIndicator) {
-          _refreshIndicatorController?.stop();
-        }
-      }
-    }
   }
 
   @override
@@ -176,13 +125,68 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
+  Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      final walletScreenProvider =
+          Provider.of<WaletScreenProvider>(context, listen: false);
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
+      final walletStateProvider =
+          Provider.of<WalletStateProvider>(context, listen: false);
+      final networkProvider =
+          Provider.of<NetworkProvider>(context, listen: false);
+      final transactionDetailProvider =
+          Provider.of<TransactionDetailProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentAddress = authProvider.getCurrentAddress() ?? '';
+
+      // Clear transaction details cache
+      transactionDetailProvider.clearCache();
+
+      // Refresh all data in parallel
+      await Future.wait([
+        transactionProvider.fetchTransactions(forceRefresh: true),
+        walletStateProvider.refreshBalances(),
+      ]);
+
+      // Pre-fetch transaction details for recent transactions
+      if (transactionProvider.transactions.isNotEmpty) {
+        transactionDetailProvider.preFetchTransactionDetails(
+          transactions: transactionProvider.transactions.take(5).toList(),
+          rpcUrl: networkProvider.currentRpcEndpoint,
+          networkType: networkProvider.currentNetwork,
+          currentAddress: currentAddress,
+        );
+      }
+    } catch (e) {
+      print('Error refreshing data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing data: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
+
   Widget _buildBody(
       {required bool isDarkMode,
       required Color primaryColor,
       required String walletAddress,
       required String networkName}) {
     return RefreshIndicator(
-      onRefresh: () => _refreshWalletData(forceRefresh: true),
+      onRefresh: _handleRefresh,
       child: SingleChildScrollView(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -220,12 +224,8 @@ class _WalletScreenState extends State<WalletScreen>
 
               const SizedBox(height: 24),
 
-              // Transactions with selective rebuilds
-              _buildTransactionsSection(
-                isDarkMode: isDarkMode,
-                primaryColor: primaryColor,
-                walletAddress: walletAddress,
-              ),
+              // Add transaction list section
+              _buildTransactionList(),
             ],
           ),
         ),
@@ -248,7 +248,7 @@ class _WalletScreenState extends State<WalletScreen>
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                'There was an error loading data. Pull down to refresh.',
+                'There was an error loading data.',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.w500,
@@ -290,36 +290,13 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  Widget _buildTransactionsSection({
-    required bool isDarkMode,
-    required Color primaryColor,
-    required String walletAddress,
-  }) {
-    final transactions =
-        context.select<TransactionProvider, List<TransactionModel>>(
-            (provider) => provider.transactions);
-    final isLoading = context.select<TransactionProvider, bool>(
-        (provider) => provider.isFetchingTransactions);
-
-    return TransactionsSection(
-      transactions: transactions,
-      currentAddress: walletAddress,
-      isLoading: isLoading,
-      isDarkMode: isDarkMode,
-      primaryColor: primaryColor,
-    );
-  }
-
   // Navigation methods
   void _navigateToSend() {
     Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (context) => const SendTransactionScreen()),
     ).then((transactionSent) {
-      if (mounted && transactionSent == true) {
-        // Only refresh if a transaction was actually sent
-        _refreshWalletData(forceRefresh: true);
-      }
+      // No refresh needed after transaction
     });
   }
 
@@ -335,22 +312,6 @@ class _WalletScreenState extends State<WalletScreen>
       context: context,
       message: "Swap Feature coming soon",
     );
-  }
-
-  void _onNetworkChanged() {
-    if (mounted) {
-      // Clear any existing errors
-      setState(() {
-        _hasError = false;
-      });
-
-      // Add a small delay to allow the network change to complete
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _refreshWalletData(forceRefresh: true);
-        }
-      });
-    }
   }
 
   Widget _buildDemoWalletView(BuildContext context) {
@@ -496,5 +457,21 @@ class _WalletScreenState extends State<WalletScreen>
         (route) => false,
       );
     }
+  }
+
+  Widget _buildTransactionList() {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentAddress = authProvider.getCurrentAddress() ?? '';
+
+    return Consumer<TransactionProvider>(
+      builder: (context, provider, child) {
+        return TransactionSection(
+          isDarkMode: isDarkMode,
+          currentAddress: currentAddress,
+        );
+      },
+    );
   }
 }

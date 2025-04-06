@@ -47,7 +47,7 @@ class ReceiveScreen extends StatelessWidget {
         showLogo: false,
         networkName: networkProvider.currentNetworkDisplayName,
         onRefreshPressed: () {
-          walletProvider.refreshBalances(forceRefresh: true);
+          // walletProvider.refreshBalances(forceRefresh: true);
         },
       ),
       body: SafeArea(

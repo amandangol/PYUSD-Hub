@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/rpc_endpoints.dart';
 import '../screens/transactions/provider/transaction_provider.dart';
@@ -15,13 +17,13 @@ extension NetworkTypeExtension on NetworkType {
 }
 
 class NetworkProvider extends ChangeNotifier {
-  // Default to Sepolia Testnet
-  NetworkType _currentNetwork = NetworkType.sepoliaTestnet;
+  NetworkType _currentNetwork = NetworkType.ethereumMainnet;
+  SharedPreferences? _prefs;
+  static const String _networkKey = 'selected_network';
 
-  // RPC endpoint configurations
   final Map<NetworkType, String> _rpcEndpoints = {
-    NetworkType.sepoliaTestnet: RpcEndpoints.sepoliaTestnetHttpRpcUrl,
     NetworkType.ethereumMainnet: RpcEndpoints.mainnetHttpRpcUrl,
+    NetworkType.sepoliaTestnet: RpcEndpoints.sepoliaTestnetHttpRpcUrl,
   };
 
   // WebSocket RPC endpoints
@@ -85,7 +87,30 @@ class NetworkProvider extends ChangeNotifier {
   String get currentNetworkDisplayName =>
       _networkNames[_currentNetwork] ?? 'Unknown Network';
 
-  // Enhanced switch network method
+  NetworkProvider() {
+    _loadSavedNetwork();
+  }
+
+  Future<void> _loadSavedNetwork() async {
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      final savedNetwork = _prefs?.getString(_networkKey);
+      if (savedNetwork != null) {
+        final networkType = NetworkType.values.firstWhere(
+          (e) => e.toString() == savedNetwork,
+          orElse: () => NetworkType.ethereumMainnet,
+        );
+        _currentNetwork = networkType;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading saved network: $e');
+      // Default to Ethereum Mainnet if there's an error
+      _currentNetwork = NetworkType.ethereumMainnet;
+      notifyListeners();
+    }
+  }
+
   Future<void> switchNetwork(NetworkType network) async {
     if (_currentNetwork != network) {
       try {
@@ -97,16 +122,33 @@ class NetworkProvider extends ChangeNotifier {
         print('To: ${network.name} (${_chainIds[network]})');
         print('New RPC URL: ${_rpcEndpoints[network]}');
 
+        // Set the new network first
         _currentNetwork = network;
+        await _prefs?.setString(_networkKey, network.toString());
+
+        // Notify listeners about the network change
+        notifyListeners();
+
+        // Add a small delay to ensure UI updates before clearing data
+        await Future.delayed(const Duration(milliseconds: 100));
 
         // Clear transactions for the previous network
         final transactionProvider = TransactionProvider.instance;
-        transactionProvider.clearNetworkData(_currentNetwork);
+        if (transactionProvider != null) {
+          transactionProvider.clearNetworkData(network);
+        }
 
+        // Add another small delay before completing the switch
+        await Future.delayed(const Duration(milliseconds: 100));
+      } catch (e) {
+        print('Error during network switch: $e');
+        // Revert to previous network if there's an error
+        _currentNetwork = _currentNetwork;
         notifyListeners();
       } finally {
         _isSwitching = false;
         notifyListeners();
+        print('Network switch completed');
       }
     }
   }
@@ -121,5 +163,15 @@ class NetworkProvider extends ChangeNotifier {
       print('RPC connection error: $e');
       return false;
     }
+  }
+
+  String getEtherscanApiKey() {
+    return dotenv.env['ETHERSCAN_API_KEY'] ?? '';
+  }
+
+  String getEtherscanBaseUrl() {
+    return _currentNetwork == NetworkType.sepoliaTestnet
+        ? 'https://api-sepolia.etherscan.io/api'
+        : 'https://api.etherscan.io/api';
   }
 }

@@ -160,29 +160,14 @@ class NetworkStatusCard extends StatelessWidget {
             ),
           );
         }
-
-        final transactionProvider =
-            Provider.of<TransactionProvider>(context, listen: false);
-        final walletProvider =
-            Provider.of<WalletStateProvider>(context, listen: false);
-
-        await Future.wait(
-          [
-            walletProvider.refreshBalances(forceRefresh: true),
-            transactionProvider.refreshWalletData(forceRefresh: true),
-          ],
-          eagerError: false,
-        ).timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => [null, null],
-        );
+        // No refresh needed after network switch
       } catch (e) {
-        print('Error during network switch refresh: $e');
+        print('Error during network switch UI update: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error refreshing data. Pull to refresh.'),
+              content: Text('Error switching network. Please try again.'),
               backgroundColor: Colors.red,
             ),
           );

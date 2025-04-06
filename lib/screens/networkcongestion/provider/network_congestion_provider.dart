@@ -97,6 +97,10 @@ class NetworkCongestionProvider with ChangeNotifier {
   final http.Client _httpClient = http.Client();
   final RpcCallService _rpcService = RpcCallService();
 
+  WebSocketChannel? _channel;
+  Timer? _reconnectTimer;
+  bool hasError = false;
+
   void setGasPriceThreshold(double threshold) {
     if (_isDisposed) return;
     _gasPriceThreshold = threshold;
@@ -1627,6 +1631,90 @@ class NetworkCongestionProvider with ChangeNotifier {
     // Clear transaction receipt cache
     if (_transactionReceiptCache.length > 20) {
       _transactionReceiptCache.clear();
+    }
+  }
+
+  Future<void> reconnectWebSocket() async {
+    try {
+      _closeWebSocket();
+      await _initializeWebSocket();
+      hasError = false;
+      notifyListeners();
+    } catch (e) {
+      hasError = true;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  void _closeWebSocket() {
+    _reconnectTimer?.cancel();
+    _channel?.sink.close();
+    _channel = null;
+    _isWebSocketConnected = false;
+  }
+
+  Future<void> _initializeWebSocket() async {
+    if (_isWebSocketConnected) return;
+
+    try {
+      final uri = Uri.parse(_wsRpcUrl);
+      _wsChannel = WebSocketChannel.connect(uri);
+      _isWebSocketConnected = true;
+
+      _wsChannel!.stream.listen(
+        (data) {
+          // Handle incoming data
+          _reconnectWebSocket();
+        },
+        onError: (error) {
+          print('WebSocket error: $error');
+          hasError = true;
+          _handleConnectionError();
+        },
+        onDone: () {
+          print('WebSocket connection closed');
+          _isWebSocketConnected = false;
+          _handleConnectionError();
+        },
+      );
+    } catch (e) {
+      print('WebSocket connection error: $e');
+      hasError = true;
+      _handleConnectionError();
+    }
+  }
+
+  void _handleConnectionError() {
+    _isWebSocketConnected = false;
+    // Only attempt to reconnect if we haven't already scheduled a reconnection
+    if (_reconnectTimer == null || !_reconnectTimer!.isActive) {
+      _reconnectTimer = Timer(const Duration(seconds: 5), () {
+        reconnectWebSocket();
+      });
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshData() async {
+    // Implement your data refresh logic here
+    // This could include fetching new data from APIs
+    try {
+      // Refresh your data sources
+      await Future.wait([
+        _fetchGasPrice(),
+        _fetchNetworkStatus(),
+        _fetchPendingTransactions(),
+        _fetchRecentPyusdTransactions(),
+        _fetchLatestBlock(),
+        _fetchGasPrice(),
+      ]);
+      hasError = false;
+    } catch (e) {
+      hasError = true;
+      rethrow;
+    } finally {
+      notifyListeners();
     }
   }
 }

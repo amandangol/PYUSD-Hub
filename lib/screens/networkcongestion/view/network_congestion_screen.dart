@@ -27,6 +27,8 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
   ];
   bool _isInitialLoading = true;
   bool _isDisposed = false;
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
 
   @override
   void initState() {
@@ -100,6 +102,26 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
 
     if (!_loadedTabs[index]) {
       setState(() => _loadedTabs[index] = true);
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    if (!mounted) return;
+
+    final provider =
+        Provider.of<NetworkCongestionProvider>(context, listen: false);
+    try {
+      await provider.reconnectWebSocket();
+      await provider.refreshData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing data: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -198,43 +220,65 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
             unselectedLabelColor: theme.tabBarTheme.unselectedLabelColor,
           ),
         ),
-        body: Consumer<NetworkCongestionProvider>(
-          builder: (context, provider, child) {
-            if (_isInitialLoading) {
-              return Center(
+        body: RefreshIndicator(
+          key: _refreshIndicatorKey,
+          onRefresh: _handleRefresh,
+          child: Consumer<NetworkCongestionProvider>(
+            builder: (context, provider, child) {
+              if (_isInitialLoading) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: primaryColor),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading network data...',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (provider.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error loading data\nPull down to refresh',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return SafeArea(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(color: primaryColor),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Loading network data...',
-                      style: theme.textTheme.bodyMedium,
+                    const DataSourceInfoCard(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildTabContent(0, provider),
+                          _buildTabContent(1, provider),
+                          _buildTabContent(2, provider),
+                          _buildTabContent(3, provider),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               );
-            }
-
-            return SafeArea(
-              child: Column(
-                children: [
-                  const DataSourceInfoCard(),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildTabContent(0, provider),
-                        _buildTabContent(1, provider),
-                        _buildTabContent(2, provider),
-                        _buildTabContent(3, provider),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+            },
+          ),
         ),
       ),
     );
@@ -254,7 +298,12 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
     switch (index) {
       case 0:
         return SingleChildScrollView(
-          child: OverviewTab(congestionData: provider.congestionData),
+          child: OverviewTab(
+            congestionData: provider.congestionData,
+            onRefresh: () async {
+              await _handleRefresh();
+            },
+          ),
         );
       case 1:
         return GasTab(congestionData: provider.congestionData);

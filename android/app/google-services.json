@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "681088292849",
-    "project_id": "pyusd-hub",
-    "storage_bucket": "pyusd-hub.firebasestorage.app"
+    "project_number": "569602104504",
+    "project_id": "pyusd-flutter",
+    "storage_bucket": "pyusd-flutter.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:681088292849:android:b06185c5b89ae7220f9650",
+        "mobilesdk_app_id": "1:569602104504:android:20b05ab93e391ba6e3284d",
         "android_client_info": {
           "package_name": "com.example.pyusd_forensics"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAFU73kBjsTOHf80hjUwoLB5Chd5Ssmuuc"
+          "current_key": "AIzaSyC8QhdSa-CWDr9qQ7l_ItH87ZkWyVGiIqw"
         }
       ],
       "services": {

@@ -6,6 +6,8 @@ import 'package:web3dart/crypto.dart';
 import 'package:web3dart/web3dart.dart';
 import '../providers/network_provider.dart';
 import '../screens/transactions/model/transaction_model.dart';
+import 'dart:math' as Math;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EthereumRpcService {
   static final EthereumRpcService _instance = EthereumRpcService._internal();
@@ -23,14 +25,21 @@ class EthereumRpcService {
   ]
   ''';
 
-  late final Map<String, Web3Client> _clientCache = {};
   static const String _etherscanApiKey = 'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
 
-  Web3Client? _getClient(String rpcUrl) {
-    if (!_clientCache.containsKey(rpcUrl)) {
-      _clientCache[rpcUrl] = Web3Client(rpcUrl, http.Client());
+  final Map<String, Web3Client> _clientPool = {};
+  static const int _maxPoolSize = 5;
+
+  Web3Client _getClient(String rpcUrl) {
+    if (!_clientPool.containsKey(rpcUrl)) {
+      if (_clientPool.length >= _maxPoolSize) {
+        final oldestUrl = _clientPool.keys.first;
+        _clientPool[oldestUrl]?.dispose();
+        _clientPool.remove(oldestUrl);
+      }
+      _clientPool[rpcUrl] = Web3Client(rpcUrl, http.Client());
     }
-    return _clientCache[rpcUrl];
+    return _clientPool[rpcUrl]!;
   }
 
   Future<Map<String, dynamic>> _makeRpcCall(
@@ -42,31 +51,66 @@ class EthereumRpcService {
     try {
       final client = http.Client();
       try {
+        final requestBody = {
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': method,
+          'params': params,
+        };
+
+        print('Making RPC call to $rpcUrl');
+        print('Method: $method');
+        print('Params: ${jsonEncode(params)}');
+
         final response = await client
             .post(
               Uri.parse(rpcUrl),
               headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'jsonrpc': '2.0',
-                'id': 1,
-                'method': method,
-                'params': params,
-              }),
+              body: jsonEncode(requestBody),
             )
             .timeout(timeout);
 
         if (response.statusCode != 200) {
+          print('RPC Error Response: ${response.body}');
           throw Exception(
-              'Failed to connect to Ethereum node: ${response.statusCode}');
+              'Failed to connect to Ethereum node: ${response.statusCode}. Response: ${response.body}');
         }
 
-        return jsonDecode(response.body);
+        final result = jsonDecode(response.body);
+
+        if (result['error'] != null) {
+          print('RPC Error: ${result['error']}');
+          throw Exception('RPC Error: ${result['error']['message']}');
+        }
+
+        return result;
       } finally {
         client.close();
       }
     } catch (e) {
+      print('RPC call failed for $method: $e');
       throw Exception('RPC call failed for $method: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> _makeRpcCallWithRetry(
+    String rpcUrl,
+    String method,
+    List<dynamic> params, {
+    int maxRetries = 3,
+    Duration delay = const Duration(seconds: 1),
+  }) async {
+    int attempts = 0;
+    while (attempts < maxRetries) {
+      try {
+        return await _makeRpcCall(rpcUrl, method, params);
+      } catch (e) {
+        attempts++;
+        if (attempts == maxRetries) rethrow;
+        await Future.delayed(delay * attempts);
+      }
+    }
+    throw Exception('Failed after $maxRetries attempts');
   }
 
   Future<double> getEthBalance(String rpcUrl, String address) async {
@@ -251,41 +295,75 @@ class EthereumRpcService {
     int page = 1,
     int perPage = 20,
   }) async {
-    final domain = _getEtherscanDomain(networkType);
-    final uri = Uri.https(domain, '/api', {
-      'module': 'account',
-      'action': 'txlist',
-      'address': address,
-      'page': page.toString(),
-      'offset': perPage.toString(),
-      'sort': 'desc',
-      'apikey': _etherscanApiKey,
-    });
+    final rpcUrl = networkType == NetworkType.ethereumMainnet
+        ? RpcEndpoints.mainnetHttpRpcUrl
+        : RpcEndpoints.sepoliaTestnetHttpRpcUrl;
 
     try {
-      final response = await http.get(uri);
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch transactions: ${response.statusCode}');
+      final blockNumberResponse =
+          await _makeRpcCall(rpcUrl, 'eth_blockNumber', []);
+      final latestBlock =
+          int.parse(blockNumberResponse['result'].substring(2), radix: 16);
+
+      final startBlock = Math.max(0, latestBlock - 4);
+
+      final logsResponse = await _makeRpcCall(rpcUrl, 'eth_getLogs', [
+        {
+          'fromBlock': '0x${startBlock.toRadixString(16)}',
+          'toBlock': 'latest',
+          'topics': [
+            null,
+            null,
+            '0x000000000000000000000000${address.substring(2).toLowerCase().padLeft(64, '0')}',
+          ],
+        }
+      ]);
+
+      if (logsResponse['result'] == null) {
+        return [];
       }
 
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      if (data['status'] != '1') {
-        if (data['message'] == 'No transactions found' ||
-            data['result'] is List && (data['result'] as List).isEmpty) {
-          return [];
-        }
+      final logs = logsResponse['result'] as List;
+      final transactions = <Map<String, dynamic>>[];
 
-        if (data['message']?.toString().contains('rate limit') == true ||
-            data['message']?.toString().contains('Invalid API Key') == true) {
-          print(
-              'Etherscan API issue: ${data['message']} - returning empty list');
-          return [];
-        }
+      for (var i = 0; i < logs.length && i < perPage; i++) {
+        final log = logs[i] as Map<String, dynamic>;
+        final txHash = log['transactionHash'];
 
-        throw Exception('Etherscan API error: ${data['message']}');
+        final txResponse =
+            await _makeRpcCall(rpcUrl, 'eth_getTransactionByHash', [txHash]);
+        final receiptResponse =
+            await _makeRpcCall(rpcUrl, 'eth_getTransactionReceipt', [txHash]);
+
+        if (txResponse['result'] != null && receiptResponse['result'] != null) {
+          final tx = txResponse['result'] as Map<String, dynamic>;
+          final receipt = receiptResponse['result'] as Map<String, dynamic>;
+
+          final blockResponse = await _makeRpcCall(
+              rpcUrl, 'eth_getBlockByHash', [receipt['blockHash'], false]);
+
+          final block = blockResponse['result'] as Map<String, dynamic>;
+
+          transactions.add({
+            'hash': tx['hash'],
+            'blockNumber': tx['blockNumber'],
+            'timeStamp': (int.parse(block['timestamp'].substring(2), radix: 16))
+                .toString(),
+            'from': tx['from'],
+            'to': tx['to'],
+            'value': tx['value'],
+            'gasUsed': receipt['gasUsed'],
+            'gasLimit': tx['gas'],
+            'gasPrice': tx['gasPrice'],
+            'isError': receipt['status'] == '0x0' ? '1' : '0',
+            'confirmations': (latestBlock -
+                    int.parse(tx['blockNumber'].substring(2), radix: 16))
+                .toString(),
+          });
+        }
       }
 
-      return List<Map<String, dynamic>>.from(data['result']);
+      return transactions;
     } catch (e) {
       print('Error fetching transactions: $e');
       return [];
@@ -298,42 +376,86 @@ class EthereumRpcService {
     int page = 1,
     int perPage = 20,
   }) async {
-    final domain = _getEtherscanDomain(networkType);
-    final uri = Uri.https(domain, '/api', {
-      'module': 'account',
-      'action': 'tokentx',
-      'address': address,
-      'page': page.toString(),
-      'offset': perPage.toString(),
-      'sort': 'desc',
-      'apikey': _etherscanApiKey,
-    });
+    final rpcUrl = networkType == NetworkType.ethereumMainnet
+        ? RpcEndpoints.mainnetHttpRpcUrl
+        : RpcEndpoints.sepoliaTestnetHttpRpcUrl;
 
     try {
-      final response = await http.get(uri);
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to fetch token transactions: ${response.statusCode}');
+      final blockNumberResponse =
+          await _makeRpcCall(rpcUrl, 'eth_blockNumber', []);
+      final latestBlock =
+          int.parse(blockNumberResponse['result'].substring(2), radix: 16);
+
+      final startBlock = Math.max(0, latestBlock - 10000);
+
+      final logsResponse = await _makeRpcCall(rpcUrl, 'eth_getLogs', [
+        {
+          'fromBlock': '0x${startBlock.toRadixString(16)}',
+          'toBlock': 'latest',
+          'topics': [
+            '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+            null,
+            '0x000000000000000000000000${address.substring(2).toLowerCase().padLeft(64, '0')}',
+          ],
+        }
+      ]);
+
+      if (logsResponse['result'] == null) {
+        return [];
       }
 
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      if (data['status'] != '1') {
-        if (data['message'] == 'No transactions found' ||
-            data['result'] is List && (data['result'] as List).isEmpty) {
-          return [];
-        }
+      final logs = logsResponse['result'] as List;
+      final transactions = <Map<String, dynamic>>[];
 
-        if (data['message']?.toString().contains('rate limit') == true ||
-            data['message']?.toString().contains('Invalid API Key') == true) {
-          print(
-              'Etherscan API issue: ${data['message']} - returning empty list');
-          return [];
-        }
+      for (var i = 0; i < logs.length && i < perPage; i++) {
+        final log = logs[i] as Map<String, dynamic>;
+        final txHash = log['transactionHash'];
+        final contractAddress = log['address'];
 
-        throw Exception('Etherscan API error: ${data['message']}');
+        final tokenDetails = await getTokenDetails(rpcUrl, contractAddress);
+
+        final txResponse =
+            await _makeRpcCall(rpcUrl, 'eth_getTransactionByHash', [txHash]);
+        final receiptResponse =
+            await _makeRpcCall(rpcUrl, 'eth_getTransactionReceipt', [txHash]);
+
+        if (txResponse['result'] != null && receiptResponse['result'] != null) {
+          final tx = txResponse['result'] as Map<String, dynamic>;
+          final receipt = receiptResponse['result'] as Map<String, dynamic>;
+
+          final blockResponse = await _makeRpcCall(
+              rpcUrl, 'eth_getBlockByHash', [receipt['blockHash'], false]);
+
+          final block = blockResponse['result'] as Map<String, dynamic>;
+
+          final value = log['data'];
+          final from = '0x' + log['topics'][1].substring(26);
+          final to = '0x' + log['topics'][2].substring(26);
+
+          transactions.add({
+            'hash': tx['hash'],
+            'blockNumber': tx['blockNumber'],
+            'timeStamp': (int.parse(block['timestamp'].substring(2), radix: 16))
+                .toString(),
+            'from': from,
+            'to': to,
+            'value': value,
+            'gasUsed': receipt['gasUsed'],
+            'gasLimit': tx['gas'],
+            'gasPrice': tx['gasPrice'],
+            'tokenSymbol': tokenDetails['symbol'] ?? 'Unknown',
+            'tokenName': tokenDetails['name'] ?? 'Unknown Token',
+            'tokenDecimal': tokenDetails['decimals']?.toString() ?? '18',
+            'contractAddress': contractAddress,
+            'isError': receipt['status'] == '0x0' ? '1' : '0',
+            'confirmations': (latestBlock -
+                    int.parse(tx['blockNumber'].substring(2), radix: 16))
+                .toString(),
+          });
+        }
       }
 
-      return List<Map<String, dynamic>>.from(data['result']);
+      return transactions;
     } catch (e) {
       print('Error fetching token transactions: $e');
       return [];
@@ -876,8 +998,7 @@ class EthereumRpcService {
       body: jsonEncode(batch.values.toList()),
     );
 
-    final List<dynamic> results = jsonDecode(response.body);
-    return results.cast<Map<String, dynamic>>();
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body));
   }
 
   Future<Map<String, dynamic>?> getTransactionTrace(
@@ -943,12 +1064,133 @@ class EthereumRpcService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getTransactionsFromEtherscan(
+    String rpcUrl,
+    String address,
+    NetworkType networkType,
+  ) async {
+    try {
+      final apiKey = dotenv.env['ETHERSCAN_API_KEY'];
+      if (apiKey == null) {
+        throw Exception('Etherscan API key not found');
+      }
+
+      final baseUrl = networkType == NetworkType.sepoliaTestnet
+          ? 'https://api-sepolia.etherscan.io/api'
+          : 'https://api.etherscan.io/api';
+
+      // Get normal transactions
+      final normalTxResponse = await http.get(
+        Uri.parse(
+          '$baseUrl?module=account&action=txlist&address=$address&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=$apiKey',
+        ),
+      );
+
+      if (normalTxResponse.statusCode != 200) {
+        throw Exception(
+            'Failed to fetch normal transactions: ${normalTxResponse.statusCode}');
+      }
+
+      final normalTxData = json.decode(normalTxResponse.body);
+      if (normalTxData['status'] != '1') {
+        throw Exception('Etherscan API error: ${normalTxData['message']}');
+      }
+
+      // Get token transfers
+      final tokenTxResponse = await http.get(
+        Uri.parse(
+          '$baseUrl?module=account&action=tokentx&address=$address&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=$apiKey',
+        ),
+      );
+
+      if (tokenTxResponse.statusCode != 200) {
+        throw Exception(
+            'Failed to fetch token transactions: ${tokenTxResponse.statusCode}');
+      }
+
+      final tokenTxData = json.decode(tokenTxResponse.body);
+      if (tokenTxData['status'] != '1') {
+        throw Exception('Etherscan API error: ${tokenTxData['message']}');
+      }
+
+      final normalTransactions = (normalTxData['result'] as List)
+          .map((tx) => _processNormalTransaction(tx, networkType))
+          .toList();
+
+      final tokenTransactions = (tokenTxData['result'] as List)
+          .map((tx) => _processTokenTransaction(tx, networkType))
+          .toList();
+
+      // Combine and sort transactions by timestamp
+      final allTransactions = [...normalTransactions, ...tokenTransactions];
+      allTransactions.sort(
+          (a, b) => (b['timestamp'] as int).compareTo(a['timestamp'] as int));
+
+      return allTransactions;
+    } catch (e) {
+      print('Error fetching transactions from Etherscan: $e');
+      rethrow;
+    }
+  }
+
+  Map<String, dynamic> _processNormalTransaction(
+      Map<String, dynamic> tx, NetworkType networkType) {
+    return {
+      'hash': tx['hash'],
+      'timestamp': int.parse(tx['timeStamp']),
+      'from': tx['from'],
+      'to': tx['to'],
+      'amount': double.parse(tx['value']) / 1e18, // Convert from wei to ETH
+      'gasUsed': double.parse(tx['gasUsed']),
+      'gasLimit': double.parse(tx['gas']),
+      'gasPrice':
+          double.parse(tx['gasPrice']) / 1e9, // Convert from wei to gwei
+      'status': tx['isError'] == '1' ? 'failed' : 'confirmed',
+      'direction': tx['from'].toString().toLowerCase() ==
+              tx['to'].toString().toLowerCase()
+          ? 'self'
+          : 'normal',
+      'confirmations': int.parse(tx['confirmations']),
+      'network': networkType.toString(),
+      'tokenSymbol': null,
+      'tokenName': null,
+      'tokenDecimals': null,
+      'tokenContractAddress': null,
+    };
+  }
+
+  Map<String, dynamic> _processTokenTransaction(
+      Map<String, dynamic> tx, NetworkType networkType) {
+    return {
+      'hash': tx['hash'],
+      'timestamp': int.parse(tx['timeStamp']),
+      'from': tx['from'],
+      'to': tx['to'],
+      'amount': double.parse(tx['value']) / 1e6, // PYUSD has 6 decimals
+      'gasUsed': double.parse(tx['gasUsed']),
+      'gasLimit': double.parse(tx['gas']),
+      'gasPrice':
+          double.parse(tx['gasPrice']) / 1e9, // Convert from wei to gwei
+      'status': tx['isError'] == '1' ? 'failed' : 'confirmed',
+      'direction': tx['from'].toString().toLowerCase() ==
+              tx['to'].toString().toLowerCase()
+          ? 'self'
+          : 'normal',
+      'confirmations': int.parse(tx['confirmations']),
+      'network': networkType.toString(),
+      'tokenSymbol': tx['tokenSymbol'],
+      'tokenName': tx['tokenName'],
+      'tokenDecimals': int.parse(tx['tokenDecimal']),
+      'tokenContractAddress': tx['contractAddress'],
+    };
+  }
+
   @override
   void dispose() {
-    _clientCache.forEach((url, client) {
+    _clientPool.forEach((url, client) {
       client.dispose();
     });
-    _clientCache.clear();
+    _clientPool.clear();
     _tokenDetailsCache.clear();
   }
 }

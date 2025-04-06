@@ -492,4 +492,23 @@ class AuthProvider extends ChangeNotifier {
   PinValidationResult validatePIN(String pin) {
     return _authService.validatePIN(pin);
   }
+
+  Future<bool> authenticateTransaction(String message) async {
+    if (!_isAuthenticated) return false;
+
+    try {
+      // Try biometric authentication first
+      if (_isBiometricsAvailable && await _authService.isBiometricsEnabled()) {
+        bool authenticated =
+            await _authService.authenticateTransaction(message);
+        if (authenticated) return true;
+      }
+
+      // Biometrics failed or not available - PIN authentication will be handled by UI
+      return false;
+    } catch (e) {
+      _setError('Transaction authentication failed: $e');
+      return false;
+    }
+  }
 }

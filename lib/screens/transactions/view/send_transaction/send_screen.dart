@@ -14,6 +14,8 @@ import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';
 import 'widgets/gas_selection_sheet.dart';
 import 'dart:async';
+import '../../../../screens/authentication/provider/auth_provider.dart';
+import 'widgets/pin_auth_dialog.dart';
 
 class SendTransactionScreen extends StatefulWidget {
   const SendTransactionScreen({super.key});
@@ -324,6 +326,24 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     );
   }
 
+  Future<bool> _authenticateWithPIN() async {
+    String? pin = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const PinAuthDialog(
+          title: 'Confirm Transaction',
+          message: 'Enter your PIN to confirm the transaction',
+        );
+      },
+    );
+
+    if (pin == null) return false;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return await authProvider.authenticateWithPIN(pin);
+  }
+
   Future<void> _sendTransaction() async {
     if (!_mounted || !_formKey.currentState!.validate()) return;
 
@@ -331,6 +351,9 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         Provider.of<WalletStateProvider>(context, listen: false);
     final transactionProvider =
         Provider.of<TransactionProvider>(context, listen: false);
+    final networkProvider =
+        Provider.of<NetworkProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     final address = _addressController.text.trim();
     final amount = double.parse(_amountController.text);
@@ -375,49 +398,57 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
       return;
     }
 
-    // Confirm transaction details
+    // Show confirmation dialog
     final confirmed = await _showConfirmationDialog(context, address, amount);
-
     if (confirmed != true || !_mounted) return;
 
-    // Show loading indicator
-    _safeSetState(() {
-      _isLoading = true;
-    });
-
     try {
+      _safeSetState(() => _isLoading = true);
+
       String txHash;
+      try {
+        if (_selectedAsset == 'PYUSD') {
+          txHash = await transactionProvider.sendPYUSD(
+            address,
+            amount,
+            gasPrice: _gasPrice,
+            gasLimit: _estimatedGas,
+          );
+        } else {
+          txHash = await transactionProvider.sendETH(
+            address,
+            amount,
+            gasPrice: _gasPrice,
+            gasLimit: _estimatedGas,
+          );
+        }
 
-      // Execute the transaction and get the hash
-      if (_selectedAsset == 'PYUSD') {
-        txHash = await transactionProvider.sendPYUSD(
-          address,
-          amount,
-          gasPrice: _gasPrice,
-          gasLimit: _estimatedGas,
-        );
-      } else {
-        txHash = await transactionProvider.sendETH(
-          address,
-          amount,
-          gasPrice: _gasPrice,
-          gasLimit: _estimatedGas,
-        );
+        // Show success message and return to previous screen
+        if (_mounted && context.mounted) {
+          SnackbarUtil.showSnackbar(
+            context: context,
+            message: 'Transaction submitted: ${txHash.substring(0, 10)}...',
+            isError: false,
+          );
+        }
+
+        // Return to previous screen
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (e.toString().contains('Transaction not authenticated')) {
+          // Try PIN authentication as fallback
+          final authenticated = await _authenticateWithPIN();
+          if (authenticated) {
+            // Retry transaction
+            return _sendTransaction();
+          } else {
+            throw Exception('Authentication failed');
+          }
+        }
+        rethrow;
       }
-
-      // Unfocus the amount text field
-      _amountFocusNode.unfocus();
-
-      // Show a success message
-      if (_mounted && context.mounted) {
-        SnackbarUtil.showSnackbar(
-          context: context,
-          message: 'Transaction submitted: ${txHash.substring(0, 10)}...',
-          isError: false,
-        );
-      }
-
-      Navigator.of(context).pop(true);
     } catch (e) {
       // Check if the error is actually a transaction failure
       if (e.toString().contains('transaction failed') ||
@@ -442,11 +473,8 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
         }
       }
     } finally {
-      // Reset loading state
       if (_mounted) {
-        _safeSetState(() {
-          _isLoading = false;
-        });
+        _safeSetState(() => _isLoading = false);
       }
     }
   }

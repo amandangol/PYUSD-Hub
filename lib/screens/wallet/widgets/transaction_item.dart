@@ -28,29 +28,6 @@ class TransactionItem extends StatefulWidget {
 class _TransactionItemState extends State<TransactionItem> {
   bool _isLoading = false;
 
-  // Memoize formatted amount to avoid recalculating
-  late final String _formattedAmount;
-  late final bool _isIncoming;
-
-  @override
-  void initState() {
-    super.initState();
-    // Precalculate values that won't change
-    _isIncoming = widget.transaction.direction == TransactionDirection.incoming;
-    _formattedAmount = _formatAmount(widget.transaction);
-  }
-
-  // Helper method to format amount
-  String _formatAmount(TransactionModel tx) {
-    if (tx.tokenSymbol == 'PYUSD') {
-      // PYUSD with 6 decimals, display 2 decimal places
-      return '${tx.amount.toStringAsFixed(2)} PYUSD';
-    } else {
-      // ETH with 18 decimals, display 6 decimal places for better precision
-      return '${tx.amount.toStringAsFixed(6)} ETH';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -61,7 +38,8 @@ class _TransactionItemState extends State<TransactionItem> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () => _handleTransactionTap(widget.transaction),
+        onTap:
+            _isLoading ? null : () => _handleTransactionTap(widget.transaction),
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
@@ -69,11 +47,8 @@ class _TransactionItemState extends State<TransactionItem> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Transaction icon with animation for pending status
-                  _buildTransactionIcon(_isIncoming, widget.transaction.status),
+                  _buildTransactionIcon(),
                   const SizedBox(width: 12),
-
-                  // Transaction details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,28 +61,17 @@ class _TransactionItemState extends State<TransactionItem> {
                       ],
                     ),
                   ),
-
-                  // Transaction amount and status
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        _formattedAmount,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: _isIncoming ? Colors.green : Colors.red,
-                        ),
-                      ),
+                      _buildAmount(),
                       const SizedBox(height: 4),
-                      _buildStatusPill(widget.transaction.status),
+                      _buildStatusPill(),
                     ],
                   ),
                 ],
               ),
             ),
-
-            // Loading indicator overlay
             if (_isLoading) _buildLoadingOverlay(),
           ],
         ),
@@ -115,12 +79,31 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  // Extract widgets to methods for better organization
+  Widget _buildTransactionIcon() {
+    final isIncoming =
+        widget.transaction.direction == TransactionDirection.incoming;
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: (isIncoming ? Colors.green : Colors.red).withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        isIncoming ? Icons.arrow_downward : Icons.arrow_upward,
+        color: isIncoming ? Colors.green : Colors.red,
+        size: 20,
+      ),
+    );
+  }
+
   Widget _buildTransactionHeader() {
+    final isIncoming =
+        widget.transaction.direction == TransactionDirection.incoming;
     return Row(
       children: [
         Text(
-          _isIncoming ? 'Received' : 'Sent',
+          isIncoming ? 'Received' : 'Sent',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -152,15 +135,15 @@ class _TransactionItemState extends State<TransactionItem> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(8)),
-        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        color: widget.isDarkMode ? Colors.white10 : Colors.black12,
       ),
       child: Text(
         FormatterUtils.formatHash(widget.transaction.hash),
         style: TextStyle(
-          fontSize: 8,
+          fontSize: 12,
           fontFamily: "monospace",
-          color: widget.isDarkMode ? Colors.white : Colors.black87,
+          color: widget.isDarkMode ? Colors.white70 : Colors.black54,
         ),
       ),
     );
@@ -176,166 +159,32 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildLoadingOverlay() {
-    return Positioned.fill(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildAmount() {
+    final isIncoming =
+        widget.transaction.direction == TransactionDirection.incoming;
+    final amount = widget.transaction.amount;
+    final symbol = widget.transaction.tokenSymbol ?? 'ETH';
+    final formattedAmount = symbol == 'PYUSD'
+        ? '${amount.toStringAsFixed(2)} PYUSD'
+        : '${amount.toStringAsFixed(6)} ETH';
 
-  // Optimized transaction tap handler
-  void _handleTransactionTap(TransactionModel transaction) async {
-    if (!mounted) return;
-
-    final transactionDetailProvider =
-        Provider.of<TransactionDetailProvider>(context, listen: false);
-    final networkProvider =
-        Provider.of<NetworkProvider>(context, listen: false);
-
-    // Check if we already have this transaction in cache
-    final cachedDetails =
-        transactionDetailProvider.getCachedTransactionDetails(transaction.hash);
-    final bool isRecentlyFetched = cachedDetails != null;
-
-    // Show loading indicator briefly
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // First navigate to the detail screen with either cached or basic data
-      // This provides immediate feedback to the user without waiting for network
-      if (context.mounted) {
-        final detailsToShow = isRecentlyFetched ? cachedDetails : transaction;
-
-        // Only show loading indicator for a short time to indicate response
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        });
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TransactionDetailScreen(
-              transaction: detailsToShow,
-              currentAddress: widget.currentAddress,
-              isDarkMode: widget.isDarkMode,
-              networkType: networkProvider.currentNetwork,
-              rpcUrl: networkProvider.currentRpcEndpoint,
-              // Pass a flag if we want the detail screen to refresh the data
-              needsRefresh: !isRecentlyFetched,
-            ),
-          ),
-        );
-
-        // If the data isn't recently fetched, trigger a refresh in the background for next time
-        if (!isRecentlyFetched) {
-          // No need to await this since we've already navigated
-          transactionDetailProvider.getTransactionDetails(
-            txHash: transaction.hash,
-            rpcUrl: networkProvider.currentRpcEndpoint,
-            networkType: networkProvider.currentNetwork,
-            currentAddress: widget.currentAddress,
-            forceRefresh: false, // Don't force refresh if we already have data
-          );
-        }
-      }
-    } catch (e) {
-      // Reset loading state if still mounted
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-
-      // Show error if navigation fails
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
-
-  Widget _buildTransactionIcon(bool isIncoming, TransactionStatus status) {
-    // For pending transactions, use a pulsating animation
-    if (status == TransactionStatus.pending) {
-      return TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0.8, end: 1.0),
-        duration: const Duration(seconds: 1),
-        builder: (context, value, child) {
-          return Transform.scale(
-            scale: value,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.pending,
-                color: Colors.orange,
-                size: 20,
-              ),
-            ),
-          );
-        },
-        onEnd: () {
-          // Re-trigger the animation
-          if (status == TransactionStatus.pending) {
-            Future.delayed(const Duration(milliseconds: 100), () {});
-          }
-        },
-      );
-    }
-
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: (isIncoming ? Colors.green : Colors.red).withOpacity(0.1),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        isIncoming ? Icons.arrow_downward : Icons.arrow_upward,
+    return Text(
+      formattedAmount,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
         color: isIncoming ? Colors.green : Colors.red,
-        size: 20,
       ),
     );
   }
 
-  Widget _buildStatusPill(TransactionStatus status) {
+  Widget _buildStatusPill() {
     Color backgroundColor;
     Color textColor;
     String text;
     IconData iconData;
 
-    switch (status) {
-      case TransactionStatus.pending:
-        backgroundColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
-        text = 'Pending';
-        iconData = Icons.pending;
-        break;
+    switch (widget.transaction.status) {
       case TransactionStatus.confirmed:
         backgroundColor = Colors.green.withOpacity(0.1);
         textColor = Colors.green;
@@ -347,6 +196,12 @@ class _TransactionItemState extends State<TransactionItem> {
         textColor = Colors.red;
         text = 'Failed';
         iconData = Icons.error;
+        break;
+      case TransactionStatus.pending:
+        backgroundColor = Colors.orange.withOpacity(0.1);
+        textColor = Colors.orange;
+        text = 'Pending';
+        iconData = Icons.access_time;
         break;
       default:
         backgroundColor = Colors.grey.withOpacity(0.1);
@@ -381,5 +236,108 @@ class _TransactionItemState extends State<TransactionItem> {
         ],
       ),
     );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleTransactionTap(TransactionModel transaction) async {
+    if (!mounted) return;
+
+    if (transaction.status == TransactionStatus.pending) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Transaction details are not available for pending transactions'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    final transactionDetailProvider =
+        Provider.of<TransactionDetailProvider>(context, listen: false);
+    final networkProvider =
+        Provider.of<NetworkProvider>(context, listen: false);
+
+    if (networkProvider.isSwitching) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please wait while network is switching...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    final cachedDetails =
+        transactionDetailProvider.getCachedTransactionDetails(transaction.hash);
+    final bool isRecentlyFetched = cachedDetails != null;
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (context.mounted) {
+        final detailsToShow = isRecentlyFetched ? cachedDetails : transaction;
+
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+
+        setState(() => _isLoading = false);
+
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TransactionDetailScreen(
+              transaction: detailsToShow,
+              currentAddress: widget.currentAddress,
+              isDarkMode: widget.isDarkMode,
+              networkType: networkProvider.currentNetwork,
+              rpcUrl: networkProvider.currentRpcEndpoint,
+              needsRefresh: !isRecentlyFetched,
+            ),
+          ),
+        );
+
+        if (!isRecentlyFetched) {
+          transactionDetailProvider.getTransactionDetails(
+            txHash: transaction.hash,
+            rpcUrl: networkProvider.currentRpcEndpoint,
+            networkType: networkProvider.currentNetwork,
+            currentAddress: widget.currentAddress,
+            forceRefresh: false,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }

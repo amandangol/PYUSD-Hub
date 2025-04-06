@@ -226,4 +226,25 @@ class AuthService {
 
     return const PinValidationResult(isValid: true);
   }
+
+  Future<bool> authenticateTransaction(String message) async {
+    try {
+      // First try biometrics if enabled
+      if (await isBiometricsEnabled()) {
+        return await _localAuth.authenticate(
+          localizedReason: 'Authenticate to confirm transaction\n$message',
+          options: const AuthenticationOptions(
+            stickyAuth: true,
+            biometricOnly: true,
+          ),
+        );
+      }
+
+      // If biometrics not enabled/failed, fallback to PIN will be handled by the UI
+      return false;
+    } catch (e) {
+      print('Error authenticating transaction: $e');
+      return false;
+    }
+  }
 }
