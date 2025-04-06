@@ -49,7 +49,7 @@ class TransactionSection extends StatelessWidget {
           children: [
             // Section header with filter
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

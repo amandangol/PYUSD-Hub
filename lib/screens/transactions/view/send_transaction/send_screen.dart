@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 import '../../../../providers/network_provider.dart';
 import '../../../../providers/walletstate_provider.dart';
 import '../../../../utils/snackbar_utils.dart';
@@ -13,7 +14,7 @@ import 'widgets/recipent_card.dart';
 import 'widgets/send_button.dart';
 import 'widgets/transaction_fee_card.dart';
 import 'widgets/gas_selection_sheet.dart';
-import 'dart:async';
+import 'widgets/transaction_confirmation_dialog.dart';
 import '../../../../screens/authentication/provider/auth_provider.dart';
 import 'widgets/pin_auth_dialog.dart';
 
@@ -37,6 +38,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   int _estimatedGas = 0;
   bool _isLoading = false;
   bool _isEstimatingGas = false;
+  bool _isSending = false;
   String _selectedAsset = 'PYUSD'; // Default to PYUSD
   bool _mounted = true; // Track if the widget is mounted
   GasOption? _selectedGasOption;
@@ -225,107 +227,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
   }
 
-  Future<bool?> _showConfirmationDialog(
-    BuildContext context,
-    String address,
-    double amount,
-  ) async {
-    if (!_mounted) return false;
-
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Transaction'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Recipient:',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              Text(address,
-                  style: const TextStyle(fontSize: 13),
-                  overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
-              const Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Amount:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('$amount $_selectedAsset'),
-                ],
-              ),
-              const Divider(),
-              const SizedBox(height: 8),
-              const Text('Gas Details:',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Estimated Gas Units:'),
-                  Text('$_estimatedGas'),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Gas Price:'),
-                  Text('${_gasPrice.toStringAsFixed(2)} Gwei'),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total Gas Fee:'),
-                  Text('${_estimatedGasFee.toStringAsFixed(9)} ETH'),
-                ],
-              ),
-              if (_selectedAsset == 'ETH') ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total (with gas):',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text(
-                      '${(amount + _estimatedGasFee).toStringAsFixed(6)} ETH',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 12),
-              const Text(
-                'Please verify all transaction details before confirming.',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<bool> _authenticateWithPIN() async {
     String? pin = await showDialog<String>(
       context: context,
@@ -376,105 +277,91 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
     }
 
     // For ETH transactions, make sure they have enough to cover amount + gas
-    if (_selectedAsset == 'ETH' &&
-        (amount + _estimatedGasFee) > walletProvider.ethBalance) {
-      SnackbarUtil.showSnackbar(
-        context: context,
-        message:
-            'Insufficient ETH to cover both transaction amount and gas fees',
-        isError: true,
-      );
-      return;
+    if (_selectedAsset == 'ETH') {
+      final estimatedGas = await _estimateGas();
+      if (estimatedGas != null) {
+        final totalCost = amount + estimatedGas;
+        if (totalCost > walletProvider.ethBalance) {
+          SnackbarUtil.showSnackbar(
+            context: context,
+            message: 'Insufficient ETH balance to cover amount + gas',
+            isError: true,
+          );
+          return;
+        }
+      }
     }
 
-    // Check if there's enough ETH for gas when sending PYUSD
-    if (_selectedAsset == 'PYUSD' &&
-        _estimatedGasFee > walletProvider.ethBalance) {
-      SnackbarUtil.showSnackbar(
-        context: context,
-        message: 'Insufficient ETH for gas fees',
-        isError: true,
-      );
-      return;
-    }
-
-    // Show confirmation dialog
-    final confirmed = await _showConfirmationDialog(context, address, amount);
-    if (confirmed != true || !_mounted) return;
+    setState(() => _isSending = true);
 
     try {
-      _safeSetState(() => _isLoading = true);
+      // Authenticate transaction
+      final authService = authProvider.authService;
+      final message = 'Sending $_selectedAsset to $address';
 
-      String txHash;
-      try {
-        if (_selectedAsset == 'PYUSD') {
-          txHash = await transactionProvider.sendPYUSD(
-            address,
-            amount,
-            gasPrice: _gasPrice,
-            gasLimit: _estimatedGas,
-          );
-        } else {
-          txHash = await transactionProvider.sendETH(
-            address,
-            amount,
-            gasPrice: _gasPrice,
-            gasLimit: _estimatedGas,
-          );
+      // Try biometric authentication first
+      bool isAuthenticated = await authService.authenticateTransaction(message);
+
+      // If biometric fails or not enabled, show PIN dialog
+      if (!isAuthenticated) {
+        final pin = await showDialog<String>(
+          context: context,
+          builder: (context) => TransactionConfirmationDialog(
+            title: 'Confirm Transaction',
+            message:
+                'Enter your PIN to confirm sending $_selectedAsset to $address',
+            amount: amount,
+            asset: _selectedAsset,
+            recipient: address,
+            gasFee: _selectedAsset == 'ETH' ? _estimatedGasFee : null,
+            isHighValue:
+                amount > 1000, // Consider transactions over 1000 as high value
+          ),
+        );
+
+        if (pin == null) {
+          setState(() => _isSending = false);
+          return;
         }
 
-        // Show success message and return to previous screen
-        if (_mounted && context.mounted) {
+        isAuthenticated = await authProvider.authenticateWithPIN(pin);
+        if (!isAuthenticated) {
           SnackbarUtil.showSnackbar(
             context: context,
-            message: 'Transaction submitted: ${txHash.substring(0, 10)}...',
-            isError: false,
+            message: 'Invalid PIN',
+            isError: true,
           );
+          setState(() => _isSending = false);
+          return;
         }
+      }
 
-        // Return to previous screen
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
-        if (e.toString().contains('Transaction not authenticated')) {
-          // Try PIN authentication as fallback
-          final authenticated = await _authenticateWithPIN();
-          if (authenticated) {
-            // Retry transaction
-            return _sendTransaction();
-          } else {
-            throw Exception('Authentication failed');
-          }
-        }
-        rethrow;
+      // Proceed with transaction after successful authentication
+      final txHash = await _executeTransaction(
+        address: address,
+        amount: amount,
+        networkProvider: networkProvider,
+        transactionProvider: transactionProvider,
+      );
+
+      if (txHash != null && mounted) {
+        Navigator.pop(context, true);
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Transaction initiated successfully',
+        );
       }
     } catch (e) {
-      // Check if the error is actually a transaction failure
-      if (e.toString().contains('transaction failed') ||
-          e.toString().contains('rejected') ||
-          e.toString().contains('insufficient funds')) {
-        if (_mounted && context.mounted) {
-          SnackbarUtil.showSnackbar(
-            context: context,
-            message: 'Transaction failed: ${e.toString()}',
-            isError: true,
-          );
-        }
-      } else {
-        // For other errors, show a warning that the transaction status is uncertain
-        if (_mounted && context.mounted) {
-          SnackbarUtil.showSnackbar(
-            context: context,
-            message:
-                'Transaction status uncertain. Please check your wallet history.',
-            isError: true,
-          );
-        }
+      if (mounted) {
+        SnackbarUtil.showSnackbar(
+          context: context,
+          message: 'Error sending transaction: $e',
+          isError: true,
+        );
       }
     } finally {
-      if (_mounted) {
-        _safeSetState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isSending = false);
       }
     }
   }
@@ -506,6 +393,56 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           isError: true,
         );
       }
+    }
+  }
+
+  Future<double?> _estimateGas() async {
+    try {
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
+      final address = _addressController.text.trim();
+      final amount = double.parse(_amountController.text);
+
+      if (_selectedAsset == 'PYUSD') {
+        final gasLimit =
+            await transactionProvider.estimateTokenTransferGas(address, amount);
+        return gasLimit * _gasPrice * 1e-9; // Convert to ETH
+      } else {
+        final gasLimit =
+            await transactionProvider.estimateEthTransferGas(address, amount);
+        return gasLimit * _gasPrice * 1e-9; // Convert to ETH
+      }
+    } catch (e) {
+      print('Error estimating gas: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _executeTransaction({
+    required String address,
+    required double amount,
+    required NetworkProvider networkProvider,
+    required TransactionProvider transactionProvider,
+  }) async {
+    try {
+      if (_selectedAsset == 'PYUSD') {
+        return await transactionProvider.sendPYUSD(
+          address,
+          amount,
+          gasPrice: _gasPrice,
+          gasLimit: _estimatedGas,
+        );
+      } else {
+        return await transactionProvider.sendETH(
+          address,
+          amount,
+          gasPrice: _gasPrice,
+          gasLimit: _estimatedGas,
+        );
+      }
+    } catch (e) {
+      print('Error executing transaction: $e');
+      rethrow;
     }
   }
 
@@ -609,7 +546,7 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                       selectedAsset: _selectedAsset,
                       isValidAddress: _isValidAddress,
                       amountController: _amountController,
-                      isLoading: _isLoading,
+                      isLoading: _isSending,
                       isEstimatingGas: _isEstimatingGas,
                       estimatedGasFee: _estimatedGasFee,
                       onPressed: _sendTransaction,

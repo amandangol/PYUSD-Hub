@@ -33,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   bool get isBiometricsAvailable => _isBiometricsAvailable;
   WalletService get walletService => _walletService;
+  AuthService get authService => _authService;
 
   // Constructor with dependency injection
   AuthProvider() {
