@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../utils/formatter_utils.dart';
 
@@ -6,160 +7,150 @@ class TransactionVehicle extends StatelessWidget {
   final bool isPending;
   final String speed; // 'fast', 'medium', 'slow', 'waiting'
   final String transactionType; // 'pyusd', 'other'
+  final double animationValue;
 
   const TransactionVehicle({
     super.key,
     required this.transaction,
     required this.isPending,
     required this.speed,
-    this.transactionType = 'pyusd',
+    required this.transactionType,
+    required this.animationValue,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        _showTransactionDetails(context);
-      },
-      child: Container(
-        width: 40,
-        height: 20,
-        decoration: BoxDecoration(
-          color: _getVehicleColor(),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 2,
-              offset: const Offset(1, 1),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Vehicle body details
-            Positioned(
-              top: 5,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
-            // Transaction type indicator
-            Positioned(
-              top: 2,
-              left: 2,
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color:
-                      transactionType == 'pyusd' ? Colors.green : Colors.purple,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
+    // Calculate vehicle color based on type and speed
+    Color vehicleColor;
+    if (transactionType == 'pyusd') {
+      vehicleColor = isPending ? Colors.orange : Colors.green;
+    } else {
+      vehicleColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700;
+    }
 
-            // Wheels
-            Positioned(
-              bottom: 0,
-              left: 5,
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 5,
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1),
-                ),
-              ),
-            ),
+    // Calculate vehicle size based on speed
+    double vehicleSize;
+    switch (speed) {
+      case 'fast':
+        vehicleSize = 30.0;
+        break;
+      case 'medium':
+        vehicleSize = 25.0;
+        break;
+      case 'slow':
+        vehicleSize = 20.0;
+        break;
+      default:
+        vehicleSize = 25.0;
+    }
 
-            // Headlights
-            Positioned(
-              top: 7,
-              right: 2,
-              child: Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.yellow.withOpacity(0.8),
-                  shape: BoxShape.circle,
+    // Calculate vehicle opacity based on animation
+    final opacity = 0.8 + (0.2 * (1 - animationValue));
+
+    return Transform.translate(
+      offset: Offset(0, 5 * sin(animationValue * 2 * 3.14159)),
+      child: Opacity(
+        opacity: opacity,
+        child: Container(
+          width: vehicleSize,
+          height: vehicleSize,
+          decoration: BoxDecoration(
+            color: vehicleColor.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(4),
+            boxShadow: [
+              BoxShadow(
+                color: vehicleColor.withOpacity(0.5),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Vehicle body
+              Center(
+                child: Icon(
+                  _getVehicleIcon(),
+                  size: vehicleSize * 0.7,
+                  color: Colors.white,
                 ),
               ),
-            ),
-
-            // Status indicator
-            if (isPending)
+              // Pending indicator
+              if (isPending)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(
+                      Icons.access_time,
+                      size: 8,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              // Speed indicator
               Positioned(
+                left: 0,
                 top: 0,
-                right: 0,
                 child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.orange,
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: _getSpeedColor(),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Icon(
+                    _getSpeedIcon(),
+                    size: 8,
+                    color: Colors.white,
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Color _getVehicleColor() {
-    if (isPending) {
-      return Colors.orange.withOpacity(0.8);
-    }
-
+  IconData _getVehicleIcon() {
     if (transactionType == 'pyusd') {
-      switch (speed) {
-        case 'fast':
-          return Colors.green.shade400;
-        case 'medium':
-          return Colors.blue.shade400;
-        case 'slow':
-          return Colors.red.shade400;
-        case 'waiting':
-          return Colors.grey.shade400;
-        default:
-          return Colors.blue.shade400;
-      }
+      return Icons.local_shipping;
     } else {
-      // Other transaction types
-      switch (speed) {
-        case 'fast':
-          return Colors.teal.shade400;
-        case 'medium':
-          return Colors.purple.shade400;
-        case 'slow':
-          return Colors.deepOrange.shade400;
-        case 'waiting':
-          return Colors.grey.shade400;
-        default:
-          return Colors.purple.shade400;
-      }
+      return Icons.directions_car;
+    }
+  }
+
+  IconData _getSpeedIcon() {
+    switch (speed) {
+      case 'fast':
+        return Icons.flash_on;
+      case 'medium':
+        return Icons.speed;
+      case 'slow':
+        return Icons.slow_motion_video;
+      default:
+        return Icons.speed;
+    }
+  }
+
+  Color _getSpeedColor() {
+    switch (speed) {
+      case 'fast':
+        return Colors.green;
+      case 'medium':
+        return Colors.orange;
+      case 'slow':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 

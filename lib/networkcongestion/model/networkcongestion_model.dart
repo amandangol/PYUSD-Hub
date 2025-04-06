@@ -27,10 +27,6 @@ class NetworkCongestionData {
   final double blocksPerMinute;
   final int averageTxPerBlock;
   final int gasLimit;
-  // Health Dashboard Metrics
-  final double transactionSuccessRate;
-  final double networkStability;
-  final double transactionReliability;
 
   // PYUSD-Specific Metrics
   final int pyusdTransactionCount;
@@ -52,6 +48,11 @@ class NetworkCongestionData {
   final bool isNetworkListening;
   final List<Map<String, dynamic>> badBlocks;
   final Map<String, dynamic> txPoolInspection;
+
+  // Health Dashboard Metrics
+  final double transactionSuccessRate;
+  final double networkStability;
+  final double transactionReliability;
 
   NetworkCongestionData({
     // General Network Metrics
@@ -99,91 +100,65 @@ class NetworkCongestionData {
     this.transactionReliability = 0.95,
   });
 
-  NetworkCongestionData copyWith({
-    double? currentGasPrice,
-    double? averageGasPrice,
-    int? pendingTransactions,
-    double? gasUsagePercentage,
-    List<double>? historicalGasPrices,
-    double? networkLatency,
-    double? blockTime,
-    int? lastBlockNumber,
-    int? lastBlockTimestamp,
-    int? pendingQueueSize,
-    double? averageBlockSize,
-    DateTime? lastRefreshed,
-    double? averageBlockTime,
-    int? blocksPerHour,
-    double? blocksPerMinute,
-    int? averageTxPerBlock,
-    int? gasLimit,
-    int? pyusdTransactionCount,
-    int? confirmedPyusdTxCount,
-    int? pendingPyusdTxCount,
-    int? pyusdPendingQueueSize,
-    double? averagePyusdBlockSize,
-    double? pyusdGasUsagePercentage,
-    double? averagePyusdTransactionFee,
-    double? averagePyusdConfirmationTime,
-    List<double>? pyusdHistoricalGasPrices,
-    List<GasPricePoint>? gasPriceHistory,
-    double? currentGasPriceUSD,
-    String? networkVersion,
-    int? peerCount,
-    bool? isNetworkListening,
-    List<Map<String, dynamic>>? badBlocks,
-    Map<String, dynamic>? txPoolInspection,
-    double? transactionSuccessRate,
-    double? networkStability,
-    double? transactionReliability,
-  }) {
+  factory NetworkCongestionData.fromJson(Map<String, dynamic> json) {
     return NetworkCongestionData(
-      currentGasPrice: currentGasPrice ?? this.currentGasPrice,
-      averageGasPrice: averageGasPrice ?? this.averageGasPrice,
-      pendingTransactions: pendingTransactions ?? this.pendingTransactions,
-      gasUsagePercentage: gasUsagePercentage ?? this.gasUsagePercentage,
-      historicalGasPrices: historicalGasPrices ?? this.historicalGasPrices,
-      networkLatency: networkLatency ?? this.networkLatency,
-      blockTime: blockTime ?? this.blockTime,
-      lastBlockNumber: lastBlockNumber ?? this.lastBlockNumber,
-      lastBlockTimestamp: lastBlockTimestamp ?? this.lastBlockTimestamp,
-      pendingQueueSize: pendingQueueSize ?? this.pendingQueueSize,
-      averageBlockSize: averageBlockSize ?? this.averageBlockSize,
-      lastRefreshed: lastRefreshed ?? this.lastRefreshed,
-      averageBlockTime: averageBlockTime ?? this.averageBlockTime,
-      blocksPerHour: blocksPerHour ?? this.blocksPerHour,
-      blocksPerMinute: blocksPerMinute ?? this.blocksPerMinute,
-      averageTxPerBlock: averageTxPerBlock ?? this.averageTxPerBlock,
-      gasLimit: gasLimit ?? this.gasLimit,
-      pyusdTransactionCount:
-          pyusdTransactionCount ?? this.pyusdTransactionCount,
-      confirmedPyusdTxCount:
-          confirmedPyusdTxCount ?? this.confirmedPyusdTxCount,
-      pendingPyusdTxCount: pendingPyusdTxCount ?? this.pendingPyusdTxCount,
-      pyusdPendingQueueSize:
-          pyusdPendingQueueSize ?? this.pyusdPendingQueueSize,
-      averagePyusdBlockSize:
-          averagePyusdBlockSize ?? this.averagePyusdBlockSize,
+      // General Network Metrics
+      currentGasPrice: (json['currentGasPrice'] ?? 0).toDouble(),
+      averageGasPrice: (json['averageGasPrice'] ?? 0).toDouble(),
+      pendingTransactions: json['pendingTransactions'] ?? 0,
+      gasUsagePercentage: (json['gasUsagePercentage'] ?? 0).toDouble(),
+      historicalGasPrices:
+          (json['historicalGasPrices'] as List?)?.cast<double>() ?? [],
+      networkLatency: (json['networkLatency'] ?? 0).toDouble(),
+      blockTime: (json['blockTime'] ?? 0).toDouble(),
+      lastBlockNumber: json['lastBlockNumber'] ?? 0,
+      lastBlockTimestamp: json['lastBlockTimestamp'] ?? 0,
+      pendingQueueSize: json['pendingQueueSize'] ?? 0,
+      averageBlockSize: (json['averageBlockSize'] ?? 0).toDouble(),
+      lastRefreshed: DateTime.now(),
+      averageBlockTime: (json['averageBlockTime'] ?? 0).toDouble(),
+      blocksPerHour: json['blocksPerHour'] ?? 0,
+      blocksPerMinute: (json['blocksPerMinute'] ?? 0).toDouble(),
+      averageTxPerBlock: json['averageTxPerBlock'] ?? 0,
+      gasLimit: json['gasLimit'] ?? 0,
+
+      // PYUSD-Specific Metrics
+      pyusdTransactionCount: json['pyusdTransactionCount'] ?? 0,
+      confirmedPyusdTxCount: json['confirmedPyusdTxCount'] ?? 0,
+      pendingPyusdTxCount: json['pendingPyusdTxCount'] ?? 0,
+      pyusdPendingQueueSize: json['pyusdPendingQueueSize'] ?? 0,
+      averagePyusdBlockSize: (json['averagePyusdBlockSize'] ?? 0).toDouble(),
       pyusdGasUsagePercentage:
-          pyusdGasUsagePercentage ?? this.pyusdGasUsagePercentage,
+          (json['pyusdGasUsagePercentage'] ?? 0).toDouble(),
       averagePyusdTransactionFee:
-          averagePyusdTransactionFee ?? this.averagePyusdTransactionFee,
+          (json['averagePyusdTransactionFee'] ?? 0).toDouble(),
       averagePyusdConfirmationTime:
-          averagePyusdConfirmationTime ?? this.averagePyusdConfirmationTime,
+          (json['averagePyusdConfirmationTime'] ?? 0).toDouble(),
       pyusdHistoricalGasPrices:
-          pyusdHistoricalGasPrices ?? this.pyusdHistoricalGasPrices,
-      gasPriceHistory: gasPriceHistory ?? this.gasPriceHistory,
-      currentGasPriceUSD: currentGasPriceUSD ?? this.currentGasPriceUSD,
-      networkVersion: networkVersion ?? this.networkVersion,
-      peerCount: peerCount ?? this.peerCount,
-      isNetworkListening: isNetworkListening ?? this.isNetworkListening,
-      badBlocks: badBlocks ?? this.badBlocks,
-      txPoolInspection: txPoolInspection ?? this.txPoolInspection,
+          (json['pyusdHistoricalGasPrices'] as List?)?.cast<double>() ?? [],
+      gasPriceHistory: (json['gasPriceHistory'] as List?)
+              ?.map((e) => GasPricePoint(
+                    price: (e['price'] ?? 0).toDouble(),
+                    timestamp: e['timestamp'] ?? 0,
+                  ))
+              .toList() ??
+          [],
+      currentGasPriceUSD: (json['currentGasPriceUSD'] ?? 0).toDouble(),
+
+      // New network-related fields
+      networkVersion: json['networkVersion'] ?? '',
+      peerCount: json['peerCount'] ?? 0,
+      isNetworkListening: json['isNetworkListening'] ?? false,
+      badBlocks:
+          (json['badBlocks'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+      txPoolInspection: json['txPoolInspection'] as Map<String, dynamic>? ?? {},
+
+      // Health Dashboard Metrics
       transactionSuccessRate:
-          transactionSuccessRate ?? this.transactionSuccessRate,
-      networkStability: networkStability ?? this.networkStability,
+          (json['transactionSuccessRate'] ?? 0.95).toDouble(),
+      networkStability: (json['networkStability'] ?? 0.9).toDouble(),
       transactionReliability:
-          transactionReliability ?? this.transactionReliability,
+          (json['transactionReliability'] ?? 0.95).toDouble(),
     );
   }
 

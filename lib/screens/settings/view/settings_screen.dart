@@ -16,6 +16,9 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../utils/formatter_utils.dart';
 import '../../onboarding/provider/onboarding_provider.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_of_service_screen.dart';
+import 'support_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -439,10 +442,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: Icon(Icons.arrow_forward_ios,
                           size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
-                        // Navigate to Privacy Policy
-                        SnackbarUtil.showSnackbar(
-                          context: context,
-                          message: "Privacy Policy will open soon",
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PrivacyPolicyScreen(),
+                          ),
                         );
                       },
                     ),
@@ -453,10 +457,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: Icon(Icons.arrow_forward_ios,
                           size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
-                        // Navigate to Terms of Service
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Terms of Service will open soon'),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TermsOfServiceScreen(),
                           ),
                         );
                       },
@@ -468,10 +472,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: Icon(Icons.arrow_forward_ios,
                           size: 16, color: textColor.withOpacity(0.5)),
                       onTap: () {
-                        // Navigate to Support screen or launch support link
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Support section will open soon'),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SupportScreen(),
                           ),
                         );
                       },

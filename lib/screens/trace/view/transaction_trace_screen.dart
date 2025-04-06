@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
+import '../../../../widgets/loading_overlay.dart';
 
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
@@ -109,45 +110,47 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Transaction Trace',
-        isDarkMode: isDarkMode,
-        onBackPressed: () => Navigator.pop(context),
-        onRefreshPressed: _loadTraceData,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.psychology),
-            tooltip: 'AI Analysis',
-            onPressed: _isLoading ? null : _getAiAnalysis,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 48, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(_errorMessage, textAlign: TextAlign.center),
-                        const SizedBox(height: 24),
-                        TraceButton(
-                          text: 'Retry',
-                          onPressed: _loadTraceData,
-                          backgroundColor: Colors.blue,
-                          icon: Icons.refresh,
-                        ),
-                      ],
-                    ),
+    return LoadingOverlay(
+      isLoading: _isLoading,
+      loadingText: 'Loading transaction trace data...',
+      body: Scaffold(
+        appBar: CustomAppBar(
+          title: 'Transaction Trace',
+          isDarkMode: isDarkMode,
+          onBackPressed: () => Navigator.pop(context),
+          onRefreshPressed: _loadTraceData,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.psychology),
+              tooltip: 'AI Analysis',
+              onPressed: _isLoading ? null : _getAiAnalysis,
+            ),
+          ],
+        ),
+        body: _errorMessage.isNotEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(_errorMessage, textAlign: TextAlign.center),
+                      const SizedBox(height: 24),
+                      TraceButton(
+                        text: 'Retry',
+                        onPressed: _loadTraceData,
+                        backgroundColor: Colors.blue,
+                        icon: Icons.refresh,
+                      ),
+                    ],
                   ),
-                )
-              : _buildTraceContent(),
+                ),
+              )
+            : _buildTraceContent(),
+      ),
     );
   }
 

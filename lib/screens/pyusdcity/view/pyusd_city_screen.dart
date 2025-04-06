@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../networkcongestion/model/networkcongestion_model.dart';
 import '../../networkcongestion/provider/network_congestion_provider.dart';
-import '../../networkcongestion/view/widgets/congestion_meter.dart';
 import '../../networkcongestion/view/widgets/stats_card.dart';
 import '../widgets/city_building.dart';
 import '../widgets/cloud_widget.dart';
-import '../widgets/gas_station_widget.dart';
 import '../widgets/transaction_vehicle.dart';
+import '../../../utils/formatter_utils.dart';
 
 class PyusdCityScreen extends StatefulWidget {
   const PyusdCityScreen({super.key});
@@ -32,7 +31,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 10),
+      duration: const Duration(seconds: 15),
     )..repeat();
 
     // Initialize provider
@@ -414,12 +413,15 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
         buildings.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: CityBuilding(
-              blockNumber: blockNumber,
-              height: height.toInt(),
-              width: 60 + min(txCount, 20),
-              transactionCount: txCount,
-              utilization: utilization,
+            child: GestureDetector(
+              onTap: () => _showBlockDetails(block),
+              child: CityBuilding(
+                blockNumber: blockNumber,
+                height: height.toInt(),
+                width: 60 + min(txCount, 20),
+                transactionCount: txCount,
+                utilization: utilization,
+              ),
             ),
           ),
         );
@@ -433,57 +435,73 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   }
 
   Widget _buildVehicles(NetworkCongestionData data) {
-    // Get transactions from the provider
     final provider =
         Provider.of<NetworkCongestionProvider>(context, listen: false);
     final pyusdTransactions = provider.recentPyusdTransactions;
+    final screenWidth = MediaQuery.of(context).size.width;
 
-    // Create a list for all vehicles
     final List<Widget> vehicles = [];
 
-    // Add PYUSD transactions
-    for (int i = 0; i < min(pyusdTransactions.length, 8); i++) {
-      // Calculate position based on animation - use a continuous function
-      final position = (_animationController.value + (i * 0.1)) % 1.0;
-      final screenWidth = MediaQuery.of(context).size.width;
+    // Add PYUSD transactions with improved animation
+    for (int i = 0; i < min(pyusdTransactions.length, 12); i++) {
+      final position = (_animationController.value + (i * 0.08)) % 1.0;
+      final isFastLane = i % 2 == 0;
+      final laneOffset = isFastLane ? 10.0 : 60.0;
+      final transaction = pyusdTransactions[i];
+
+      // Correctly check transaction status
+      final isPending = transaction['status'] == null ||
+          transaction['status'] == 'pending' ||
+          (transaction['status'] is String && transaction['status'] == '0x0');
 
       vehicles.add(
         Positioned(
           left: position * (screenWidth + 100) - 50,
-          top: 10 + (_random.nextDouble() * 40),
-          child: TransactionVehicle(
-            transaction: pyusdTransactions[i],
-            isPending: false,
-            speed: _getTransactionSpeed(pyusdTransactions[i]),
-            transactionType: 'pyusd',
+          top: laneOffset + (_random.nextDouble() * 20),
+          child: GestureDetector(
+            onTap: () => _showTransactionDetails(pyusdTransactions[i]),
+            child: TransactionVehicle(
+              transaction: pyusdTransactions[i],
+              isPending: isPending,
+              speed: _getTransactionSpeed(pyusdTransactions[i]),
+              transactionType: 'pyusd',
+              animationValue: _animationController.value,
+            ),
           ),
         ),
       );
     }
 
-    // Add other generic transactions (simulated)
-    for (int i = 0; i < min(data.pendingTransactions ~/ 100, 15); i++) {
-      // Calculate position with different offset for variety
-      final position = (_animationController.value + 0.5 + (i * 0.07)) % 1.0;
-      final screenWidth = MediaQuery.of(context).size.width;
+    // Add other transactions with improved animation
+    final otherTxCount = min(data.pendingTransactions ~/ 50, 20);
+    for (int i = 0; i < otherTxCount; i++) {
+      final position = (_animationController.value + 0.5 + (i * 0.05)) % 1.0;
+      final isFastLane = i % 2 == 0;
+      final laneOffset = isFastLane ? 10.0 : 60.0;
 
-      // Create a simulated transaction
+      // Create a mock transaction with proper status
       final Map<String, dynamic> otherTx = {
         'hash': '0x${_generateRandomHash()}',
         'from': '0x${_generateRandomHash().substring(0, 40)}',
         'to': '0x${_generateRandomHash().substring(0, 40)}',
         'gasPrice': '0x${_random.nextInt(100000000).toRadixString(16)}',
+        'status': '0x1', // Set as confirmed by default
       };
 
       vehicles.add(
         Positioned(
           left: position * (screenWidth + 100) - 50,
-          top: 60 + (_random.nextDouble() * 40),
-          child: TransactionVehicle(
-            transaction: otherTx,
-            isPending: i % 3 == 0, // Some are pending
-            speed: ['fast', 'medium', 'slow'][_random.nextInt(3)],
-            transactionType: 'other',
+          top: laneOffset + (_random.nextDouble() * 20),
+          child: GestureDetector(
+            onTap: () => _showTransactionDetails(otherTx),
+            child: TransactionVehicle(
+              transaction: otherTx,
+              isPending:
+                  false, // Other transactions are always shown as confirmed
+              speed: _getTransactionSpeed(otherTx),
+              transactionType: 'other',
+              animationValue: _animationController.value,
+            ),
           ),
         ),
       );
@@ -615,20 +633,47 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                 width: MediaQuery.of(context).size.width / 3 - 20,
                 child: StatsCard(
                   title: 'PYUSD Txs',
-                  value: data.confirmedPyusdTxCount.toString(),
+                  value:
+                      '${data.confirmedPyusdTxCount}/${data.pendingPyusdTxCount}',
                   icon: Icons.swap_horiz,
                   color: Colors.green,
-                  description: 'Confirmed',
+                  description: 'Confirmed/Pending',
                 ),
               ),
               SizedBox(
                 width: MediaQuery.of(context).size.width / 3 - 20,
                 child: StatsCard(
+                  title: 'Gas Price',
+                  value: '${data.currentGasPrice.toStringAsFixed(1)} Gwei',
+                  icon: Icons.local_gas_station,
+                  color: Colors.orange,
+                  description: 'Current',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              SizedBox(
+                width: MediaQuery.of(context).size.width / 2 - 20,
+                child: StatsCard(
+                  title: 'Network Health',
+                  value: '${data.gasUsagePercentage.toStringAsFixed(1)}%',
+                  icon: Icons.health_and_safety,
+                  color: _getCongestionColor(data.gasUsagePercentage.toInt()),
+                  description: 'Gas Usage',
+                ),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width / 2 - 20,
+                child: StatsCard(
                   title: 'Est. Wait',
                   value:
                       '${data.estimatedConfirmationMinutes.toStringAsFixed(1)}m',
                   icon: Icons.timer,
-                  color: Colors.orange,
+                  color: Colors.purple,
                   description: 'For confirmation',
                 ),
               ),
@@ -702,6 +747,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                 isPending: false,
                 speed: 'fast',
                 transactionType: 'pyusd',
+                animationValue: 0.0,
               ),
               const SizedBox(width: 8),
               const Text(
@@ -718,6 +764,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                 isPending: false,
                 speed: 'medium',
                 transactionType: 'pyusd',
+                animationValue: 0.0,
               ),
               const SizedBox(width: 8),
               const Text(
@@ -727,48 +774,51 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
             ],
           ),
           const SizedBox(height: 4),
-          Row(
+          const Row(
             children: [
               TransactionVehicle(
                 transaction: const {'hash': '0x0'},
                 isPending: false,
                 speed: 'slow',
                 transactionType: 'pyusd',
+                animationValue: 0.0,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'PYUSD Transaction (Slow)',
                 style: TextStyle(color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          const Row(
             children: [
               TransactionVehicle(
                 transaction: const {'hash': '0x0'},
                 isPending: false,
                 speed: 'medium',
                 transactionType: 'other',
+                animationValue: 0.0,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'Other Transaction',
                 style: TextStyle(color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Row(
+          const Row(
             children: [
               TransactionVehicle(
                 transaction: const {'hash': '0x0'},
                 isPending: true,
                 speed: 'medium',
                 transactionType: 'pyusd',
+                animationValue: 0.0,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'Pending Transaction',
                 style: TextStyle(color: Colors.white),
               ),
@@ -993,6 +1043,121 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
       ),
     );
   }
+
+  void _showTransactionDetails(Map<String, dynamic> transaction) {
+    final gasPrice = int.tryParse(
+          transaction['gasPrice'].toString().startsWith('0x')
+              ? transaction['gasPrice'].toString().substring(2)
+              : transaction['gasPrice'].toString(),
+          radix: transaction['gasPrice'].toString().startsWith('0x') ? 16 : 10,
+        ) ??
+        0;
+
+    final gasPriceGwei = gasPrice / 1e9;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          transaction['to']?.toString().toLowerCase() ==
+                  '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'
+              ? 'PYUSD Transaction'
+              : 'Other Transaction',
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Hash:',
+                  FormatterUtils.formatHash(transaction['hash'] ?? '')),
+              _buildDetailRow('From:',
+                  FormatterUtils.formatAddress(transaction['from'] ?? '')),
+              _buildDetailRow(
+                  'To:', FormatterUtils.formatAddress(transaction['to'] ?? '')),
+              _buildDetailRow(
+                  'Gas Price:', '${gasPriceGwei.toStringAsFixed(2)} Gwei'),
+              if (transaction['tokenValue'] != null)
+                _buildDetailRow(
+                    'Amount:', '${transaction['tokenValue']} PYUSD'),
+              _buildDetailRow('Status:',
+                  transaction['status'] == '0x1' ? 'Confirmed' : 'Pending'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBlockDetails(Map<String, dynamic> block) {
+    final blockNumber = FormatterUtils.parseHexSafely(block['number']);
+    final timestamp = FormatterUtils.parseHexSafely(block['timestamp']);
+    final gasUsed = FormatterUtils.parseHexSafely(block['gasUsed']);
+    final gasLimit = FormatterUtils.parseHexSafely(block['gasLimit']);
+    final txCount = (block['transactions'] as List?)?.length ?? 0;
+    final miner = block['miner']?.toString() ?? 'Unknown';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Block #$blockNumber'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow(
+                  'Timestamp:',
+                  DateTime.fromMillisecondsSinceEpoch(timestamp! * 1000)
+                      .toString()),
+              _buildDetailRow('Transactions:', txCount.toString()),
+              _buildDetailRow('Gas Used:', '${gasUsed! / 1e6}M'),
+              _buildDetailRow('Gas Limit:', '${gasLimit! / 1e6}M'),
+              _buildDetailRow('Utilization:',
+                  '${((gasUsed / gasLimit) * 100).toStringAsFixed(1)}%'),
+              _buildDetailRow('Miner:', FormatterUtils.formatAddress(miner)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // Custom painter for road markings
@@ -1010,19 +1175,91 @@ class RoadMarkingsPainter extends CustomPainter {
     final paint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
+      ..strokeWidth = 2;
 
-    const dashWidth = 20.0;
-    const dashSpace = 20.0;
+    // Draw center dashed line
+    _drawDashedLine(
+      canvas,
+      size,
+      paint,
+      size.height / 2,
+      animationValue,
+      dashWidth: 20.0,
+      dashSpace: 20.0,
+    );
+
+    // Draw side lines with different styles based on congestion
+    if (congestionLevel > 30) {
+      // Draw left lane marker
+      _drawDashedLine(
+        canvas,
+        size,
+        paint,
+        size.height / 4,
+        animationValue,
+        dashWidth: 10.0,
+        dashSpace: 15.0,
+      );
+
+      // Draw right lane marker
+      _drawDashedLine(
+        canvas,
+        size,
+        paint,
+        size.height * 3 / 4,
+        animationValue,
+        dashWidth: 10.0,
+        dashSpace: 15.0,
+      );
+    }
+
+    // Add additional markings for high congestion
+    if (congestionLevel > 70) {
+      final additionalPaint = Paint()
+        ..color = Colors.white.withOpacity(0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1;
+
+      // Draw additional lane markers
+      _drawDashedLine(
+        canvas,
+        size,
+        additionalPaint,
+        size.height / 6,
+        animationValue,
+        dashWidth: 5.0,
+        dashSpace: 10.0,
+      );
+
+      _drawDashedLine(
+        canvas,
+        size,
+        additionalPaint,
+        size.height * 5 / 6,
+        animationValue,
+        dashWidth: 5.0,
+        dashSpace: 10.0,
+      );
+    }
+  }
+
+  void _drawDashedLine(
+    Canvas canvas,
+    Size size,
+    Paint paint,
+    double y,
+    double animationValue, {
+    required double dashWidth,
+    required double dashSpace,
+  }) {
     final dashCount = (size.width / (dashWidth + dashSpace)).ceil();
     final startX = -(animationValue * (dashWidth + dashSpace));
 
-    // Draw dashed line in the middle of the road
     for (int i = 0; i < dashCount + 1; i++) {
       final x = startX + i * (dashWidth + dashSpace);
       canvas.drawLine(
-        Offset(x, size.height / 2),
-        Offset(x + dashWidth, size.height / 2),
+        Offset(x, y),
+        Offset(x + dashWidth, y),
         paint,
       );
     }
@@ -1030,7 +1267,8 @@ class RoadMarkingsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant RoadMarkingsPainter oldDelegate) {
-    return oldDelegate.animationValue != animationValue;
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.congestionLevel != congestionLevel;
   }
 }
 

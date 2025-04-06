@@ -84,7 +84,6 @@ class InsightsScreen extends StatelessWidget {
 
   Widget _buildDataSourceBanner(InsightsProvider provider, ThemeData theme) {
     final isRealData = provider.marketData['is_real_data'] ?? false;
-    final dataSource = provider.marketData['data_source'] ?? 'Unknown';
     final lastUpdated =
         provider.getTimeAgo(provider.marketData['last_updated']);
     final isDarkMode = theme.brightness == Brightness.dark;
@@ -113,22 +112,11 @@ class InsightsScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Data Source: $dataSource',
+              isRealData ? 'Updated $lastUpdated' : 'Pull down to refresh',
               style: TextStyle(
                 color: isRealData ? Colors.green : Colors.orange,
                 fontWeight: FontWeight.w500,
               ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.cardColor.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Updated $lastUpdated',
-              style: theme.textTheme.bodySmall,
             ),
           ),
         ],

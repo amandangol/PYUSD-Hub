@@ -10,6 +10,7 @@ import '../widgets/trace_widgets.dart';
 import 'transaction_trace_screen.dart';
 import '../../../providers/gemini_provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import '../../../../widgets/loading_overlay.dart';
 
 class BlockTraceScreen extends StatefulWidget {
   final int blockNumber;
@@ -149,45 +150,47 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Block Number: ${widget.blockNumber}',
-        isDarkMode: isDarkMode,
-        onBackPressed: () => Navigator.pop(context),
-        onRefreshPressed: _loadBlockData,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.psychology),
-            tooltip: 'AI Analysis',
-            onPressed: _isLoading ? null : _getAiAnalysis,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _hasError
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 48, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(_errorMessage, textAlign: TextAlign.center),
-                        const SizedBox(height: 24),
-                        TraceButton(
-                          text: 'Retry',
-                          onPressed: _loadBlockData,
-                          backgroundColor: Colors.blue,
-                          icon: Icons.refresh,
-                        ),
-                      ],
-                    ),
+    return LoadingOverlay(
+      isLoading: _isLoading,
+      loadingText: 'Loading block trace data...',
+      body: Scaffold(
+        appBar: CustomAppBar(
+          title: 'Block Number: ${widget.blockNumber}',
+          isDarkMode: isDarkMode,
+          onBackPressed: () => Navigator.pop(context),
+          onRefreshPressed: _loadBlockData,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.psychology),
+              tooltip: 'AI Analysis',
+              onPressed: _isLoading ? null : _getAiAnalysis,
+            ),
+          ],
+        ),
+        body: _hasError
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(_errorMessage, textAlign: TextAlign.center),
+                      const SizedBox(height: 24),
+                      TraceButton(
+                        text: 'Retry',
+                        onPressed: _loadBlockData,
+                        backgroundColor: Colors.blue,
+                        icon: Icons.refresh,
+                      ),
+                    ],
                   ),
-                )
-              : _buildBlockContent(),
+                ),
+              )
+            : _buildBlockContent(),
+      ),
     );
   }
 
@@ -911,11 +914,12 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
 
   Widget _buildAiAnalysisCard() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? Colors.grey.shade800 : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black;
+    final accentColor = Colors.purple;
 
     return Card(
-      margin: const EdgeInsets.all(16.0),
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -927,42 +931,80 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.psychology,
-                      color: Colors.deepPurple, size: 28),
+                  child: Icon(
+                    Icons.psychology,
+                    color: accentColor,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'AI Block Analysis',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                const Text(
+                  'AI Block Analysis',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Image.asset(
-                  'assets/images/geminilogo.png',
-                  height: 24,
-                ),
+                const Spacer(),
+                if (_showAiAnalysis)
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _isAiAnalysisLoading ? null : _getAiAnalysis,
+                    tooltip: 'Refresh Analysis',
+                  ),
               ],
             ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            if (_isAiAnalysisLoading)
+            const Divider(height: 24),
+            if (!_showAiAnalysis)
               Center(
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    const CircularProgressIndicator(),
+                    Image.asset(
+                      'assets/images/geminilogo.png',
+                      height: 48,
+                      width: 48,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
-                      'Analyzing block data',
+                      'Get an AI-powered analysis of this block',
+                      textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 16),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Our AI will analyze the block data and provide insights',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TraceButton(
+                      text: 'Analyze with AI',
+                      onPressed: _getAiAnalysis,
+                      icon: Icons.auto_awesome,
+                      backgroundColor: Colors.blue.withOpacity(0.8),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              )
+            else if (_isAiAnalysisLoading)
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Analyzing block...',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    const CircularProgressIndicator(),
                     const SizedBox(height: 8),
                     Text(
                       'This may take a few moments',
@@ -1002,28 +1044,25 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                       style: TextStyle(color: textColor.withOpacity(0.7)),
                     ),
                     const SizedBox(height: 20),
-                    ElevatedButton.icon(
+                    TraceButton(
+                      text: 'Try Again',
                       onPressed: _getAiAnalysis,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try Again'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
+                      icon: Icons.refresh,
+                      backgroundColor: Colors.blue,
                     ),
                     const SizedBox(height: 20),
                   ],
                 ),
               )
             else
-              _buildStructuredBlockAnalysisContent(),
+              _buildStructuredAnalysisContent(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStructuredBlockAnalysisContent() {
+  Widget _buildStructuredAnalysisContent() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
@@ -1040,38 +1079,128 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Summary section
-        ExpansionTile(
-          title: const Text(
-            'Summary',
-            style: TextStyle(fontWeight: FontWeight.bold),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
           ),
-          initiallyExpanded: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: MarkdownBody(
-                data: summary,
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(fontSize: 14, color: textColor),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.summarize, size: 18, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Summary',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                summary,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: textColor,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+
+        const SizedBox(height: 16),
 
         // Block Activity section
-        ListTile(
-          title: const Text('Block Activity'),
-          subtitle: Text(blockActivity),
-          leading: const Icon(Icons.analytics, color: Colors.blue),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.analytics, size: 18, color: Colors.green),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Block Activity',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                blockActivity,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
         ),
 
+        const SizedBox(height: 16),
+
         // PYUSD Activity section
-        ListTile(
-          title: const Text('PYUSD Activity'),
-          subtitle: Text(pyusdActivity),
-          leading: const Icon(Icons.currency_exchange, color: Colors.green),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.purple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.purple.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.currency_exchange,
+                      size: 18, color: Colors.purple),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'PYUSD Activity',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                pyusdActivity,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
         ),
+
+        const SizedBox(height: 16),
 
         // Gas Analysis section
         ExpansionTile(
@@ -1139,6 +1268,32 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Powered by Gemini
+        Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/geminilogo.png',
+                height: 16,
+                width: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Powered by Google Gemini',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: textColor.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

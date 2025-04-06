@@ -97,9 +97,11 @@ flutter:
   assets:
     - .env
     - assets/icon/icon.png
+    - assets/icon/
     - assets/config/api_config.json
     - assets/images/
     - assets/svg/
+    - assets/keys/service-account.json
     
   #   - images/a_dot_ham.jpeg
 

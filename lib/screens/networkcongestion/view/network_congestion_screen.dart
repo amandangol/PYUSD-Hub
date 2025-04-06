@@ -144,10 +144,8 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
     final primaryColor = theme.colorScheme.primary;
     final backgroundColor = theme.scaffoldBackgroundColor;
-    final textColor = theme.colorScheme.onSurface;
 
     return WillPopScope(
       onWillPop: () async {
@@ -191,6 +189,11 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
                   ),
                 );
               },
+            ),
+            IconButton(
+              icon: Icon(Icons.refresh, color: theme.iconTheme.color),
+              tooltip: 'Refresh Data',
+              onPressed: _handleRefresh,
             ),
           ],
           bottom: TabBar(
@@ -309,7 +312,9 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
         return GasTab(congestionData: provider.congestionData);
       case 2:
         return SingleChildScrollView(
-          child: BlocksTab(provider: provider),
+          child: BlocksTab(
+            provider: provider,
+          ),
         );
       case 3:
         return SingleChildScrollView(

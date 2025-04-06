@@ -462,6 +462,7 @@ class TransactionProvider extends ChangeNotifier
         gasLimit: gasLimit ?? 21000,
       );
 
+      // Add to pending transactions and notify listeners immediately
       _pendingTransactions[txHash] = pendingTx;
       notifyListeners();
 
@@ -476,12 +477,8 @@ class TransactionProvider extends ChangeNotifier
         print('Error showing pending notification: $e');
       }
 
+      // Start monitoring immediately
       _startTransactionMonitoring(txHash);
-
-      final isConfirmed = await verifyTransactionStatus(txHash);
-      if (isConfirmed) {
-        print('Transaction verified as confirmed: $txHash');
-      }
 
       return txHash;
     } catch (e) {
@@ -529,6 +526,7 @@ class TransactionProvider extends ChangeNotifier
         gasLimit: gasLimit ?? 100000,
       );
 
+      // Add to pending transactions and notify listeners immediately
       _pendingTransactions[txHash] = pendingTx;
       notifyListeners();
 
@@ -543,12 +541,8 @@ class TransactionProvider extends ChangeNotifier
         print('Error showing pending notification: $e');
       }
 
+      // Start monitoring immediately
       _startTransactionMonitoring(txHash);
-
-      final isConfirmed = await verifyTransactionStatus(txHash);
-      if (isConfirmed) {
-        print('Transaction verified as confirmed: $txHash');
-      }
 
       return txHash;
     } catch (e) {
@@ -608,8 +602,10 @@ class TransactionProvider extends ChangeNotifier
             _activeMonitoring[txHash] = false;
             timer.cancel();
 
-            // Force refresh to update the transaction list
+            // Force refresh to update the transaction list and balances
             await refreshWalletData(forceRefresh: true);
+
+            // Notify listeners to update UI
             notifyListeners();
           }
         } else if (details?.status == TransactionStatus.failed) {

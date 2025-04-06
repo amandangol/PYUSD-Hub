@@ -11,6 +11,7 @@ import 'block_trace_screen.dart';
 import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
 import 'advanced_trace_screen.dart';
+import '../../../../widgets/loading_overlay.dart';
 
 class TraceScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -300,37 +301,40 @@ class _TraceScreenState extends State<TraceScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final provider = Provider.of<TraceProvider>(context);
 
-    return DefaultTabController(
-      length: 4,
-      initialIndex: widget.initialTabIndex,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('PYUSD Tracer'),
-          elevation: 0,
-          bottom: TabBar(
+    return LoadingOverlay(
+      isLoading: provider.isLoading,
+      loadingText: 'Loading trace data...',
+      body: DefaultTabController(
+        length: 4,
+        initialIndex: widget.initialTabIndex,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('PYUSD Tracer'),
+            elevation: 0,
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: Theme.of(context).colorScheme.primary,
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
+              tabs: const [
+                Tab(text: 'Transaction'),
+                Tab(text: 'Block'),
+                Tab(text: 'Advanced'),
+                Tab(text: 'History'),
+              ],
+            ),
+          ),
+          body: TabBarView(
             controller: _tabController,
-            indicatorColor: primaryColor,
-            labelColor: primaryColor,
-            unselectedLabelColor: isDarkMode ? Colors.white70 : Colors.black54,
-            tabs: const [
-              Tab(text: 'Transaction'),
-              Tab(text: 'Block'),
-              Tab(text: 'Advanced'),
-              Tab(text: 'History'),
+            children: [
+              _buildTransactionTraceTab(),
+              _buildBlockTraceTab(),
+              _buildAdvancedTraceTab(),
+              _buildHistoryTab(),
             ],
           ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildTransactionTraceTab(),
-            _buildBlockTraceTab(),
-            _buildAdvancedTraceTab(),
-            _buildHistoryTab(),
-          ],
         ),
       ),
     );

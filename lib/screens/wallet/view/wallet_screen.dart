@@ -59,7 +59,25 @@ class _WalletScreenState extends State<WalletScreen>
 
     final walletScreenProvider =
         Provider.of<WaletScreenProvider>(context, listen: false);
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
+    final walletStateProvider =
+        Provider.of<WalletStateProvider>(context, listen: false);
+
+    // Add listener for transaction updates
+    transactionProvider.addListener(_onTransactionUpdate);
+
     await walletScreenProvider.refreshAllData();
+    await walletStateProvider.refreshBalances();
+  }
+
+  void _onTransactionUpdate() {
+    if (!mounted) return;
+
+    // Refresh balances when transaction status changes
+    final walletStateProvider =
+        Provider.of<WalletStateProvider>(context, listen: false);
+    walletStateProvider.refreshBalances();
   }
 
   @override
@@ -68,6 +86,11 @@ class _WalletScreenState extends State<WalletScreen>
     if (_networkProvider != null) {
       _networkProvider!.removeListener(_onNetworkChanged);
     }
+
+    // Remove transaction update listener
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
+    transactionProvider.removeListener(_onTransactionUpdate);
 
     _debounceTimer?.cancel();
     _scrollController.dispose();
@@ -163,6 +186,11 @@ class _WalletScreenState extends State<WalletScreen>
           networkType: networkProvider.currentNetwork,
           currentAddress: currentAddress,
         );
+      }
+
+      // Force UI update
+      if (mounted) {
+        setState(() {});
       }
     } catch (e) {
       print('Error refreshing data: $e');

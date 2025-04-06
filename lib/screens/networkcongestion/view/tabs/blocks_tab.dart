@@ -39,7 +39,7 @@ class _BlocksTabState extends State<BlocksTab> {
           // Block Information Overview
           _buildBlockInfoOverview(context),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
 
           // Recent Blocks List (expanded with more details)
           _buildRecentBlocksSection(expandedView: true),
@@ -130,15 +130,15 @@ class _BlocksTabState extends State<BlocksTab> {
             // Block statistics in a grid
             Column(
               children: [
-                StatsCard(
-                  title: 'Block Time',
-                  value: '${data.blockTime.toStringAsFixed(1)}s',
-                  icon: Icons.access_time,
-                  color: Colors.blue,
-                  description: 'Average',
-                  isListView: true,
-                ),
-                const SizedBox(height: 12),
+                // StatsCard(
+                //   title: 'Block Time',
+                //   value: '${data.blockTime.toStringAsFixed(1)}s',
+                //   icon: Icons.access_time,
+                //   color: Colors.blue,
+                //   description: 'Average',
+                //   isListView: true,
+                // ),
+                // const SizedBox(height: 12),
                 StatsCard(
                   title: 'Gas Usage',
                   value: '$gasUsagePercentage%',
@@ -157,14 +157,14 @@ class _BlocksTabState extends State<BlocksTab> {
                   isListView: true,
                 ),
                 const SizedBox(height: 12),
-                StatsCard(
-                  title: 'Blocks/Hour',
-                  value: '${data.blocksPerHour}',
-                  icon: Icons.speed,
-                  color: Colors.purple,
-                  description: 'Production rate',
-                  isListView: true,
-                ),
+                // StatsCard(
+                //   title: 'Blocks/Hour',
+                //   value: '${data.blocksPerHour}',
+                //   icon: Icons.speed,
+                //   color: Colors.purple,
+                //   description: 'Production rate',
+                //   isListView: true,
+                // ),
               ],
             ),
           ],

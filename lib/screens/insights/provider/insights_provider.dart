@@ -126,7 +126,7 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
 
     switch (timeFrame) {
       case TimeFrame.day:
-        return data.length / 6; // Show 6 labels for day
+        return data.length / 6; // Show 6 labels (every 4 hours) for day
       case TimeFrame.week:
         return data.length / 7; // Show 7 labels for week
       case TimeFrame.month:
@@ -144,10 +144,14 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
 
     switch (timeFrame) {
       case TimeFrame.day:
-        // For day view, show hours
+        // For day view, show hours in 4-hour intervals
         final hoursAgo = (totalPoints - 1 - index) * (24 / totalPoints).round();
         date = now.subtract(Duration(hours: hoursAgo));
-        return DateFormat('HH:mm').format(date);
+        // Only show label every 4 hours
+        if (date.hour % 4 == 0) {
+          return DateFormat('HH:mm').format(date);
+        }
+        return '';
 
       case TimeFrame.week:
         // For week view, show day of week
@@ -261,7 +265,6 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
       'price_change_30d': 0.0,
       'supported_chains': ['Ethereum', 'Solana'],
       'last_updated': DateTime.now().toIso8601String(),
-      'data_source': 'Default Values',
       'is_real_data': false,
       'price_history': {
         'day': _generatePlaceholderPriceData(24),

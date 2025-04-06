@@ -430,6 +430,7 @@ class NetworkCongestionProvider with ChangeNotifier {
           }
         }
       } catch (e) {
+        print('Error fetching detailed txpool content: $e');
         // If txpool_content is not supported, estimate PYUSD transactions
         // based on the ratio of total transactions
         if (pendingCount > 0) {
@@ -451,7 +452,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         pendingQueueSize: pendingCount + queuedCount,
         pyusdPendingQueueSize: pyusdPendingCount + pyusdQueuedCount,
         averagePyusdTransactionFee: averagePyusdFee,
-        pendingPyusdTxCount: pyusdPendingCount, // Update pending count
+        pendingPyusdTxCount: pyusdPendingCount,
       );
 
       // Log the results for debugging
@@ -461,6 +462,8 @@ class NetworkCongestionProvider with ChangeNotifier {
       print('PYUSD Pending: $pyusdPendingCount');
       print('PYUSD Queued: $pyusdQueuedCount');
       print('Average PYUSD Fee: $averagePyusdFee Gwei');
+
+      _safeNotifyListeners();
     } catch (e) {
       print('Error fetching pending queue details: $e');
       // Set fallback values
@@ -470,6 +473,7 @@ class NetworkCongestionProvider with ChangeNotifier {
         averagePyusdTransactionFee: 0,
         pendingPyusdTxCount: 0,
       );
+      _safeNotifyListeners();
     }
   }
 
@@ -1338,6 +1342,8 @@ class NetworkCongestionProvider with ChangeNotifier {
     _slowUpdateTimer?.cancel();
     _wsSubscription?.cancel();
     _wsChannel?.sink.close();
+    _reconnectTimer?.cancel();
+    _channel?.sink.close();
     _httpClient.close();
     super.dispose();
   }
@@ -1697,24 +1703,37 @@ class NetworkCongestionProvider with ChangeNotifier {
   }
 
   Future<void> refreshData() async {
-    // Implement your data refresh logic here
-    // This could include fetching new data from APIs
+    if (_isDisposed) return;
+
     try {
-      // Refresh your data sources
+      // Clear existing data
+      _recentBlocks.clear();
+      _recentPyusdTransactions.clear();
+      _transactionReceiptCache.clear();
+
+      // Refresh all data in parallel
       await Future.wait([
-        _fetchGasPrice(),
+        _fetchNetworkStats(),
+        _fetchInitialBlocks(),
+        _fetchPyusdTransactionActivity(),
+        _fetchPendingQueueDetails(),
         _fetchNetworkStatus(),
-        _fetchPendingTransactions(),
-        _fetchRecentPyusdTransactions(),
-        _fetchLatestBlock(),
-        _fetchGasPrice(),
       ]);
+
+      if (_isDisposed) return;
+
+      // Update last refreshed time
+      _congestionData = _congestionData.copyWith(
+        lastRefreshed: DateTime.now(),
+      );
+
       hasError = false;
+      _safeNotifyListeners();
     } catch (e) {
+      print('Error refreshing data: $e');
+      if (_isDisposed) return;
       hasError = true;
-      rethrow;
-    } finally {
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 }

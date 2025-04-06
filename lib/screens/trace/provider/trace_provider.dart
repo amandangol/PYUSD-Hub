@@ -34,6 +34,14 @@ class TraceProvider with ChangeNotifier {
   Map<String, dynamic>? _lastRemovedTrace;
   int? _lastRemovedIndex;
 
+  bool _isLoading = false;
+  Map<String, dynamic> _traceData = {};
+  String _errorMessage = '';
+
+  bool get isLoading => _isLoading;
+  Map<String, dynamic> get traceData => _traceData;
+  String get errorMessage => _errorMessage;
+
   TraceProvider() {
     _loadHistoryFromPrefs();
   }
@@ -653,5 +661,21 @@ class TraceProvider with ChangeNotifier {
     _lastRemovedIndex = null;
     _saveHistoryToPrefs();
     notifyListeners();
+  }
+
+  Future<void> fetchTraceData(String txHash) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Fetch trace data implementation
+      _traceData = {};
+      _errorMessage = '';
+    } catch (e) {
+      _errorMessage = 'Error fetching trace data: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

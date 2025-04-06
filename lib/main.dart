@@ -12,6 +12,7 @@ import 'providers/network_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/walletstate_provider.dart';
 import 'providers/gemini_provider.dart';
+import 'screens/analytics/pyusd_analytics_screen.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
@@ -41,6 +42,7 @@ import 'routes/app_routes.dart';
 
 // Theme
 import 'theme/app_theme.dart';
+import 'providers/pyusd_analytics_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -164,6 +166,7 @@ class MyApp extends StatelessWidget {
         Provider<BigQueryService>(create: (_) => BigQueryService()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
+        ChangeNotifierProvider(create: (_) => PyusdAnalyticsProvider()),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(
         builder: (context, themeProvider, sessionProvider, child) {
