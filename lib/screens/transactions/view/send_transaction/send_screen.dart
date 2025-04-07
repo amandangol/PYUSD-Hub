@@ -36,7 +36,6 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   double _estimatedGasFee = 0.0;
   double _gasPrice = 2.0;
   int _estimatedGas = 0;
-  bool _isLoading = false;
   bool _isEstimatingGas = false;
   bool _isSending = false;
   String _selectedAsset = 'PYUSD'; // Default to PYUSD

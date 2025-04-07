@@ -28,8 +28,6 @@ class TransactionDetailsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return TransactionCard(
       cardColor: cardColor,
       child: Column(

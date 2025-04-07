@@ -25,20 +25,17 @@ class TransactionSection extends StatelessWidget {
         final isFetching = transactionProvider.isFetchingTransactions;
         final currentFilter = walletScreenProvider.currentFilter;
 
-        // Get filtered and sorted transactions
         final filteredTransactions =
             walletScreenProvider.getFilteredAndSortedTransactions(transactions);
 
-        // Separate pending and non-pending transactions
         final pendingTransactions = filteredTransactions
             .where((tx) => tx.status == TransactionStatus.pending)
             .toList();
         final nonPendingTransactions = filteredTransactions
             .where((tx) => tx.status != TransactionStatus.pending)
-            .take(3)
+            .take(4)
             .toList();
 
-        // Combine pending and recent non-pending transactions
         final recentTransactions = [
           ...pendingTransactions,
           ...nonPendingTransactions
@@ -47,7 +44,6 @@ class TransactionSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section header with filter
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
@@ -56,8 +52,8 @@ class TransactionSection extends StatelessWidget {
                   Text(
                     'Recent Transactions',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                   ),
@@ -65,8 +61,7 @@ class TransactionSection extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
+            const SizedBox(height: 12),
             if (isFetching && transactions.isEmpty)
               _buildLoadingState(isDarkMode)
             else if (recentTransactions.isEmpty)
@@ -74,7 +69,6 @@ class TransactionSection extends StatelessWidget {
             else
               Column(
                 children: [
-                  // Recent transactions list
                   ListView.separated(
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
@@ -84,7 +78,7 @@ class TransactionSection extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final transaction = recentTransactions[index];
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: TransactionItem(
                           transaction: transaction,
                           currentAddress: currentAddress,
@@ -96,11 +90,9 @@ class TransactionSection extends StatelessWidget {
                       );
                     },
                   ),
-
-                  // View More button
                   if (filteredTransactions.length > 4)
                     Padding(
-                      padding: const EdgeInsets.only(top: 16),
+                      padding: const EdgeInsets.only(top: 12),
                       child: Center(
                         child: TextButton.icon(
                           onPressed: () {
@@ -117,8 +109,20 @@ class TransactionSection extends StatelessWidget {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.arrow_forward),
-                          label: const Text('View All Transactions'),
+                          icon: Icon(
+                            Icons.arrow_forward,
+                            size: 16,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                          label: Text(
+                            'View All Transactions',
+                            style: TextStyle(
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -142,14 +146,14 @@ class TransactionSection extends StatelessWidget {
         value: provider.currentFilter,
         icon: Icon(
           Icons.filter_list_rounded,
-          size: 20,
+          size: 16,
           color: isDarkMode ? Colors.white70 : Colors.black54,
         ),
         underline: const SizedBox(),
         isDense: true,
         style: TextStyle(
           color: isDarkMode ? Colors.white : Colors.black87,
-          fontSize: 14,
+          fontSize: 12,
         ),
         dropdownColor: isDarkMode ? const Color(0xFF252543) : Colors.white,
         items: WaletScreenProvider.filterOptions.map((String value) {
@@ -169,10 +173,10 @@ class TransactionSection extends StatelessWidget {
 
   Widget _buildLoadingState(bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: Column(
         children: List.generate(
-          3,
+          4,
           (index) => Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
             child: TransactionShimmerItem(
@@ -185,14 +189,13 @@ class TransactionSection extends StatelessWidget {
   }
 
   Widget _buildEmptyState(bool isDarkMode, String currentFilter) {
-    // Improved empty state with better use of space
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-      padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
       width: double.infinity,
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF252543) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: isDarkMode ? Colors.black12 : Colors.black.withOpacity(0.05),
@@ -206,24 +209,24 @@ class TransactionSection extends StatelessWidget {
         children: [
           Icon(
             Icons.receipt_long,
-            size: 64,
+            size: 48,
             color: isDarkMode ? Colors.white70 : Colors.black54,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Text(
             _getEmptyStateMessage(currentFilter),
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w500,
               color: isDarkMode ? Colors.white : Colors.black87,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
             'Pull down to refresh',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 12,
               color: isDarkMode ? Colors.white54 : Colors.black54,
             ),
           ),

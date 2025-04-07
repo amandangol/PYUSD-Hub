@@ -23,12 +23,12 @@ class _ShimmerEffectState extends State<ShimmerEffect>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat();
 
-    _animation = Tween<double>(begin: -2, end: 2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    _animation = Tween<double>(begin: -1.5, end: 1.5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
 
@@ -50,19 +50,20 @@ class _ShimmerEffectState extends State<ShimmerEffect>
               end: Alignment.bottomRight,
               colors: widget.isDarkMode
                   ? [
-                      Colors.white.withOpacity(0.02),
-                      Colors.white.withOpacity(0.1),
-                      Colors.white.withOpacity(0.02),
+                      Colors.white.withOpacity(0.05),
+                      Colors.white.withOpacity(0.15),
+                      Colors.white.withOpacity(0.05),
                     ]
                   : [
-                      Colors.grey.withOpacity(0.02),
-                      Colors.grey.withOpacity(0.1),
-                      Colors.grey.withOpacity(0.02),
+                      Colors.grey.withOpacity(0.05),
+                      Colors.grey.withOpacity(0.15),
+                      Colors.grey.withOpacity(0.05),
                     ],
               stops: const [0.0, 0.5, 1.0],
               transform: GradientRotation(_animation.value),
             ).createShader(bounds);
           },
+          blendMode: BlendMode.srcATop,
           child: child,
         );
       },

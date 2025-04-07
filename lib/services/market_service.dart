@@ -150,7 +150,6 @@ class MarketService {
       // we'll use the data we already have and supplement with fallback logos
       return tickers.map<Map<String, dynamic>>((ticker) {
         final exchangeName = ticker['market']['name'];
-        final exchangeId = ticker['market']['identifier'];
 
         // Use fallback logo URLs directly instead of making additional API calls
         final logoUrl = _getFallbackLogoUrl(exchangeName);

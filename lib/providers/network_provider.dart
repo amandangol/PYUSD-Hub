@@ -174,4 +174,12 @@ class NetworkProvider extends ChangeNotifier {
         ? 'https://api-sepolia.etherscan.io/api'
         : 'https://api.etherscan.io/api';
   }
+
+  String getGeminiApiKey() {
+    return dotenv.env['GEMINI_API_KEY'] ?? '';
+  }
+
+  String getPyusdContractAddress() {
+    return dotenv.env['PYUSD_CONTRACT_ADDRESS'] ?? '';
+  }
 }

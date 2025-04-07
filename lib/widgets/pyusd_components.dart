@@ -15,6 +15,7 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showLogo;
   final Widget? customBackButton;
   final VoidCallback? onBackPressed;
+  final VoidCallback? onNetworkNamePressed;
 
   const PyusdAppBar({
     super.key,
@@ -26,13 +27,13 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showLogo = true,
     this.customBackButton,
     this.onBackPressed,
+    this.onNetworkNamePressed,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onSurface;
-    final primaryColor = theme.colorScheme.primary;
 
     return AppBar(
       backgroundColor: Colors.transparent,
@@ -72,31 +73,34 @@ class PyusdAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         if (networkName != null)
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: Chip(
-              label: Text(
-                networkName!,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: textColor,
+          InkWell(
+            onTap: onNetworkNamePressed,
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: Chip(
+                label: Text(
+                  networkName!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
                 ),
-              ),
-              backgroundColor: networkName!.contains('Testnet')
-                  ? Colors.orange.withOpacity(isDarkMode ? 0.2 : 0.1)
-                  : Colors.green.withOpacity(isDarkMode ? 0.2 : 0.1),
-              side: BorderSide.none,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              visualDensity: VisualDensity.compact,
-              avatar: Icon(
-                networkName!.contains('Testnet')
-                    ? Icons.wifi_tethering
-                    : Icons.public,
-                size: 16,
-                color: networkName!.contains('Testnet')
-                    ? Colors.orange
-                    : Colors.green,
+                backgroundColor: networkName!.contains('Testnet')
+                    ? Colors.orange.withOpacity(isDarkMode ? 0.2 : 0.1)
+                    : Colors.green.withOpacity(isDarkMode ? 0.2 : 0.1),
+                side: BorderSide.none,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                visualDensity: VisualDensity.compact,
+                avatar: Icon(
+                  networkName!.contains('Testnet')
+                      ? Icons.wifi_tethering
+                      : Icons.public,
+                  size: 16,
+                  color: networkName!.contains('Testnet')
+                      ? Colors.orange
+                      : Colors.green,
+                ),
               ),
             ),
           ),

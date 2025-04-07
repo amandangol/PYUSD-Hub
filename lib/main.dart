@@ -12,7 +12,6 @@ import 'providers/network_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/walletstate_provider.dart';
 import 'providers/gemini_provider.dart';
-import 'screens/analytics/pyusd_analytics_screen.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';

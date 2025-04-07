@@ -880,8 +880,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showLogoutDialog(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final onboardingProvider =
-        Provider.of<OnboardingProvider>(context, listen: false);
 
     showDialog(
       context: context,

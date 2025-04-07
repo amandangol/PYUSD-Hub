@@ -18,7 +18,6 @@ class SecuritySettingsScreen extends StatefulWidget {
 class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   final TextEditingController _pinController = TextEditingController();
   late BuildContext _scaffoldContext;
-  String? _errorMessage;
 
   @override
   void didChangeDependencies() {

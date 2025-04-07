@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../widgets/loading_overlay.dart';
 
 import '../../../widgets/pyusd_components.dart';
@@ -306,9 +305,8 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
 
   Widget _buildAiAnalysisCard() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDarkMode ? Colors.grey.shade800 : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black;
-    final accentColor = Colors.purple;
+    const accentColor = Colors.purple;
 
     return Card(
       elevation: 3,
@@ -851,7 +849,6 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
 
     final callType = trace['type'] ?? 'call';
     final to = trace['to'] ?? 'Unknown';
-    final value = trace['value'] ?? '0x0';
     final gasUsed = trace['gasUsed'] ?? '0x0';
 
     final callTypeColor = _getCallTypeColor(callType);

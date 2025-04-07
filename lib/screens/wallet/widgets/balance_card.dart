@@ -32,7 +32,7 @@ class BalanceCard extends StatelessWidget {
   // Memoize common styles
   TextStyle _getBalanceTextStyle(bool isDarkMode) => TextStyle(
         color: isDarkMode ? Colors.white : Colors.black87,
-        fontSize: 38,
+        fontSize: 24,
         fontWeight: FontWeight.bold,
       );
 
@@ -41,49 +41,34 @@ class BalanceCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    // Extract card content to improve readability
-    return Card(
-      elevation: 8,
-      shadowColor: isDarkMode ? Colors.black54 : Colors.black26,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        width: double.infinity,
-        decoration: _buildCardDecoration(isDarkMode),
-        child: Stack(
+    return Container(
+      width: double.infinity,
+      decoration: _buildCardDecoration(isDarkMode),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Decorative elements
-            _buildDecorativeCircle(true, isDarkMode),
-            _buildDecorativeCircle(false, isDarkMode),
-
-            // Card content
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCardHeader(context, isDarkMode),
-                  const SizedBox(height: 24),
-                  _buildBalanceSection(context, isDarkMode),
-                  const SizedBox(height: 24),
-                  _buildDivider(isDarkMode),
-                  const SizedBox(height: 16),
-                  _buildWalletAddressSection(context, isDarkMode),
-                ],
-              ),
+            _buildCardHeader(context, isDarkMode),
+            const SizedBox(height: 16),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: isRefreshing
+                  ? _buildBalanceLoadingSkeleton(isDarkMode)
+                  : _buildBalanceSection(context, isDarkMode),
             ),
+            const SizedBox(height: 16),
+            _buildWalletAddressSection(context, isDarkMode),
           ],
         ),
       ),
     );
   }
 
-  // Optimize card decoration by reducing opacity calculations
   BoxDecoration _buildCardDecoration(bool isDarkMode) {
     return BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -95,30 +80,11 @@ class BalanceCard extends StatelessWidget {
         BoxShadow(
           color: isDarkMode
               ? Colors.black.withOpacity(0.2)
-              : const Color(0x0D000000), // Pre-calculated opacity
+              : const Color(0x0D000000),
           blurRadius: 10,
           spreadRadius: 1,
         ),
       ],
-    );
-  }
-
-  Widget _buildDecorativeCircle(bool isTop, bool isDarkMode) {
-    return Positioned(
-      top: isTop ? -20 : null,
-      right: isTop ? -20 : null,
-      bottom: !isTop ? -15 : null,
-      left: !isTop ? -15 : null,
-      child: Container(
-        height: isTop ? 100 : 80,
-        width: isTop ? 100 : 80,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isDarkMode
-              ? Colors.white.withOpacity(isTop ? 0.05 : 0.03)
-              : _paypalBlue.withOpacity(isTop ? 0.05 : 0.03),
-        ),
-      ),
     );
   }
 
@@ -168,89 +134,174 @@ class BalanceCard extends StatelessWidget {
   }
 
   Widget _buildBalanceSection(BuildContext context, bool isDarkMode) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Available Balance',
-          style: TextStyle(
-            color: isDarkMode ? Colors.white70 : Colors.black54,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'PYUSD Balance',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildPyusdBalanceDisplay(context, isDarkMode),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        AnimatedSwitcher(
-          duration: _animationDuration,
-          child: isRefreshing
-              ? _buildBalanceLoadingSkeleton(isDarkMode)
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: _buildBalanceDisplay(context, isDarkMode),
-                    ),
-                    _buildEthBalanceChip(context, isDarkMode),
-                  ],
+        const SizedBox(width: 16),
+        Container(
+          width: 1,
+          height: 40,
+          color: isDarkMode
+              ? Colors.white.withOpacity(0.1)
+              : Colors.black.withOpacity(0.1),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ETH Balance',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
+              const SizedBox(height: 4),
+              _buildEthBalanceDisplay(context, isDarkMode),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPyusdBalanceDisplay(BuildContext context, bool isDarkMode) {
+    final isBalanceVisible = context.select<WaletScreenProvider, bool>(
+      (provider) => provider.isBalanceVisible,
+    );
+
+    return Row(
+      children: [
+        _buildCurrencySymbol(isDarkMode),
+        Text(
+          isBalanceVisible ? (tokenBalance ?? 0).toStringAsFixed(2) : '****',
+          key: ValueKey(tokenBalance),
+          style: _getBalanceTextStyle(isDarkMode),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEthBalanceDisplay(BuildContext context, bool isDarkMode) {
+    final isBalanceVisible = context.select<WaletScreenProvider, bool>(
+      (provider) => provider.isBalanceVisible,
+    );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SvgPicture.asset(
+          'assets/svg/ethereum_logo.svg',
+          height: 16,
+          width: 16,
+          colorFilter: ColorFilter.mode(
+            isDarkMode ? Colors.white70 : Colors.black54,
+            BlendMode.srcIn,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          isBalanceVisible
+              ? '${(ethBalance ?? 0).toStringAsFixed(4)} ETH'
+              : '**** ETH',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: isDarkMode ? Colors.white : Colors.black87,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildBalanceLoadingSkeleton(bool isDarkMode) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            // PYUSD Balance Skeleton
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSkeletonBox(
+                isDarkMode,
+                width: 100,
+                height: 12,
+              ),
+              const SizedBox(height: 8),
+              Row(
                 children: [
                   _buildSkeletonBox(
                     isDarkMode,
                     width: 20,
-                    height: 38,
-                  ), // $ symbol
+                    height: 24,
+                  ),
                   const SizedBox(width: 4),
                   _buildSkeletonBox(
                     isDarkMode,
                     width: 120,
-                    height: 38,
-                  ), // Balance amount
+                    height: 24,
+                  ),
                 ],
               ),
-            ),
-            // ETH Balance Chip Skeleton
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(30),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Container(
+          width: 1,
+          height: 40,
+          color: isDarkMode
+              ? Colors.white.withOpacity(0.1)
+              : Colors.black.withOpacity(0.1),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSkeletonBox(
+                isDarkMode,
+                width: 100,
+                height: 12,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(height: 8),
+              Row(
                 children: [
                   _buildSkeletonBox(
                     isDarkMode,
-                    width: 14,
-                    height: 14,
+                    width: 16,
+                    height: 16,
                     isCircular: true,
-                  ), // Icon
+                  ),
                   const SizedBox(width: 6),
                   _buildSkeletonBox(
                     isDarkMode,
                     width: 80,
-                    height: 14,
-                  ), // ETH amount
+                    height: 16,
+                  ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -277,30 +328,12 @@ class BalanceCard extends StatelessWidget {
           width: width,
           height: height,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.5),
+            color: isDarkMode
+                ? Colors.white.withOpacity(0.2)
+                : Colors.grey.withOpacity(0.2),
             borderRadius: BorderRadius.circular(isCircular ? height / 2 : 8),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBalanceDisplay(BuildContext context, bool isDarkMode) {
-    final isBalanceVisible = context.select<WaletScreenProvider, bool>(
-      (provider) => provider.isBalanceVisible,
-    );
-
-    return AnimatedSwitcher(
-      duration: _animationDuration,
-      child: Row(
-        children: [
-          _buildCurrencySymbol(isDarkMode),
-          Text(
-            isBalanceVisible ? (tokenBalance ?? 0).toStringAsFixed(2) : '****',
-            key: ValueKey(tokenBalance),
-            style: _getBalanceTextStyle(isDarkMode),
-          ),
-        ],
       ),
     );
   }
@@ -311,59 +344,9 @@ class BalanceCard extends StatelessWidget {
       key: const ValueKey('dollar'),
       style: TextStyle(
         color: isDarkMode ? Colors.white : _paypalBlue,
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: FontWeight.bold,
       ),
-    );
-  }
-
-  Widget _buildEthBalanceChip(BuildContext context, bool isDarkMode) {
-    final isBalanceVisible = context.select<WaletScreenProvider, bool>(
-      (provider) => provider.isBalanceVisible,
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.white.withOpacity(0.08)
-            : Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(
-            'assets/svg/ethereum_logo.svg',
-            height: 14,
-            width: 14,
-            colorFilter: ColorFilter.mode(
-              isDarkMode ? Colors.white70 : Colors.black54,
-              BlendMode.srcIn,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            isBalanceVisible
-                ? '${(ethBalance ?? 0).toStringAsFixed(4)} ETH'
-                : '**.** ETH',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDivider(bool isDarkMode) {
-    return Divider(
-      color: isDarkMode
-          ? Colors.white.withOpacity(0.1)
-          : Colors.black.withOpacity(0.1),
-      thickness: 1,
     );
   }
 
@@ -389,8 +372,9 @@ class BalanceCard extends StatelessWidget {
                 style: TextStyle(
                   color: isDarkMode ? Colors.white : Colors.black87,
                   fontSize: 14,
+                  fontFamily: 'monospace',
                   fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
+                  letterSpacing: 3,
                 ),
               ),
             ],
@@ -413,7 +397,7 @@ class BalanceCard extends StatelessWidget {
 
   String _formatWalletAddress(String address) {
     if (address.length < 10) return address;
-    return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
+    return '${address.substring(0, 8)}...${address.substring(address.length - 4)}';
   }
 
   void _copyWalletAddress(BuildContext context) {

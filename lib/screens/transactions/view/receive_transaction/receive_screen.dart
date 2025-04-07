@@ -36,8 +36,6 @@ class ReceiveScreen extends StatelessWidget {
     final primaryColor = theme.colorScheme.primary;
     final backgroundColor = theme.scaffoldBackgroundColor;
     final cardColor = theme.cardTheme.color;
-    final textColor = theme.textTheme.bodyLarge?.color;
-    final secondaryTextColor = theme.textTheme.bodySmall?.color;
 
     return Scaffold(
       backgroundColor: backgroundColor,

@@ -1,15 +1,13 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class RpcEndpoints {
-  static const String mainnetHttpRpcUrl =
-      'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
-
-  static const String mainnetWssRpcUrl =
-      'wss://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-mainnet/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
-
-  static const String sepoliaTestnetHttpRpcUrl =
-      'https://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
-
-  static const String sepoliaTestnetWssRpcUrl =
-      'wss://blockchain.googleapis.com/v1/projects/oceanic-impact-451616-f5/locations/us-central1/endpoints/ethereum-sepolia/rpc?key=AIzaSyAnZZi8DTOXLn3zcRKoGYtRgMl-YQnIo1Q';
+  static String get mainnetHttpRpcUrl =>
+      dotenv.env['MAINNET_HTTP_RPC_URL'] ?? '';
+  static String get mainnetWssRpcUrl => dotenv.env['MAINNET_WSS_RPC_URL'] ?? '';
+  static String get sepoliaTestnetHttpRpcUrl =>
+      dotenv.env['SEPOLIA_HTTP_RPC_URL'] ?? '';
+  static String get sepoliaTestnetWssRpcUrl =>
+      dotenv.env['SEPOLIA_WSS_RPC_URL'] ?? '';
 
   static const String getBlockByNumber = 'eth_getBlockByNumber';
   static const String getTransactionByHash = 'eth_getTransactionByHash';

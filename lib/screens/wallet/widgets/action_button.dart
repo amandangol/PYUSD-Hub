@@ -18,31 +18,34 @@ class ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _ActionButton(
-          onPressed: onSendPressed,
-          label: 'Send',
-          icon: Icons.arrow_upward_rounded,
-          color: primaryColor,
-          isDarkMode: isDarkMode,
-        ),
-        _ActionButton(
-          onPressed: onReceivePressed,
-          label: 'Receive',
-          icon: Icons.arrow_downward_rounded,
-          color: isDarkMode ? Colors.deepPurple : Colors.purple,
-          isDarkMode: isDarkMode,
-        ),
-        _ActionButton(
-          onPressed: onSwapPressed,
-          label: 'Swap',
-          icon: Icons.swap_horiz_rounded,
-          color: isDarkMode ? Colors.teal : Colors.teal[600]!,
-          isDarkMode: isDarkMode,
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _ActionButton(
+            onPressed: onSendPressed,
+            label: 'Send',
+            icon: Icons.arrow_upward_rounded,
+            color: primaryColor,
+            isDarkMode: isDarkMode,
+          ),
+          _ActionButton(
+            onPressed: onReceivePressed,
+            label: 'Receive',
+            icon: Icons.arrow_downward_rounded,
+            color: isDarkMode ? Colors.deepPurple : Colors.purple,
+            isDarkMode: isDarkMode,
+          ),
+          _ActionButton(
+            onPressed: onSwapPressed,
+            label: 'Swap',
+            icon: Icons.swap_horiz_rounded,
+            color: isDarkMode ? Colors.teal : Colors.teal[600]!,
+            isDarkMode: isDarkMode,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -68,25 +71,25 @@ class _ActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          width: 100,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          width: 90,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
                 color,
-                color.withOpacity(0.7),
+                color.withOpacity(0.8),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: color.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -96,21 +99,21 @@ class _ActionButton extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
                   color: Colors.white,
-                  size: 24,
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 label,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
                 ),

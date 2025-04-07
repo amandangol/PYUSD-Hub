@@ -575,7 +575,6 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
 
   Widget _buildAiAnalysisCard() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDarkMode ? Colors.grey.shade800 : Colors.white;
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final accentColor = Colors.purple;
 

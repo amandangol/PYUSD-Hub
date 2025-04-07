@@ -7,7 +7,6 @@ import '../../authentication/provider/auth_provider.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../../utils/snackbar_utils.dart';
-import '../../transactions/model/transaction_model.dart';
 import '../../transactions/provider/transaction_provider.dart';
 import '../../transactions/provider/transactiondetail_provider.dart';
 import '../../transactions/view/receive_transaction/receive_screen.dart';
@@ -110,6 +109,190 @@ class _WalletScreenState extends State<WalletScreen>
     });
   }
 
+  Future<void> _showNetworkSelector() async {
+    if (!mounted) return;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => PyusdBottomSheet(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Network',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildNetworkOption(
+                context: context,
+                networkProvider: _networkProvider!,
+                networkType: NetworkType.sepoliaTestnet,
+                icon: Icons.wifi_tethering,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 12),
+              _buildNetworkOption(
+                context: context,
+                networkProvider: _networkProvider!,
+                networkType: NetworkType.ethereumMainnet,
+                icon: Icons.public,
+                color: Colors.green,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      try {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white10
+                  : Colors.black12,
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white70
+                            : Colors.black54,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Switching network...',
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        print('Error during network switch UI update: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error switching network. Please try again.',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : Colors.black54,
+                ),
+              ),
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white10
+                  : Colors.black12,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildNetworkOption({
+    required BuildContext context,
+    required NetworkProvider networkProvider,
+    required NetworkType networkType,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = networkProvider.currentNetwork == networkType;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: networkProvider.isSwitching
+            ? null
+            : () async {
+                await networkProvider.switchNetwork(networkType);
+                Navigator.pop(context, true);
+              },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.withOpacity(0.2),
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      networkProvider.getNetworkName(networkType),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      networkType == NetworkType.sepoliaTestnet
+                          ? 'Test network for development'
+                          : 'Production network',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_circle,
+                  color: color,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final onboardingProvider = Provider.of<OnboardingProvider>(context);
@@ -138,6 +321,9 @@ class _WalletScreenState extends State<WalletScreen>
         isDarkMode: isDarkMode,
         hasWallet: true,
         showLogo: true,
+        networkName: _networkProvider?.currentNetworkDisplayName ?? '',
+        onNetworkNamePressed: _showNetworkSelector,
+        onRefreshPressed: _handleRefresh,
         title: "PYUSD Wallet",
       ),
       body: _buildBody(
@@ -156,8 +342,6 @@ class _WalletScreenState extends State<WalletScreen>
     });
 
     try {
-      final walletScreenProvider =
-          Provider.of<WaletScreenProvider>(context, listen: false);
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
       final walletStateProvider =
@@ -219,7 +403,7 @@ class _WalletScreenState extends State<WalletScreen>
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -234,7 +418,7 @@ class _WalletScreenState extends State<WalletScreen>
                 networkName: networkName,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Action buttons
               ActionButtons(
@@ -245,12 +429,12 @@ class _WalletScreenState extends State<WalletScreen>
                 onSwapPressed: _showSwapMessage,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Network status card
               NetworkStatusCard(isDarkMode: isDarkMode),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Add transaction list section
               _buildTransactionList(),
@@ -308,13 +492,19 @@ class _WalletScreenState extends State<WalletScreen>
     final isInitialLoad = context.select<WalletStateProvider, bool>(
         (provider) => provider.isInitialLoad);
 
-    return BalanceCard(
-      ethBalance: ethBalance,
-      tokenBalance: tokenBalance,
-      walletAddress: walletAddress,
-      isRefreshing: isRefreshing || isInitialLoad,
-      primaryColor: primaryColor,
-      // networkName: networkName,
+    return Card(
+      elevation: 8,
+      shadowColor: isDarkMode ? Colors.black54 : Colors.black26,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: BalanceCard(
+        ethBalance: ethBalance,
+        tokenBalance: tokenBalance,
+        walletAddress: walletAddress,
+        isRefreshing: isRefreshing || isInitialLoad,
+        primaryColor: primaryColor,
+      ),
     );
   }
 

@@ -25,8 +25,6 @@ class EthereumRpcService {
   ]
   ''';
 
-  static const String _etherscanApiKey = 'YBYI6VWHB8VIE5M8Z3BRPS4689N2VHV3SA';
-
   final Map<String, Web3Client> _clientPool = {};
   static const int _maxPoolSize = 5;
 
@@ -271,7 +269,7 @@ class EthereumRpcService {
       );
 
       final client = _getClient(rpcUrl);
-      final signedTx = await client?.signTransaction(
+      final signedTx = await client.signTransaction(
         credentials,
         tx,
         chainId: chainId,
@@ -932,7 +930,7 @@ class EthereumRpcService {
 
       try {
         final decimalsFunction = contract.function('decimals');
-        final decimalsResult = await client?.call(
+        final decimalsResult = await client.call(
           contract: contract,
           function: decimalsFunction,
           params: [],
@@ -1185,7 +1183,6 @@ class EthereumRpcService {
     };
   }
 
-  @override
   void dispose() {
     _clientPool.forEach((url, client) {
       client.dispose();

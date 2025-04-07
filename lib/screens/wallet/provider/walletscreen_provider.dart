@@ -4,8 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../transactions/model/transaction_model.dart';
 import '../../transactions/provider/transaction_provider.dart';
-import '../../transactions/provider/transactiondetail_provider.dart';
-import '../../../providers/network_provider.dart';
 
 class WaletScreenProvider with ChangeNotifier {
   // Shared Preferences keys
