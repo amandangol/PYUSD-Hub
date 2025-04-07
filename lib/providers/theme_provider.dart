@@ -8,13 +8,11 @@ class ThemeProvider with ChangeNotifier {
   bool get isDarkMode => _isDarkMode;
   bool _isInitialized = false;
 
-  // Constructor doesn't try to initialize SharedPreferences
   ThemeProvider();
 
   // Check if provider is initialized
   bool get isInitialized => _isInitialized;
 
-  // Initialize method that must be awaited before using the provider
   Future<void> initialize() async {
     if (!_isInitialized) {
       _prefs = await SharedPreferences.getInstance();
@@ -24,7 +22,6 @@ class ThemeProvider with ChangeNotifier {
     }
   }
 
-  // Load from preferences - only called after initialization
   Future<void> _loadFromPrefs() async {
     if (_prefs != null) {
       _isDarkMode = _prefs!.getBool(key) ?? false;
@@ -42,20 +39,18 @@ class ThemeProvider with ChangeNotifier {
   // Toggle between light and dark theme
   void toggleTheme() async {
     _isDarkMode = !_isDarkMode;
-    await _saveToPrefs(); // Save first
-    notifyListeners(); // Then notify
+    await _saveToPrefs();
+    notifyListeners();
   }
 
-  // Set specific theme mode
   void setDarkMode(bool isDark) async {
     if (_isDarkMode != isDark) {
       _isDarkMode = isDark;
-      await _saveToPrefs(); // Save first
-      notifyListeners(); // Then notify
+      await _saveToPrefs();
+      notifyListeners();
     }
   }
 
-  // Add method to force theme update
   void forceThemeUpdate() {
     notifyListeners();
   }

@@ -129,14 +129,6 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
   void dispose() {
     print('NetworkCongestionScreen: dispose called');
     _isDisposed = true;
-
-    // Clean up provider before disposing the screen
-    if (!_isDisposed) {
-      final provider =
-          Provider.of<NetworkCongestionProvider>(context, listen: false);
-      provider.dispose();
-    }
-
     _tabController.dispose();
     super.dispose();
   }
@@ -149,11 +141,6 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
 
     return WillPopScope(
       onWillPop: () async {
-        if (!_isDisposed) {
-          final provider =
-              Provider.of<NetworkCongestionProvider>(context, listen: false);
-          provider.dispose();
-        }
         return true;
       },
       child: Scaffold(

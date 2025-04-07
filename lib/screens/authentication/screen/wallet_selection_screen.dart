@@ -68,15 +68,32 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-              ),
-            )
-          : _buildWalletSelectionContent(theme),
+    return WillPopScope(
+      onWillPop: () async {
+        // Show confirmation dialog before exiting
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => PyusdDialog(
+            title: 'Exit App',
+            content: 'Are you sure you want to exit the app?',
+            confirmText: 'Exit',
+            cancelText: 'Cancel',
+            onConfirm: () => Navigator.of(context).pop(true),
+            onCancel: () => Navigator.of(context).pop(false),
+          ),
+        );
+        return shouldExit ?? false;
+      },
+      child: Scaffold(
+        body: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                ),
+              )
+            : _buildWalletSelectionContent(theme),
+      ),
     );
   }
 

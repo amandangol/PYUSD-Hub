@@ -11,36 +11,15 @@ class NavigationProvider extends ChangeNotifier {
     }
   }
 
-  void resetToHome() {
-    if (_currentIndex != 0) {
-      _currentIndex = 0;
-      notifyListeners();
-    }
-  }
+  // void resetToHome() {
+  //   if (_currentIndex != 0) {
+  //     _currentIndex = 0;
+  //     notifyListeners();
+  //   }
+  // }
 
   void setWalletScreen() {
     _currentIndex = 2;
     notifyListeners();
-  }
-
-  // New methods for named route navigation
-  void navigateToWallet(BuildContext context) {
-    setWalletScreen();
-  }
-
-  void navigateToNetwork(BuildContext context) {
-    setIndex(0);
-  }
-
-  void navigateToExplore(BuildContext context) {
-    setIndex(1);
-  }
-
-  void navigateToInsights(BuildContext context) {
-    setIndex(3);
-  }
-
-  void navigateToSettings(BuildContext context) {
-    setIndex(4);
   }
 }

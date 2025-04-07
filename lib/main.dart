@@ -46,23 +46,18 @@ import 'providers/pyusd_analytics_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Load environment variables
   await dotenv.load(fileName: ".env");
 
-  // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool("theme") ?? false;
 
-  // Create and initialize ThemeProvider
   final themeProvider = ThemeProvider();
   await themeProvider.initialize();
 
-  // Create and initialize OnboardingProvider
   final onboardingProvider = OnboardingProvider();
   await onboardingProvider.initialize();
 
@@ -196,7 +191,6 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  // Define screens for bottom navigation with metadata
   final List<Map<String, dynamic>> _screens = [
     {
       'label': 'Network',
@@ -230,13 +224,39 @@ class _MainAppState extends State<MainApp> {
     },
   ];
 
+  DateTime? _lastBackPressTime;
+
   @override
   void initState() {
     super.initState();
-    // Ensure we're on the wallet screen when the app starts
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NavigationProvider>().setWalletScreen();
     });
+  }
+
+  Future<bool> _onWillPop() async {
+    final now = DateTime.now();
+    final navigationProvider = context.read<NavigationProvider>();
+
+    if (navigationProvider.currentIndex != 2) {
+      // If not on wallet screen, navigate to wallet screen
+      navigationProvider.setWalletScreen();
+      return false;
+    }
+
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+
+    return true;
   }
 
   @override
@@ -244,13 +264,7 @@ class _MainAppState extends State<MainApp> {
     final navigationProvider = context.watch<NavigationProvider>();
 
     return WillPopScope(
-      onWillPop: () async {
-        if (navigationProvider.currentIndex != 0) {
-          navigationProvider.resetToHome();
-          return false;
-        }
-        return true;
-      },
+      onWillPop: _onWillPop,
       child: Stack(
         children: [
           Scaffold(

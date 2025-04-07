@@ -546,9 +546,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
     switch (status) {
       case TransactionStatus.confirmed:
-        return theme.colorScheme.tertiary ?? Colors.green;
+        return theme.colorScheme.tertiary;
       case TransactionStatus.pending:
-        return theme.colorScheme.secondary ?? Colors.orange;
+        return theme.colorScheme.secondary;
       case TransactionStatus.failed:
         return theme.colorScheme.error;
     }

@@ -199,158 +199,175 @@ class _LoginScreenState extends State<LoginScreen> {
         ? '${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}'
         : '';
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top -
-                    MediaQuery.of(context).padding.bottom,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 48),
+    return WillPopScope(
+      onWillPop: () async {
+        // Show confirmation dialog before exiting
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => PyusdDialog(
+            title: 'Exit App',
+            content: 'Are you sure you want to exit the app?',
+            confirmText: 'Exit',
+            cancelText: 'Cancel',
+            onConfirm: () => Navigator.of(context).pop(true),
+            onCancel: () => Navigator.of(context).pop(false),
+          ),
+        );
+        return shouldExit ?? false;
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 48),
 
-                  // App logo or brand identity
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Image.asset(
-                      "assets/images/pyusdlogo.png",
-                      height: 64,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Title
-                  Text(
-                    'Welcome Back',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Subtitle
-                  Text(
-                    'Enter your PIN to unlock your wallet',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Wallet address display with copy button
-                  if (walletAddress.isNotEmpty) ...[
+                    // App logo or brand identity
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
+                      width: 100,
+                      height: 100,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(16),
+                        color: theme.colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            shortenedAddress,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontFamily: 'Monospace',
-                              fontWeight: FontWeight.w500,
+                      child: Image.asset(
+                        "assets/images/pyusdlogo.png",
+                        height: 64,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Title
+                    Text(
+                      'Welcome Back',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Subtitle
+                    Text(
+                      'Enter your PIN to unlock your wallet',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Wallet address display with copy button
+                    if (walletAddress.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              shortenedAddress,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontFamily: 'Monospace',
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            iconSize: 18,
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () {
-                              // Copy to clipboard functionality
-                              SnackbarUtil.showSnackbar(
-                                  context: context,
-                                  message: 'Address copied to clipboard');
-                            },
-                            icon: const Icon(Icons.copy_outlined),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            IconButton(
+                              iconSize: 18,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                // Copy to clipboard functionality
+                                SnackbarUtil.showSnackbar(
+                                    context: context,
+                                    message: 'Address copied to clipboard');
+                              },
+                              icon: const Icon(Icons.copy_outlined),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 40),
+                    ],
 
-                  // PIN Input
-                  PinInput(
-                    controller: _pinController,
-                    onCompleted: (_) => _authenticateWithPIN(),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Error message
-                  if (_errorMessage != null) ...[
-                    PyusdErrorMessage(
-                      message: _errorMessage!,
-                      borderRadius: 8,
+                    // PIN Input
+                    PinInput(
+                      controller: _pinController,
+                      onCompleted: (_) => _authenticateWithPIN(),
                     ),
                     const SizedBox(height: 16),
-                  ],
 
-                  // Login button
-                  PyusdButton(
-                    onPressed: _isLoading ? null : _authenticateWithPIN,
-                    text: 'Unlock Wallet',
-                    isLoading: _isLoading,
-                  ),
+                    // Error message
+                    if (_errorMessage != null) ...[
+                      PyusdErrorMessage(
+                        message: _errorMessage!,
+                        borderRadius: 8,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
-                  // Biometrics button
-                  if (_isBiometricsAvailable) ...[
-                    const SizedBox(height: 16),
+                    // Login button
                     PyusdButton(
-                      onPressed:
-                          _isLoading ? null : _authenticateWithBiometrics,
-                      text: 'Use Biometrics',
-                      isOutlined: true,
-                      icon: Icon(Icons.fingerprint,
-                          color: theme.colorScheme.primary),
+                      onPressed: _isLoading ? null : _authenticateWithPIN,
+                      text: 'Unlock Wallet',
+                      isLoading: _isLoading,
                     ),
-                  ],
 
-                  // Forgot PIN / Reset access section
-                  const SizedBox(height: 32),
-                  TextButton(
-                    onPressed: _isLoading ? null : _showResetWalletDialog,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 16),
-                    ),
-                    child: Text(
-                      'Forgot PIN? Reset Wallet Access',
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
+                    // Biometrics button
+                    if (_isBiometricsAvailable) ...[
+                      const SizedBox(height: 16),
+                      PyusdButton(
+                        onPressed:
+                            _isLoading ? null : _authenticateWithBiometrics,
+                        text: 'Use Biometrics',
+                        isOutlined: true,
+                        icon: Icon(Icons.fingerprint,
+                            color: theme.colorScheme.primary),
+                      ),
+                    ],
+
+                    // Forgot PIN / Reset access section
+                    const SizedBox(height: 32),
+                    TextButton(
+                      onPressed: _isLoading ? null : _showResetWalletDialog,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                      ),
+                      child: Text(
+                        'Forgot PIN? Reset Wallet Access',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const FirstTimeOnboardingScreen(),
-                            ));
-                      },
-                      child: const Text('Test Onboarding')),
-                  const SizedBox(height: 24),
-                ],
+                    TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const FirstTimeOnboardingScreen(),
+                              ));
+                        },
+                        child: const Text('Test Onboarding')),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
