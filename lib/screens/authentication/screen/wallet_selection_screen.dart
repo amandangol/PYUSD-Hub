@@ -147,7 +147,7 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
+                    color: theme.colorScheme.primaryContainer.withOpacity(0.5),
                     shape: BoxShape.circle,
                   ),
                   child: ClipOval(

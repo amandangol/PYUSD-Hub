@@ -15,7 +15,6 @@ class FirstTimeOnboardingScreen extends StatefulWidget {
 class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
   final PageController _pageController = PageController();
 
-  // Update total pages to 5 to include more features
   final int _totalPages = 5;
 
   @override
@@ -73,21 +72,48 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Skip button
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: TextButton(
-                  onPressed: () => _completeOnboarding(onboardingProvider),
-                  child: Text(
-                    'Skip',
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
+            // Progress indicator and skip button
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  // Back button
+                  if (onboardingProvider.currentPage > 0)
+                    IconButton(
+                      onPressed: () => _pageController.previousPage(
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                      ),
+                      icon: Icon(
+                        Icons.arrow_back_ios_rounded,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  // Progress indicator
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: (onboardingProvider.currentPage + 1) / _totalPages,
+                      backgroundColor:
+                          theme.colorScheme.primary.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.colorScheme.primary,
+                      ),
+                      minHeight: 4,
                     ),
                   ),
-                ),
+                  // Skip button
+                  TextButton(
+                    onPressed: () => _completeOnboarding(onboardingProvider),
+                    child: Text(
+                      'Skip',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -113,17 +139,19 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  // Page indicator
+                  // Page indicator dots
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
                       _totalPages,
-                      (index) => Container(
+                      (index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
                         margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: 10,
+                        width:
+                            index == onboardingProvider.currentPage ? 24 : 10,
                         height: 10,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(5),
                           color: index == onboardingProvider.currentPage
                               ? theme.colorScheme.primary
                               : theme.colorScheme.primary.withOpacity(0.2),
@@ -175,7 +203,7 @@ class _FirstTimeOnboardingScreenState extends State<FirstTimeOnboardingScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
+              color: theme.colorScheme.primaryContainer.withOpacity(0.5),
               shape: BoxShape.circle,
             ),
             child: Image.asset(
