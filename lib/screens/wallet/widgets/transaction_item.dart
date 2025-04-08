@@ -30,63 +30,71 @@ class _TransactionItemState extends State<TransactionItem> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Card(
       color: widget.cardColor,
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
         onTap:
             _isLoading ? null : () => _handleTransactionTap(widget.transaction),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Stack(
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  _buildTransactionIcon(),
+                  _buildTransactionIcon(colorScheme),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildTransactionHeader(),
+                        _buildTransactionHeader(colorScheme),
                         const SizedBox(height: 4),
-                        _buildTransactionHash(),
+                        _buildTransactionHash(colorScheme),
                         const SizedBox(height: 4),
-                        _buildTransactionTimestamp(),
+                        _buildTransactionTimestamp(colorScheme),
                       ],
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _buildAmount(),
+                      _buildAmount(colorScheme),
                       const SizedBox(height: 4),
-                      _buildStatusPill(),
+                      _buildStatusPill(colorScheme),
                     ],
                   ),
                 ],
               ),
             ),
-            if (_isLoading) _buildLoadingOverlay(),
+            if (_isLoading) _buildLoadingOverlay(colorScheme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTransactionIcon() {
+  Widget _buildTransactionIcon(ColorScheme colorScheme) {
     final isIncoming =
         widget.transaction.direction == TransactionDirection.incoming;
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: (isIncoming ? Colors.green : Colors.red).withOpacity(0.1),
+        gradient: LinearGradient(
+          colors: [
+            (isIncoming ? Colors.green : Colors.red).withOpacity(0.1),
+            (isIncoming ? Colors.green : Colors.red).withOpacity(0.05),
+          ],
+        ),
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -97,7 +105,7 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildTransactionHeader() {
+  Widget _buildTransactionHeader(ColorScheme colorScheme) {
     final isIncoming =
         widget.transaction.direction == TransactionDirection.incoming;
     return Row(
@@ -107,7 +115,7 @@ class _TransactionItemState extends State<TransactionItem> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: widget.isDarkMode ? Colors.white : Colors.black87,
+            color: colorScheme.onSurface,
           ),
         ),
         if (widget.transaction.tokenSymbol != null)
@@ -115,14 +123,19 @@ class _TransactionItemState extends State<TransactionItem> {
             margin: const EdgeInsets.only(left: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary.withOpacity(0.1),
+                  colorScheme.primary.withOpacity(0.05),
+                ],
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               widget.transaction.tokenSymbol!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Colors.blue,
+                color: colorScheme.primary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -131,35 +144,40 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildTransactionHash() {
+  Widget _buildTransactionHash(ColorScheme colorScheme) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: widget.isDarkMode ? Colors.white10 : Colors.black12,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.surfaceVariant,
+            colorScheme.surfaceVariant.withOpacity(0.8),
+          ],
+        ),
       ),
       child: Text(
         FormatterUtils.formatHash(widget.transaction.hash),
         style: TextStyle(
           fontSize: 12,
           fontFamily: "monospace",
-          color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );
   }
 
-  Widget _buildTransactionTimestamp() {
+  Widget _buildTransactionTimestamp(ColorScheme colorScheme) {
     return Text(
       DateTimeUtils.formatDateTime(widget.transaction.timestamp),
       style: TextStyle(
         fontSize: 12,
-        color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+        color: colorScheme.onSurfaceVariant,
       ),
     );
   }
 
-  Widget _buildAmount() {
+  Widget _buildAmount(ColorScheme colorScheme) {
     final isIncoming =
         widget.transaction.direction == TransactionDirection.incoming;
     final amount = widget.transaction.amount;
@@ -178,7 +196,7 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildStatusPill() {
+  Widget _buildStatusPill(ColorScheme colorScheme) {
     Color backgroundColor;
     Color textColor;
     String text;
@@ -186,26 +204,26 @@ class _TransactionItemState extends State<TransactionItem> {
 
     switch (widget.transaction.status) {
       case TransactionStatus.confirmed:
-        backgroundColor = Colors.green.withOpacity(0.1);
-        textColor = Colors.green;
+        backgroundColor = Colors.green;
+        textColor = Colors.white;
         text = 'Confirmed';
         iconData = Icons.check_circle;
         break;
       case TransactionStatus.failed:
-        backgroundColor = Colors.red.withOpacity(0.1);
-        textColor = Colors.red;
+        backgroundColor = Colors.red;
+        textColor = Colors.white;
         text = 'Failed';
         iconData = Icons.error;
         break;
       case TransactionStatus.pending:
-        backgroundColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
+        backgroundColor = Colors.orange;
+        textColor = Colors.white;
         text = 'Pending';
         iconData = Icons.access_time;
         break;
       default:
-        backgroundColor = Colors.grey.withOpacity(0.1);
-        textColor = Colors.grey;
+        backgroundColor = Colors.grey;
+        textColor = Colors.white;
         text = 'Unknown';
         iconData = Icons.help;
     }
@@ -213,7 +231,12 @@ class _TransactionItemState extends State<TransactionItem> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        gradient: LinearGradient(
+          colors: [
+            backgroundColor,
+            backgroundColor.withOpacity(0.8),
+          ],
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -238,20 +261,20 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildLoadingOverlay() {
+  Widget _buildLoadingOverlay(ColorScheme colorScheme) {
     return Positioned.fill(
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(16),
+          color: colorScheme.surface.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
+        child: Center(
           child: SizedBox(
             width: 24,
             height: 24,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
             ),
           ),
         ),
@@ -265,10 +288,11 @@ class _TransactionItemState extends State<TransactionItem> {
     if (transaction.status == TransactionStatus.pending) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Transaction details are not available for pending transactions'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text(
+              'Transaction details are not available for pending transactions',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -283,9 +307,9 @@ class _TransactionItemState extends State<TransactionItem> {
     if (networkProvider.isSwitching) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please wait while network is switching...'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Please wait while network is switching...'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -335,7 +359,10 @@ class _TransactionItemState extends State<TransactionItem> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
     }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/screens/authentication/screen/login_screen.dart';
-import 'package:pyusd_hub/screens/onboarding/view/onboarding_screen.dart';
 import '../provider/auth_provider.dart';
 import 'wallet_selection_screen.dart';
 
@@ -67,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       // Add a minimum delay to show the splash screen
-      await Future.delayed(const Duration(seconds: 10));
+      await Future.delayed(const Duration(seconds: 2));
 
       if (!mounted) return;
 
