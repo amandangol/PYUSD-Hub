@@ -12,6 +12,7 @@ import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
 import 'advanced_trace_screen.dart';
 import '../../../../widgets/loading_overlay.dart';
+import 'mev_analysis_screen.dart';
 
 class TraceScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -318,6 +319,7 @@ class _TraceScreenState extends State<TraceScreen>
               indicatorColor: Theme.of(context).colorScheme.primary,
               labelColor: Theme.of(context).colorScheme.primary,
               unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
+              isScrollable: false,
               tabs: const [
                 Tab(text: 'Transaction'),
                 Tab(text: 'Block'),

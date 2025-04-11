@@ -29,7 +29,7 @@ class LoadingOverlay extends StatelessWidget {
                   BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                     child: Container(
-                      color: Colors.black.withOpacity(0.3), // Slight overlay
+                      color: Colors.black.withOpacity(0.3),
                     ),
                   ),
                   // Loading content
@@ -46,8 +46,8 @@ class LoadingOverlay extends StatelessWidget {
                           const SizedBox(height: 16),
                           Text(
                             loadingText!,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),

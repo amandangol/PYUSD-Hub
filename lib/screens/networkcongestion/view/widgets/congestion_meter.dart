@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 class CongestionMeter extends StatelessWidget {
-  final int level;
+  final double level;
   final String label;
   final String description;
+  final ColorScheme colorScheme;
 
   const CongestionMeter({
     super.key,
     required this.level,
     required this.label,
     required this.description,
+    required this.colorScheme,
   });
 
   @override
@@ -76,7 +78,7 @@ class CongestionMeter extends StatelessWidget {
 }
 
 class GaugePainter extends CustomPainter {
-  final int value;
+  final double value;
   final Color color;
 
   GaugePainter({required this.value, required this.color});

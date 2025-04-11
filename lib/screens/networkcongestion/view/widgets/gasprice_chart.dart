@@ -3,10 +3,12 @@ import 'package:fl_chart/fl_chart.dart';
 
 class GasPriceChart extends StatelessWidget {
   final List<double> gasPrices;
+  final ColorScheme colorScheme;
 
   const GasPriceChart({
     super.key,
     required this.gasPrices,
+    required this.colorScheme,
   });
 
   @override
@@ -132,8 +134,8 @@ class GasPriceChart extends StatelessWidget {
             isCurved: true,
             gradient: LinearGradient(
               colors: [
-                Theme.of(context).primaryColor.withOpacity(0.6),
-                Theme.of(context).primaryColor,
+                colorScheme.primary.withOpacity(0.6),
+                colorScheme.primary,
               ],
             ),
             barWidth: 3,
@@ -145,8 +147,8 @@ class GasPriceChart extends StatelessWidget {
               show: true,
               gradient: LinearGradient(
                 colors: [
-                  Theme.of(context).primaryColor.withOpacity(0.3),
-                  Theme.of(context).primaryColor.withOpacity(0.0),
+                  colorScheme.primary.withOpacity(0.3),
+                  colorScheme.primary.withOpacity(0.0),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,

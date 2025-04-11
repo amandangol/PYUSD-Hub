@@ -15,6 +15,8 @@ class OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: SingleChildScrollView(
@@ -24,7 +26,7 @@ class OverviewTab extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Network Status Overview
-            _buildNetworkStatusSection(context),
+            _buildNetworkStatusSection(context, colorScheme),
 
             const SizedBox(height: 16),
 
@@ -43,7 +45,8 @@ class OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildNetworkStatusSection(BuildContext context) {
+  Widget _buildNetworkStatusSection(
+      BuildContext context, ColorScheme colorScheme) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -85,9 +88,10 @@ class OverviewTab extends StatelessWidget {
                           'Indicates the current congestion level of the Ethereum network. Higher levels mean longer transaction processing times and higher gas fees.',
                     ),
                     child: CongestionMeter(
-                      level: congestionData.congestionLevel,
+                      level: congestionData.congestionLevel.toDouble(),
                       label: 'Network Congestion',
                       description: congestionData.congestionDescription,
+                      colorScheme: colorScheme,
                     ),
                   ),
                 ),

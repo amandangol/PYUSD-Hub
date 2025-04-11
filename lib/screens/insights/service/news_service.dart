@@ -2,10 +2,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class NewsService {
-  // CryptoCompare API provides crypto news for free
   static const String _baseUrl = 'https://min-api.cryptocompare.com/data/v2';
 
-  // No API key needed in the constructor since we'll use a free endpoint
   NewsService();
 
   Future<List<Map<String, dynamic>>> getCryptoNews() async {
@@ -63,8 +61,7 @@ class NewsService {
             'description': event['description'] ?? '',
             'content': event['description'] ?? '',
             'url': event['link'] ?? '',
-            'urlToImage':
-                'https://cryptologos.cc/logos/ethereum-eth-logo.png', // Default ETH logo
+            'urlToImage': 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
             'publishedAt': event['date'] ?? DateTime.now().toIso8601String(),
             'source': {
               'name': 'Coinpaprika',

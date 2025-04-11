@@ -34,6 +34,14 @@ class TraceProvider with ChangeNotifier {
   Map<String, dynamic>? _lastRemovedTrace;
   int? _lastRemovedIndex;
 
+  // MEV Analysis Data
+  Map<String, dynamic> _mevAnalysis = {};
+  Map<String, dynamic> get mevAnalysis => _mevAnalysis;
+
+  // MEV Event History
+  List<Map<String, dynamic>> _mevEvents = [];
+  List<Map<String, dynamic>> get mevEvents => _mevEvents;
+
   bool _isLoading = false;
   Map<String, dynamic> _traceData = {};
   String _errorMessage = '';
@@ -676,6 +684,518 @@ class TraceProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // MEV Analysis Methods
+
+  Future<Map<String, dynamic>> analyzeSandwichAttacks(String blockHash) async {
+    try {
+      _isLoading = true;
+      _safeNotifyListeners();
+
+      // Get block transactions
+      final blockData =
+          await _makeRpcCall('eth_getBlockByHash', [blockHash, true]);
+      if (blockData == null) {
+        return {'success': false, 'error': 'Block not found'};
+      }
+
+      final transactions = blockData['transactions'] as List;
+      final sandwichAttacks = <Map<String, dynamic>>[];
+
+      // Analyze transactions for sandwich patterns
+      for (int i = 0; i < transactions.length - 2; i++) {
+        final potentialFrontrun = transactions[i];
+        final potentialVictim = transactions[i + 1];
+        final potentialBackrun = transactions[i + 2];
+
+        if (await _isSandwichAttack(
+            potentialFrontrun, potentialVictim, potentialBackrun)) {
+          final profit = await _calculateMEVProfit(
+            potentialFrontrun,
+            potentialVictim,
+            potentialBackrun,
+          );
+
+          sandwichAttacks.add({
+            'frontrun': potentialFrontrun,
+            'victim': potentialVictim,
+            'backrun': potentialBackrun,
+            'profit': profit,
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
+      }
+
+      _isLoading = false;
+      _safeNotifyListeners();
+
+      return {
+        'success': true,
+        'sandwichAttacks': sandwichAttacks,
+        'blockHash': blockHash,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      _isLoading = false;
+      _safeNotifyListeners();
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<bool> _isSandwichAttack(
+    Map<String, dynamic> frontrun,
+    Map<String, dynamic> victim,
+    Map<String, dynamic> backrun,
+  ) async {
+    try {
+      // Check if transactions involve PYUSD
+      if (!_isPYUSDTransaction(frontrun) ||
+          !_isPYUSDTransaction(victim) ||
+          !_isPYUSDTransaction(backrun)) {
+        return false;
+      }
+
+      // Check if transactions are from different addresses
+      final frontrunFrom = frontrun['from'].toString().toLowerCase();
+      final victimFrom = victim['from'].toString().toLowerCase();
+      final backrunFrom = backrun['from'].toString().toLowerCase();
+
+      if (victimFrom == frontrunFrom || victimFrom == backrunFrom) {
+        return false;
+      }
+
+      // Check if frontrun and backrun are from the same address (MEV bot)
+      if (frontrunFrom != backrunFrom) {
+        return false;
+      }
+
+      // Check gas prices
+      final frontrunGasPrice = int.parse(frontrun['gasPrice'].toString());
+      final victimGasPrice = int.parse(victim['gasPrice'].toString());
+      final backrunGasPrice = int.parse(backrun['gasPrice'].toString());
+
+      // Typical sandwich attack pattern: frontrun > victim, backrun > victim
+      return frontrunGasPrice > victimGasPrice &&
+          backrunGasPrice > victimGasPrice;
+    } catch (e) {
+      print('Error checking sandwich attack: $e');
+      return false;
+    }
+  }
+
+  bool _isPYUSDTransaction(Map<String, dynamic> tx) {
+    final to = tx['to']?.toString().toLowerCase();
+    return to == _pyusdContractAddress.toLowerCase();
+  }
+
+  Future<Map<String, dynamic>> analyzeFrontrunning(String txHash) async {
+    try {
+      _isLoading = true;
+      _safeNotifyListeners();
+
+      // Get transaction details
+      final txDetails = await getTransactionDetails(txHash);
+      if (txDetails['success'] != true) {
+        return {'success': false, 'error': 'Transaction not found'};
+      }
+
+      // Get block data
+      final blockNumber =
+          int.parse(txDetails['transaction']['blockNumber'].toString());
+      final blockData = await getBlockWithTransactions(blockNumber);
+
+      if (blockData['success'] != true) {
+        return {'success': false, 'error': 'Block data not found'};
+      }
+
+      final transactions = blockData['block']['transactions'] as List;
+      final frontrunners = <Map<String, dynamic>>[];
+
+      // Find potential frontrunning transactions
+      for (final tx in transactions) {
+        if (tx['hash'] == txHash) break; // Stop at target transaction
+
+        if (await _isFrontrunning(tx, txDetails['transaction'])) {
+          final profit = await _calculateFrontrunProfit(tx);
+          frontrunners.add({
+            'transaction': tx,
+            'profit': profit,
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
+      }
+
+      _isLoading = false;
+      _safeNotifyListeners();
+
+      return {
+        'success': true,
+        'frontrunners': frontrunners,
+        'targetTransaction': txDetails['transaction'],
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      _isLoading = false;
+      _safeNotifyListeners();
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<bool> _isFrontrunning(Map<String, dynamic> potentialFrontrun,
+      Map<String, dynamic> targetTx) async {
+    try {
+      // Check if transaction involves PYUSD
+      if (!_isPYUSDTransaction(potentialFrontrun)) {
+        return false;
+      }
+
+      // Check if transactions are from different addresses
+      if (potentialFrontrun['from'].toString().toLowerCase() ==
+          targetTx['from'].toString().toLowerCase()) {
+        return false;
+      }
+
+      // Check gas price
+      final frontrunGasPrice =
+          int.parse(potentialFrontrun['gasPrice'].toString());
+      final targetGasPrice = int.parse(targetTx['gasPrice'].toString());
+
+      // Typical frontrunning pattern: higher gas price than target
+      return frontrunGasPrice > targetGasPrice;
+    } catch (e) {
+      print('Error checking frontrunning: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> analyzeTransactionOrdering(
+      int blockNumber) async {
+    try {
+      _isLoading = true;
+      _safeNotifyListeners();
+
+      final blockData = await getBlockWithTransactions(blockNumber);
+      if (blockData['success'] != true) {
+        return {'success': false, 'error': 'Block not found'};
+      }
+
+      final transactions = blockData['block']['transactions'] as List;
+      final orderedTransactions = <Map<String, dynamic>>[];
+
+      for (final tx in transactions) {
+        final gasPrice = int.parse(tx['gasPrice'].toString());
+        orderedTransactions.add({
+          'hash': tx['hash'],
+          'from': tx['from'],
+          'to': tx['to'],
+          'gasPrice': gasPrice / 1e9, // Convert to Gwei
+          'isPYUSDInteraction': _isPYUSDTransaction(tx),
+        });
+      }
+
+      // Sort by gas price
+      orderedTransactions.sort((a, b) =>
+          (b['gasPrice'] as double).compareTo(a['gasPrice'] as double));
+
+      _isLoading = false;
+      _safeNotifyListeners();
+
+      return {
+        'success': true,
+        'transactions': orderedTransactions,
+        'blockNumber': blockNumber,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      _isLoading = false;
+      _safeNotifyListeners();
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> identifyMEVOpportunities(
+      String blockHash) async {
+    try {
+      _isLoading = true;
+      _safeNotifyListeners();
+
+      final blockData =
+          await _makeRpcCall('eth_getBlockByHash', [blockHash, true]);
+      if (blockData == null) {
+        return {'success': false, 'error': 'Block not found'};
+      }
+
+      final transactions = blockData['transactions'] as List;
+      final opportunities = <Map<String, dynamic>>[];
+
+      // Find liquidation opportunities
+      final liquidations = await _findLiquidationOpportunities(transactions);
+      opportunities.addAll(liquidations);
+
+      // Find arbitrage opportunities
+      final arbitrage = await _findArbitrageOpportunities(transactions);
+      opportunities.addAll(arbitrage);
+
+      _isLoading = false;
+      _safeNotifyListeners();
+
+      return {
+        'success': true,
+        'opportunities': opportunities,
+        'blockHash': blockHash,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      _isLoading = false;
+      _safeNotifyListeners();
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> trackHistoricalMEVEvents(
+      int startBlock, int endBlock) async {
+    try {
+      _isLoading = true;
+      _safeNotifyListeners();
+
+      final events = <Map<String, dynamic>>[];
+
+      for (int blockNumber = startBlock;
+          blockNumber <= endBlock;
+          blockNumber++) {
+        final blockData = await getBlockWithTransactions(blockNumber);
+        if (blockData['success'] != true) continue;
+
+        final transactions = blockData['block']['transactions'] as List;
+
+        // Check for sandwich attacks
+        final sandwichResult =
+            await analyzeSandwichAttacks(blockData['block']['hash']);
+        if (sandwichResult['success'] == true) {
+          events.addAll(
+              (sandwichResult['sandwichAttacks'] as List).map((attack) => {
+                    'type': 'sandwich_attack',
+                    'blockNumber': blockNumber,
+                    'data': attack,
+                  }));
+        }
+
+        // Check for other MEV opportunities
+        final opportunities =
+            await identifyMEVOpportunities(blockData['block']['hash']);
+        if (opportunities['success'] == true) {
+          events.addAll((opportunities['opportunities'] as List).map((opp) => {
+                'type': 'mev_opportunity',
+                'blockNumber': blockNumber,
+                'data': opp,
+              }));
+        }
+      }
+
+      _isLoading = false;
+      _safeNotifyListeners();
+
+      return {
+        'success': true,
+        'events': events,
+        'startBlock': startBlock,
+        'endBlock': endBlock,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      _isLoading = false;
+      _safeNotifyListeners();
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<double> _calculateMEVProfit(
+    Map<String, dynamic> frontrunTx,
+    Map<String, dynamic> victimTx,
+    Map<String, dynamic> backrunTx,
+  ) async {
+    try {
+      // Calculate profits from frontrun and backrun transactions
+      final frontrunProfit = await _calculateArbitrageProfit(frontrunTx);
+      final backrunProfit = await _calculateArbitrageProfit(backrunTx);
+
+      // Total profit is the sum of both transactions
+      return frontrunProfit + backrunProfit;
+    } catch (e) {
+      print('Error calculating MEV profit: $e');
+      return 0.0;
+    }
+  }
+
+  Future<double> _calculateArbitrageProfit(Map<String, dynamic> tx) async {
+    try {
+      // Get transaction receipt for actual gas used
+      final receipt =
+          await _makeRpcCall('eth_getTransactionReceipt', [tx['hash']]);
+      if (receipt == null) return 0.0;
+
+      // Calculate gas cost
+      final gasUsed = int.parse(receipt['gasUsed'].toString());
+      final gasPrice = int.parse(tx['gasPrice'].toString());
+      final gasCost = (gasUsed * gasPrice) / 1e18; // Convert to ETH
+
+      // For this example, we'll use a simplified profit calculation
+      // In a real implementation, you would analyze token transfers and price impacts
+      final profit = await _calculateTokenTransferProfit(receipt['logs']);
+
+      return profit - (gasCost * 2000); // Assuming ETH price of $2000
+    } catch (e) {
+      print('Error calculating arbitrage profit: $e');
+      return 0.0;
+    }
+  }
+
+  Future<double> _calculateTokenTransferProfit(List<dynamic> logs) async {
+    double profit = 0.0;
+
+    for (final log in logs) {
+      if (log['address'].toString().toLowerCase() ==
+          _pyusdContractAddress.toLowerCase()) {
+        // Parse Transfer event
+        if (log['topics'][0] ==
+            '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef') {
+          final amount = BigInt.parse(log['data'].toString());
+          profit += amount.toDouble() / 1e6; // Convert from PYUSD decimals
+        }
+      }
+    }
+
+    return profit;
+  }
+
+  Future<List<Map<String, dynamic>>> _findLiquidationOpportunities(
+      List<dynamic> transactions) async {
+    final opportunities = <Map<String, dynamic>>[];
+
+    for (final tx in transactions) {
+      try {
+        // Check if transaction is interacting with lending protocols
+        if (await _isLiquidationCall(tx)) {
+          final liquidationDetails = await _analyzeLiquidation(tx);
+          if (liquidationDetails != null) {
+            opportunities.add({
+              'type': 'liquidation',
+              'transaction': tx,
+              'details': liquidationDetails,
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+        }
+      } catch (e) {
+        print('Error analyzing liquidation opportunity: $e');
+      }
+    }
+
+    return opportunities;
+  }
+
+  Future<List<Map<String, dynamic>>> _findArbitrageOpportunities(
+      List<dynamic> transactions) async {
+    final opportunities = <Map<String, dynamic>>[];
+
+    for (final tx in transactions) {
+      try {
+        if (_isPYUSDTransaction(tx)) {
+          final profit = await _calculateArbitrageProfit(tx);
+          if (profit > 0) {
+            opportunities.add({
+              'type': 'arbitrage',
+              'transaction': tx,
+              'estimatedProfit': profit,
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+        }
+      } catch (e) {
+        print('Error analyzing arbitrage opportunity: $e');
+      }
+    }
+
+    return opportunities;
+  }
+
+  Future<bool> _isLiquidationCall(Map<String, dynamic> tx) async {
+    // Check if the transaction is calling a liquidation function
+    // This is a simplified check - in reality, you would need to check specific protocols
+    final input = tx['input'].toString();
+    return input.startsWith(
+            '0x7d858b4f') || // Example liquidation function signature
+        input.startsWith('0xb5f8558c'); // Another example signature
+  }
+
+  Future<Map<String, dynamic>?> _analyzeLiquidation(
+      Map<String, dynamic> tx) async {
+    try {
+      final receipt =
+          await _makeRpcCall('eth_getTransactionReceipt', [tx['hash']]);
+      if (receipt == null) return null;
+
+      // Analyze the liquidation event logs
+      final liquidationProfit =
+          await _calculateLiquidationProfit(receipt['logs']);
+
+      return {
+        'profit': liquidationProfit,
+        'collateralToken': 'PYUSD',
+        'debtToken':
+            'USDC', // Example - in reality, you'd determine this from the logs
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+    } catch (e) {
+      print('Error analyzing liquidation: $e');
+      return null;
+    }
+  }
+
+  Future<double> _calculateLiquidationProfit(List<dynamic> logs) async {
+    double profit = 0.0;
+
+    // Calculate profit from liquidation events
+    // This is a simplified calculation - in reality, you'd need to:
+    // 1. Identify the seized collateral
+    // 2. Calculate its market value
+    // 3. Subtract the debt repaid
+    // 4. Subtract gas costs
+
+    for (final log in logs) {
+      if (log['address'].toString().toLowerCase() ==
+          _pyusdContractAddress.toLowerCase()) {
+        // Parse relevant events
+        final data = BigInt.parse(log['data'].toString());
+        profit += data.toDouble() / 1e6;
+      }
+    }
+
+    return profit;
+  }
+
+  Future<double> _calculateFrontrunProfit(Map<String, dynamic> tx) async {
+    try {
+      // Get transaction receipt for actual gas used
+      final receipt =
+          await _makeRpcCall('eth_getTransactionReceipt', [tx['hash']]);
+      if (receipt == null) return 0.0;
+
+      // Calculate gas cost
+      final gasUsed = int.parse(receipt['gasUsed'].toString());
+      final gasPrice = int.parse(tx['gasPrice'].toString());
+      final gasCost = (gasUsed * gasPrice) / 1e18; // Convert to ETH
+
+      // Calculate profit from token transfers
+      final profit = await _calculateTokenTransferProfit(receipt['logs']);
+
+      // Subtract gas cost (assuming ETH price of $2000)
+      return profit - (gasCost * 2000);
+    } catch (e) {
+      print('Error calculating frontrun profit: $e');
+      return 0.0;
     }
   }
 }

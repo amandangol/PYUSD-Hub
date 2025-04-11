@@ -52,7 +52,7 @@ class PyusdAnalyticsProvider with ChangeNotifier {
       print('BigQuery API initialized');
 
       // Execute the query - using the public Ethereum dataset with correct schema
-      final query = '''
+      const query = '''
         #standardSQL
        #standardSQL
 WITH 

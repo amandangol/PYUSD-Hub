@@ -28,7 +28,7 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen>
     with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
-  bool _hasError = false;
+  final bool _hasError = false;
   Timer? _debounceTimer;
   NetworkProvider? _networkProvider;
   bool _isRefreshing = false;

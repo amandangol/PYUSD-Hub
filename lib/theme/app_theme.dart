@@ -193,12 +193,10 @@ class AppTheme {
       primary: _darkPrimaryColor,
       secondary: _darkAccentColor,
       surface: _darkSurfaceColor,
-      background: _darkBackgroundColor,
       error: _darkErrorColor,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: _darkTextPrimaryColor,
-      onBackground: _darkTextPrimaryColor,
       onError: Colors.white,
       brightness: Brightness.dark,
     ),
@@ -223,11 +221,11 @@ class AppTheme {
       fillColor: _darkSurfaceColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _darkDividerColor, width: 1),
+        borderSide: const BorderSide(color: _darkDividerColor, width: 1),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: _darkDividerColor),
+        borderSide: const BorderSide(color: _darkDividerColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -239,7 +237,7 @@ class AppTheme {
       ),
       contentPadding: const EdgeInsets.all(20),
       hintStyle: TextStyle(color: _darkTextSecondaryColor.withOpacity(0.7)),
-      labelStyle: TextStyle(color: _darkTextSecondaryColor),
+      labelStyle: const TextStyle(color: _darkTextSecondaryColor),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -295,32 +293,32 @@ class AppTheme {
       foregroundColor: Colors.white,
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.resolveWith<Color>((states) {
-        if (states.contains(MaterialState.selected)) {
+      thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
           return _darkPrimaryColor;
         }
         return _darkDisabledColor;
       }),
-      trackColor: MaterialStateProperty.resolveWith<Color>((states) {
-        if (states.contains(MaterialState.selected)) {
+      trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
           return _darkPrimaryColor.withOpacity(0.5);
         }
         return _darkDisabledColor.withOpacity(0.3);
       }),
     ),
     checkboxTheme: CheckboxThemeData(
-      fillColor: MaterialStateProperty.resolveWith<Color>((states) {
-        if (states.contains(MaterialState.selected)) {
+      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
           return _darkPrimaryColor;
         }
         return _darkDisabledColor;
       }),
-      checkColor: MaterialStateProperty.all(Colors.white),
+      checkColor: WidgetStateProperty.all(Colors.white),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
     ),
     radioTheme: RadioThemeData(
-      fillColor: MaterialStateProperty.resolveWith<Color>((states) {
-        if (states.contains(MaterialState.selected)) {
+      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
           return _darkPrimaryColor;
         }
         return _darkDisabledColor;

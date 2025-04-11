@@ -7,10 +7,10 @@ class PinAuthDialog extends StatefulWidget {
   final String message;
 
   const PinAuthDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
-  }) : super(key: key);
+  });
 
   @override
   State<PinAuthDialog> createState() => _PinAuthDialogState();

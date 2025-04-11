@@ -9,7 +9,6 @@ import 'package:pyusd_hub/screens/trace/view/transaction_trace_screen.dart';
 import '../../../../widgets/common/info_dialog.dart';
 import '../../provider/network_congestion_provider.dart';
 import '../widgets/stats_card.dart';
-import '../widgets/transaction_listitem.dart';
 
 class TransactionsTab extends StatefulWidget {
   final NetworkCongestionProvider provider;
@@ -28,25 +27,28 @@ class TransactionsTab extends StatefulWidget {
 class _TransactionsTabState extends State<TransactionsTab> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Transaction Activity Overview
-          _buildTransactionOverview(),
+          _buildTransactionOverview(colorScheme),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
 
           // Recent PYUSD Transactions
-          _buildPyusdActivitySection(),
+          _buildPyusdActivitySection(colorScheme),
         ],
       ),
     );
   }
 
   // Transaction Activity Overview
-  Widget _buildTransactionOverview() {
+  Widget _buildTransactionOverview(ColorScheme colorScheme) {
     final data = widget.provider.congestionData;
     final transactions = widget.provider.recentPyusdTransactions;
 
@@ -67,95 +69,122 @@ class _TransactionsTabState extends State<TransactionsTab> {
     final recentTxCount = transactions.length;
 
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'PYUSD Transaction Overview',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.info_outline),
-                      onPressed: () => InfoDialog.show(
-                        context,
-                        title: 'PYUSD Transaction Overview',
-                        message:
-                            'Overview of PYUSD transactions on the Ethereum network, including transaction count, volume, confirmation time, and active users.',
-                      ),
-                    ),
-                  ],
-                ),
-                if (recentTxCount > 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Recent: $recentTxCount txs',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Column(
-              children: [
-                StatsCard(
-                  title: 'Transactions',
-                  value: FormatterUtils.formatLargeNumber(recentTxCount),
-                  icon: Icons.swap_horiz,
-                  color: Colors.blue,
-                  description: 'Recent PYUSD txs',
-                  isListView: true,
-                ),
-                const SizedBox(height: 12),
-                StatsCard(
-                  title: 'Volume',
-                  value: formattedVolume,
-                  icon: Icons.attach_money,
-                  color: Colors.green,
-                  description: 'PYUSD transferred',
-                  isListView: true,
-                ),
-                // const SizedBox(height: 12),
-                // StatsCard(
-                //   title: 'Avg Confirmation',
-                //   value: '${data.blockTime.toStringAsFixed(1)}s',
-                //   icon: Icons.access_time,
-                //   color: Colors.orange,
-                //   description: 'Per block',
-                //   isListView: true,
-                // ),
-                const SizedBox(height: 12),
-                StatsCard(
-                  title: 'Active Users',
-                  value: FormatterUtils.formatLargeNumber(uniqueAddresses),
-                  icon: Icons.people,
-                  color: Colors.purple,
-                  description: 'Unique wallets',
-                  isListView: true,
-                ),
-              ],
+      elevation: 0,
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'PYUSD Transaction Overview',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.info_outline,
+                          color: colorScheme.onSurface.withOpacity(0.7),
+                          size: 20,
+                        ),
+                        onPressed: () => InfoDialog.show(
+                          context,
+                          title: 'PYUSD Transaction Overview',
+                          message:
+                              'Overview of PYUSD transactions on the Ethereum network, including transaction count, volume, confirmation time, and active users.',
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  if (recentTxCount > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.green.withOpacity(0.1),
+                            Colors.green.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$recentTxCount txs',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Column(
+                children: [
+                  StatsCard(
+                    title: 'Transactions',
+                    value: FormatterUtils.formatLargeNumber(recentTxCount),
+                    icon: Icons.swap_horiz,
+                    color: Colors.blue,
+                    description: 'Recent PYUSD txs',
+                    isListView: true,
+                  ),
+                  const SizedBox(height: 12),
+                  StatsCard(
+                    title: 'Volume',
+                    value: formattedVolume,
+                    icon: Icons.attach_money,
+                    color: Colors.green,
+                    description: 'PYUSD transferred',
+                    isListView: true,
+                  ),
+                  const SizedBox(height: 12),
+                  // StatsCard(
+                  //   title: 'Active Users',
+                  //   value: FormatterUtils.formatLargeNumber(uniqueAddresses),
+                  //   icon: Icons.people,
+                  //   color: Colors.purple,
+                  //   description: 'Unique wallets',
+                  //   isListView: true,
+                  // ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -203,7 +232,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
   }
 
   // PYUSD Activity Section
-  Widget _buildPyusdActivitySection() {
+  Widget _buildPyusdActivitySection(ColorScheme colorScheme) {
     final transactions = widget.provider.recentPyusdTransactions;
     final pendingTransactions =
         widget.provider.congestionData.pendingPyusdTxCount;
@@ -214,112 +243,150 @@ class _TransactionsTabState extends State<TransactionsTab> {
         : null;
 
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'PYUSD Transactions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (transactions.isNotEmpty || pendingTransactions > 0)
-                  Text(
-                    '${transactions.length} confirmed, $pendingTransactions pending',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-              ],
-            ),
-            if (oldestBlockNumber != null && latestBlockNumber > 0) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.info_outline,
-                        size: 16, color: Colors.blue),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Showing transactions from blocks $oldestBlockNumber to $latestBlockNumber',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      elevation: 0,
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.95),
             ],
-            const SizedBox(height: 16),
-            if (transactions.isEmpty && pendingTransactions == 0)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 48,
-                        color: Colors.grey,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'PYUSD Transactions',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  if (transactions.isNotEmpty || pendingTransactions > 0)
+                    Text(
+                      '${transactions.length} confirmed, $pendingTransactions pending',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant,
                       ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No PYUSD transactions detected',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontStyle: FontStyle.italic,
+                    ),
+                ],
+              ),
+              if (oldestBlockNumber != null && latestBlockNumber > 0) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.withOpacity(0.1),
+                        Colors.blue.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Showing transactions from blocks $oldestBlockNumber to $latestBlockNumber',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              )
-            else
-              SizedBox(
-                height: 400,
-                child: ListView.builder(
-                  itemCount: transactions.length,
-                  itemBuilder: (context, index) {
-                    final transaction = transactions[index];
-                    if (index > 0) {
-                      return Column(
-                        children: [
-                          const Divider(height: 1),
-                          _buildTransactionListItem(context, transaction),
-                        ],
-                      );
-                    }
-                    return _buildTransactionListItem(context, transaction);
-                  },
+              ],
+              const SizedBox(height: 16),
+              if (transactions.isEmpty && pendingTransactions == 0)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 48,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No PYUSD transactions detected',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 400,
+                  child: ListView.builder(
+                    itemCount: transactions.length,
+                    itemBuilder: (context, index) {
+                      final transaction = transactions[index];
+                      if (index > 0) {
+                        return Column(
+                          children: [
+                            Divider(
+                              height: 1,
+                              color:
+                                  colorScheme.outlineVariant.withOpacity(0.2),
+                            ),
+                            _buildTransactionListItem(
+                                context, transaction, colorScheme),
+                          ],
+                        );
+                      }
+                      return _buildTransactionListItem(
+                          context, transaction, colorScheme);
+                    },
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTransactionListItem(
-      BuildContext context, Map<String, dynamic> transaction) {
+  Widget _buildTransactionListItem(BuildContext context,
+      Map<String, dynamic> transaction, ColorScheme colorScheme) {
     final from = transaction['from'] as String? ?? '';
     final to = transaction['to'] as String? ?? '';
     final hash = transaction['hash'] as String? ?? '';
@@ -356,7 +423,12 @@ class _TransactionsTabState extends State<TransactionsTab> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.blue.withOpacity(0.1),
+                            Colors.blue.withOpacity(0.05),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.swap_horiz, color: Colors.blue),
@@ -367,9 +439,10 @@ class _TransactionsTabState extends State<TransactionsTab> {
                       children: [
                         Text(
                           'Tx: ${FormatterUtils.formatHash(hash)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 14,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -377,7 +450,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                           timeAgo,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -390,7 +463,12 @@ class _TransactionsTabState extends State<TransactionsTab> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.green.withOpacity(0.1),
+                            Colors.green.withOpacity(0.05),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -405,7 +483,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                     const SizedBox(width: 8),
                     Icon(
                       Icons.chevron_right,
-                      color: Colors.grey.shade400,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -413,7 +491,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
             ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 16,
+              spacing: 8,
               runSpacing: 8,
               children: [
                 _buildTransactionDetailChip(
@@ -448,7 +526,12 @@ class _TransactionsTabState extends State<TransactionsTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.1),
+            color.withOpacity(0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withOpacity(0.3)),
       ),

@@ -27,11 +27,9 @@ class WalletStateProvider extends ChangeNotifier {
   String? _error;
   bool _isDisposed = false;
 
-  // Timer for auto-refresh
   Timer? _debounceTimer;
 
-  // Add refresh lock
-  bool _isRefreshLocked = false;
+  final bool _isRefreshLocked = false;
   static const Duration _minRefreshInterval = Duration(seconds: 5);
   DateTime? _lastSuccessfulRefresh;
   static const Duration _rpcTimeout = Duration(seconds: 10);
@@ -59,13 +57,10 @@ class WalletStateProvider extends ChangeNotifier {
     required NetworkProvider networkProvider,
   })  : _authProvider = authProvider,
         _networkProvider = networkProvider {
-    // Initialize balance maps for all networks
     _initializeBalanceMaps();
 
-    // Listen for network changes
     _networkProvider.addListener(_onNetworkChanged);
 
-    // Initial balance load
     _loadInitialBalances();
   }
 
@@ -100,7 +95,6 @@ class WalletStateProvider extends ChangeNotifier {
     return 'https://sepolia-faucet.pk910.de/?address=$address';
   }
 
-  // Add refresh method for balances
   Future<void> refreshBalances() async {
     if (_isDisposed) return;
 
@@ -182,7 +176,7 @@ class WalletStateProvider extends ChangeNotifier {
         rpcUrl,
         tokenContractAddress,
         address,
-        decimals: 6, // PYUSD decimals
+        decimals: 6,
       );
     } catch (e) {
       print('Debug: Error fetching token balance: $e');
@@ -216,7 +210,6 @@ class WalletStateProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  // Add method to update balances directly
   void updateBalances(double ethBalance, double tokenBalance) {
     if (_isDisposed) return;
 

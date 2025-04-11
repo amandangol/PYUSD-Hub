@@ -42,7 +42,6 @@ class NewsProvider with ChangeNotifier, ProviderUtils {
   @override
   String? get error => _error;
 
-  // Determine if a refresh is needed
   bool _shouldRefresh() {
     if (_lastRefresh == null) return true;
     return DateTime.now().difference(_lastRefresh!) > _cacheDuration;
@@ -140,5 +139,4 @@ class NewsProvider with ChangeNotifier, ProviderUtils {
   }
 }
 
-// Enum to represent different loading states
 enum NewsLoadingState { initial, loading, loaded, error }

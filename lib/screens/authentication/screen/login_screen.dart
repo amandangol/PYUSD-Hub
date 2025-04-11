@@ -232,7 +232,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const SizedBox(height: 48),
 
-                    // App logo or brand identity
                     Container(
                       width: 100,
                       height: 100,
@@ -258,7 +257,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Subtitle
                     Text(
                       'Enter your PIN to unlock your wallet',
                       style: theme.textTheme.bodyLarge?.copyWith(

@@ -35,13 +35,11 @@ class AuthProvider extends ChangeNotifier {
   WalletService get walletService => _walletService;
   AuthService get authService => _authService;
 
-  // Constructor with dependency injection
   AuthProvider() {
     _instance = this;
     initWallet();
   }
 
-  // Get current address (wallet or walletconnect)
   String? getCurrentAddress() {
     if (!_isAuthenticated) return null;
 
@@ -56,13 +54,11 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setBool('isAuthenticated', _isAuthenticated);
   }
 
-  // Initialize wallet and authentication on startup
   Future<void> initWallet() async {
     if (_isLoading) return;
 
     _setLoading(true);
     try {
-      // Check if onboarding is completed first
       final prefs = await SharedPreferences.getInstance();
       final hasCompletedOnboarding =
           prefs.getBool('has_completed_onboarding') ?? false;
@@ -83,7 +79,7 @@ class AuthProvider extends ChangeNotifier {
       bool savedAuthState = prefs.getBool('isAuthenticated') ?? false;
 
       if (hasPIN) {
-        // Load wallet metadata - just address, not sensitive data yet
+        // Load wallet metadata - just address, not sensitive data
         _wallet = await _walletService.loadWalletMetadata();
 
         // If we have a saved auth state and biometrics is enabled, attempt auto-authentication
@@ -110,11 +106,9 @@ class AuthProvider extends ChangeNotifier {
           await prefs.setBool('isAuthenticated', false);
         }
 
-        // Keep the wallet metadata even if not authenticated
         return;
       }
 
-      // Clear wallet if no PIN is set
       _wallet = null;
       _isAuthenticated = false;
     } catch (e) {
@@ -156,7 +150,7 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
     } catch (e) {
       _setError('Failed to create wallet: $e');
-      throw e;
+      rethrow;
     } finally {
       _setLoading(false);
     }
@@ -168,13 +162,11 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      // Validate PIN first
       final validation = _authService.validatePIN(pin);
       if (!validation.isValid) {
         throw Exception(validation.error);
       }
 
-      // Validate the mnemonic first
       final isValid = await _walletService.validateMnemonic(mnemonic);
       if (!isValid) {
         throw Exception('Invalid recovery phrase. Please check and try again.');
@@ -194,10 +186,10 @@ class AuthProvider extends ChangeNotifier {
 
       // Set authenticated state
       _isAuthenticated = true;
-      await saveAuthState(); // Save authentication state
+      await saveAuthState();
     } catch (e) {
       _setError('Failed to import wallet: $e');
-      throw e; // Re-throw to allow the UI to handle it
+      rethrow; // Re-throw to allow the UI to handle it
     } finally {
       _setLoading(false);
     }
@@ -347,13 +339,13 @@ class AuthProvider extends ChangeNotifier {
   // Lock wallet (require authentication again)
   void lockWallet() async {
     _isAuthenticated = false;
-    // Don't clear the wallet completely, just its sensitive data
+    //not clearing the wallet completely, just its sensitive data
     if (_wallet != null) {
       _wallet = WalletModel(
         address: _wallet!.address,
-        privateKey: '', // Clear private key
-        mnemonic: '', // Clear mnemonic
-        credentials: EthPrivateKey.fromHex('0' * 64), // Placeholder credentials
+        privateKey: '',
+        mnemonic: '',
+        credentials: EthPrivateKey.fromHex('0' * 64),
       );
     }
 
@@ -417,10 +409,9 @@ class AuthProvider extends ChangeNotifier {
       if (_wallet != null) {
         _wallet = WalletModel(
           address: _wallet!.address,
-          privateKey: '', // Clear private key
-          mnemonic: '', // Clear mnemonic
-          credentials:
-              EthPrivateKey.fromHex('0' * 64), // Placeholder credentials
+          privateKey: '',
+          mnemonic: '',
+          credentials: EthPrivateKey.fromHex('0' * 64),
         );
       }
 
@@ -489,7 +480,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Add this method
   PinValidationResult validatePIN(String pin) {
     return _authService.validatePIN(pin);
   }

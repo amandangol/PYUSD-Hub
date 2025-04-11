@@ -278,7 +278,7 @@ class EthereumRpcService {
       final txResponse = await _makeRpcCall(
         rpcUrl,
         'eth_sendRawTransaction',
-        ['0x${bytesToHex(signedTx!)}'],
+        ['0x${bytesToHex(signedTx)}'],
       );
 
       return txResponse['result'];
@@ -798,7 +798,7 @@ class EthereumRpcService {
         data: callData,
       );
 
-      final signedTx = await client?.signTransaction(
+      final signedTx = await client.signTransaction(
         credentials,
         tx,
         chainId: chainId,
@@ -807,7 +807,7 @@ class EthereumRpcService {
       final txResponse = await _makeRpcCall(
         rpcUrl,
         'eth_sendRawTransaction',
-        ['0x${bytesToHex(signedTx!)}'],
+        ['0x${bytesToHex(signedTx)}'],
       );
 
       return txResponse['result'];
@@ -906,19 +906,19 @@ class EthereumRpcService {
     try {
       try {
         final nameFunction = contract.function('name');
-        final nameResult = await client?.call(
+        final nameResult = await client.call(
           contract: contract,
           function: nameFunction,
           params: [],
         );
-        if (nameResult!.isNotEmpty) {
+        if (nameResult.isNotEmpty) {
           name = nameResult[0].toString();
         }
       } catch (_) {}
 
       try {
         final symbolFunction = contract.function('symbol');
-        final symbolResult = await client!.call(
+        final symbolResult = await client.call(
           contract: contract,
           function: symbolFunction,
           params: [],
@@ -935,7 +935,7 @@ class EthereumRpcService {
           function: decimalsFunction,
           params: [],
         );
-        if (decimalsResult!.isNotEmpty) {
+        if (decimalsResult.isNotEmpty) {
           decimals = decimalsResult[0] as int;
         }
       } catch (_) {}

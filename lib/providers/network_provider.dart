@@ -50,11 +50,9 @@ class NetworkProvider extends ChangeNotifier {
     NetworkType.ethereumMainnet: 'ETH',
   };
 
-  // Add new field to track switching state
   bool _isSwitching = false;
   bool get isSwitching => _isSwitching;
 
-  // Enhanced getters
   NetworkType get currentNetwork => _currentNetwork;
   String get currentRpcEndpoint => _rpcEndpoints[_currentNetwork] ?? '';
   String get currentWssEndpoint => _wssEndpoints[_currentNetwork] ?? '';
@@ -134,10 +132,8 @@ class NetworkProvider extends ChangeNotifier {
 
         // Clear transactions for the previous network
         final transactionProvider = TransactionProvider.instance;
-        if (transactionProvider != null) {
-          transactionProvider.clearNetworkData(network);
-        }
-
+        transactionProvider.clearNetworkData(network);
+      
         // Add another small delay before completing the switch
         await Future.delayed(const Duration(milliseconds: 100));
       } catch (e) {
@@ -157,7 +153,6 @@ class NetworkProvider extends ChangeNotifier {
   Future<bool> validateRpcConnection() async {
     try {
       // Implement RPC connection test
-      // You can use web3dart to make a simple call like getting the latest block
       return true;
     } catch (e) {
       print('RPC connection error: $e');

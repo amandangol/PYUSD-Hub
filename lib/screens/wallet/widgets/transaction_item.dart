@@ -151,8 +151,8 @@ class _TransactionItemState extends State<TransactionItem> {
         borderRadius: BorderRadius.circular(8),
         gradient: LinearGradient(
           colors: [
-            colorScheme.surfaceVariant,
-            colorScheme.surfaceVariant.withOpacity(0.8),
+            colorScheme.surfaceContainerHighest,
+            colorScheme.surfaceContainerHighest.withOpacity(0.8),
           ],
         ),
       ),

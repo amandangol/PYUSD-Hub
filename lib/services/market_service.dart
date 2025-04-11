@@ -197,7 +197,7 @@ class MarketService {
       'raydium': 'https://cryptologos.cc/logos/raydium-ray-logo.png',
       'bitget':
           'https://cryptologos.cc/logos/bitget-token-new-bgb-logo.png?v=040',
-      'htx': 'https://cryptologos.cc/logos/htx-token-ht-logo.png?v=040',
+      'htx': 'https://img.cryptorank.io/exchanges/150x150.htx1694688626857.png',
       'latoken': 'https://cryptologos.cc/logos/latoken-la-logo.png?v=040',
       'kucoin': 'https://cryptologos.cc/logos/kucoin-token-kcs-logo.png?v=040',
       'grovex':
@@ -212,6 +212,8 @@ class MarketService {
           'https://assets.coingecko.com/markets/images/589/small/crypto_com.jpg?1629861084',
       'gate.io': 'https://www.gate.io/images/logo/gate-logo-black.svg',
       'bitfinex': 'https://www.bitfinex.com/assets/bfx-stacked-darkmode.svg',
+      'changenow':
+          'https://images.seeklogo.com/logo-png/45/1/changenow-now-logo-png_seeklogo-452688.png',
 
       // Using GitHub repositories for logos (also reliable)
       'gemini':

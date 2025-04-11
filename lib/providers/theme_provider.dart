@@ -10,7 +10,6 @@ class ThemeProvider with ChangeNotifier {
 
   ThemeProvider();
 
-  // Check if provider is initialized
   bool get isInitialized => _isInitialized;
 
   Future<void> initialize() async {

@@ -41,6 +41,8 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   bool _isAiAnalysisLoading = false;
   Map<String, dynamic> _aiAnalysis = {};
   bool _showAiAnalysis = false;
+  final List<Map<String, dynamic>> _mevResults = [];
+  bool _isAnalyzing = false;
 
   @override
   void initState() {
@@ -205,6 +207,9 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
             child: _buildAiAnalysisCard(),
           ),
         SliverToBoxAdapter(
+          child: _buildMEVAnalysisCard(),
+        ),
+        SliverToBoxAdapter(
           child: _buildSearchAndFilter(),
         ),
         SliverToBoxAdapter(
@@ -316,11 +321,11 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
             const Divider(),
             const SizedBox(height: 8),
             _buildCopyableRow('Block Hash', blockHash),
-            const SizedBox(height: 8),
+            const Divider(height: 8),
             _buildCopyableRow('Parent Hash', parentHash),
-            const SizedBox(height: 8),
+            const Divider(height: 8),
             _buildCopyableRow('Miner', miner),
-            const SizedBox(height: 8),
+            const Divider(height: 8),
             TraceButton(
               text: 'Copy to Clipboard',
               onPressed: () {
@@ -915,7 +920,7 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   Widget _buildAiAnalysisCard() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDarkMode ? Colors.white : Colors.black;
-    final accentColor = Colors.purple;
+    const accentColor = Colors.purple;
 
     return Card(
       elevation: 3,
@@ -933,7 +938,7 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                     color: accentColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.psychology,
                     color: accentColor,
                     size: 24,
@@ -1089,11 +1094,11 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.summarize, size: 18, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.summarize, size: 18, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text(
                     'Summary',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -1130,11 +1135,11 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.analytics, size: 18, color: Colors.green),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.analytics, size: 18, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text(
                     'Block Activity',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -1171,12 +1176,11 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.currency_exchange,
-                      size: 18, color: Colors.purple),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.currency_exchange, size: 18, color: Colors.purple),
+                  SizedBox(width: 8),
+                  Text(
                     'PYUSD Activity',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -1296,5 +1300,220 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildMEVAnalysisCard() {
+    return Card(
+      margin: const EdgeInsets.all(16.0),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.analytics,
+                      color: Colors.orange, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'MEV Analysis',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            _buildMEVOpportunityButtons(),
+            const SizedBox(height: 16),
+            _buildMEVResults(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMEVOpportunityButtons() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _buildMEVButton(
+          'Sandwich Attacks',
+          Icons.fastfood,
+          Colors.red,
+          () => _analyzeSandwichAttacks(),
+        ),
+        _buildMEVButton(
+          'Transaction Ordering',
+          Icons.reorder,
+          Colors.blue,
+          () => _analyzeTransactionOrdering(),
+        ),
+        _buildMEVButton(
+          'MEV Opportunities',
+          Icons.trending_up,
+          Colors.green,
+          () => _identifyMEVOpportunities(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMEVButton(
+      String label, IconData icon, Color color, VoidCallback onPressed) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        foregroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: color.withOpacity(0.5)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMEVResults() {
+    if (_mevResults.isEmpty) {
+      return const Center(
+        child: Text(
+          'Click on any analysis type above to start MEV analysis',
+          style: TextStyle(
+            color: Colors.grey,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Analysis Results',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._buildMEVResultWidgets(),
+      ],
+    );
+  }
+
+  List<Widget> _buildMEVResultWidgets() {
+    return _mevResults.map((result) {
+      final type = result['type'] as String;
+      final data = result['data'] as Map<String, dynamic>;
+
+      return Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          title: Text(type),
+          subtitle: Text(data['summary'] ?? 'No summary available'),
+          trailing: Text(
+            data['profit'] != null
+                ? '\$${data['profit'].toStringAsFixed(2)}'
+                : '',
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  Future<void> _analyzeSandwichAttacks() async {
+    setState(() => _isAnalyzing = true);
+    try {
+      final provider = Provider.of<TraceProvider>(context, listen: false);
+      final result = await provider.analyzeSandwichAttacks(_blockData['hash']);
+      if (result['success']) {
+        setState(() {
+          _mevResults.add({
+            'type': 'Sandwich Attacks',
+            'data': {
+              'summary':
+                  '${result['sandwichAttacks'].length} potential sandwich attacks found',
+              'attacks': result['sandwichAttacks'],
+            },
+          });
+        });
+      }
+    } catch (e) {
+      print('Error analyzing sandwich attacks: $e');
+    } finally {
+      setState(() => _isAnalyzing = false);
+    }
+  }
+
+  Future<void> _analyzeTransactionOrdering() async {
+    setState(() => _isAnalyzing = true);
+    try {
+      final provider = Provider.of<TraceProvider>(context, listen: false);
+      final result =
+          await provider.analyzeTransactionOrdering(widget.blockNumber);
+      if (result['success']) {
+        setState(() {
+          _mevResults.add({
+            'type': 'Transaction Ordering',
+            'data': {
+              'summary':
+                  '${result['transactions'].length} transactions analyzed',
+              'transactions': result['transactions'],
+            },
+          });
+        });
+      }
+    } catch (e) {
+      print('Error analyzing transaction ordering: $e');
+    } finally {
+      setState(() => _isAnalyzing = false);
+    }
+  }
+
+  Future<void> _identifyMEVOpportunities() async {
+    setState(() => _isAnalyzing = true);
+    try {
+      final provider = Provider.of<TraceProvider>(context, listen: false);
+      final result =
+          await provider.identifyMEVOpportunities(_blockData['hash']);
+      if (result['success']) {
+        setState(() {
+          _mevResults.add({
+            'type': 'MEV Opportunities',
+            'data': {
+              'summary':
+                  '${result['opportunities'].length} MEV opportunities found',
+              'opportunities': result['opportunities'],
+            },
+          });
+        });
+      }
+    } catch (e) {
+      print('Error identifying MEV opportunities: $e');
+    } finally {
+      setState(() => _isAnalyzing = false);
+    }
   }
 }

@@ -13,7 +13,7 @@ class TransactionConfirmationDialog extends StatefulWidget {
   final bool isHighValue;
 
   const TransactionConfirmationDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     required this.amount,
@@ -21,7 +21,7 @@ class TransactionConfirmationDialog extends StatefulWidget {
     required this.recipient,
     this.gasFee,
     this.isHighValue = false,
-  }) : super(key: key);
+  });
 
   @override
   State<TransactionConfirmationDialog> createState() =>
@@ -101,7 +101,7 @@ class _TransactionConfirmationDialogState
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning, color: Colors.orange),
+                    const Icon(Icons.warning, color: Colors.orange),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -120,8 +120,8 @@ class _TransactionConfirmationDialogState
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isDarkMode
-                    ? theme.colorScheme.surfaceVariant
-                    : theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    ? theme.colorScheme.surfaceContainerHighest
+                    : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(

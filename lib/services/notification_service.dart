@@ -180,7 +180,6 @@ class NotificationService {
       return;
     }
 
-    // Ensure initialization is complete
     if (!_isInitialized) {
       await _initializeNotifications();
     }
@@ -239,7 +238,7 @@ class NotificationService {
     }
   }
 
-  // // Add a test method
+  // //  test method
   // Future<void> testNotification() async {
   //   await showTransactionNotification(
   //     txHash: 'test_hash',

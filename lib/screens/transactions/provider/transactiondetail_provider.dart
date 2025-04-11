@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/ethereum_rpc_service.dart';
+import '../../../services/market_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../utils/provider_utils.dart';
 import '../model/transaction_model.dart';
@@ -11,18 +12,22 @@ class TransactionDetailProvider
         CacheUtils<TransactionDetailModel>,
         OngoingOperationUtils<TransactionDetailModel?> {
   final EthereumRpcService _rpcService = EthereumRpcService();
+  final MarketService _marketService = MarketService();
 
   // Cache expiration time (5 minutes)
   static const Duration _cacheExpiration = Duration(minutes: 5);
 
   // Cache for ongoing operations to prevent duplicate requests
-  final Map<String, Future<TransactionDetailModel?>> _ongoingOperations = {};
+  final Map<String, dynamic> _ongoingOperations = {};
 
   // Batch size for parallel processing
   static const int _batchSize = 5;
 
   final Map<String, Map<String, dynamic>> _traceCache = {};
   static const Duration _traceCacheExpiration = Duration(minutes: 30);
+
+  final Map<String, Map<String, dynamic>> _marketCache = {};
+  static const Duration _marketCacheExpiration = Duration(minutes: 5);
 
   final Map<String, TransactionDetailModel> _cachedDetails = {};
   DateTime _lastFetchTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -278,7 +283,18 @@ class TransactionDetailProvider
     }
 
     try {
-      final traceData = await _rpcService.getTransactionTrace(rpcUrl, txHash);
+      // Check if there's an ongoing operation for this hash
+      if (_ongoingOperations.containsKey('trace_$txHash')) {
+        final future = _ongoingOperations['trace_$txHash']
+            as Future<Map<String, dynamic>?>;
+        return future;
+      }
+
+      final future = _rpcService.getTransactionTrace(rpcUrl, txHash);
+      _ongoingOperations['trace_$txHash'] = future;
+
+      final traceData = await future;
+      _ongoingOperations.remove('trace_$txHash');
 
       if (traceData != null) {
         _traceCache[txHash] = {
@@ -289,8 +305,55 @@ class TransactionDetailProvider
 
       return traceData;
     } catch (e) {
+      _ongoingOperations.remove('trace_$txHash');
       setError(this, 'Error fetching transaction trace: $e');
       return null;
+    }
+  }
+
+  Future<Map<String, double>> getMarketData({
+    required String txHash,
+    required List<String> tokens,
+    bool forceRefresh = false,
+  }) async {
+    if (disposed) return {};
+
+    // Check cache first if not forcing refresh
+    if (!forceRefresh && _marketCache.containsKey(txHash)) {
+      final cacheEntry = _marketCache[txHash]!;
+      final cacheTime = cacheEntry['timestamp'] as DateTime;
+      if (DateTime.now().difference(cacheTime) < _marketCacheExpiration) {
+        return Map<String, double>.from(
+            cacheEntry['data'] as Map<String, dynamic>);
+      }
+    }
+
+    try {
+      // Check if there's an ongoing operation for this hash
+      if (_ongoingOperations.containsKey('market_$txHash')) {
+        final future =
+            _ongoingOperations['market_$txHash'] as Future<Map<String, double>>;
+        return future;
+      }
+
+      final future = _marketService.getCurrentPrices(tokens);
+      _ongoingOperations['market_$txHash'] = future;
+
+      final marketData = await future;
+      _ongoingOperations.remove('market_$txHash');
+
+      if (marketData.isNotEmpty) {
+        _marketCache[txHash] = {
+          'data': marketData,
+          'timestamp': DateTime.now(),
+        };
+      }
+
+      return marketData;
+    } catch (e) {
+      _ongoingOperations.remove('market_$txHash');
+      setError(this, 'Error fetching market data: $e');
+      return {};
     }
   }
 
@@ -298,12 +361,20 @@ class TransactionDetailProvider
   void clearCache({String? key, Duration? olderThan}) {
     if (key != null) {
       _cachedDetails.remove(key);
+      _traceCache.remove(key);
+      _marketCache.remove(key);
     } else if (olderThan != null) {
       final cutoffTime = DateTime.now().subtract(olderThan);
       _cachedDetails
           .removeWhere((_, detail) => detail.timestamp.isBefore(cutoffTime));
+      _traceCache.removeWhere(
+          (_, entry) => (entry['timestamp'] as DateTime).isBefore(cutoffTime));
+      _marketCache.removeWhere(
+          (_, entry) => (entry['timestamp'] as DateTime).isBefore(cutoffTime));
     } else {
       _cachedDetails.clear();
+      _traceCache.clear();
+      _marketCache.clear();
     }
     notifyListeners();
   }
@@ -311,6 +382,7 @@ class TransactionDetailProvider
   @override
   void dispose() {
     _traceCache.clear();
+    _marketCache.clear();
     _cachedDetails.clear();
     markDisposed();
     clearOngoingOperations();

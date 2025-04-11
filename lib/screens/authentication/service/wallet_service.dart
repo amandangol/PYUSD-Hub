@@ -186,7 +186,7 @@ class WalletService {
       address: address,
       privateKey: '', // Empty for security
       mnemonic: '', // Empty for security
-      credentials: EthPrivateKey.fromHex('0' * 64), // Placeholder credentials
+      credentials: EthPrivateKey.fromHex('0' * 64),
     );
   }
 

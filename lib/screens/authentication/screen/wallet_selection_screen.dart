@@ -142,7 +142,6 @@ class _WalletSelectionScreenState extends State<WalletSelectionScreen> {
               children: [
                 const SizedBox(height: 48),
 
-                // Logo
                 Container(
                   width: 120,
                   height: 120,

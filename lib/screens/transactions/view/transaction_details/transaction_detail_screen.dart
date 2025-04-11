@@ -104,6 +104,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
 
       // After fetching transaction details, fetch market data and trace data
       if (_detailedTransaction != null && mounted) {
+        // Fetch market data and trace data in parallel
         await Future.wait([
           _fetchMarketData(),
           _fetchTransactionTrace(),
@@ -136,8 +137,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
         tokensToFetch.add(_detailedTransaction!.tokenSymbol!);
       }
 
-      // Fetch current market prices
-      final prices = await _marketService.getCurrentPrices(tokensToFetch);
+      // Fetch current market prices using the provider's caching
+      final prices = await _transactionDetailProvider.getMarketData(
+        txHash: widget.transaction.hash,
+        tokens: tokensToFetch,
+      );
 
       if (mounted) {
         setState(() {

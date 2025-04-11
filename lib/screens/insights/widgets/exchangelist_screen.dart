@@ -5,9 +5,9 @@ class ExchangeListScreen extends StatelessWidget {
   final List<Map<String, dynamic>> exchanges;
 
   const ExchangeListScreen({
-    Key? key,
+    super.key,
     required this.exchanges,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

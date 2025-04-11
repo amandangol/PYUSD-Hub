@@ -296,7 +296,7 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                         ],
                       ),
                     ))
-                .toList(),
+                ,
           ],
         ),
       ),
@@ -324,7 +324,7 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                     color: accentColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.psychology,
                     color: accentColor,
                     size: 24,
@@ -479,11 +479,11 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.summarize, size: 18, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.summarize, size: 18, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text(
                     'Summary',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -520,11 +520,11 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.code, size: 18, color: Colors.orange),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.code, size: 18, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text(
                     'Technical Details',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -561,11 +561,11 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.lightbulb, size: 18, color: Colors.green),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.lightbulb, size: 18, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text(
                     'Insights',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -602,11 +602,11 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.recommend, size: 18, color: Colors.purple),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.recommend, size: 18, color: Colors.purple),
+                  SizedBox(width: 8),
+                  Text(
                     'Recommendations',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,

@@ -4,6 +4,7 @@ import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
 import '../widgets/trace_widgets.dart';
 import 'trace_screen.dart';
+import 'mev_analysis_screen.dart';
 
 class TraceHomeScreen extends StatelessWidget {
   const TraceHomeScreen({super.key});
@@ -70,6 +71,22 @@ class TraceHomeScreen extends StatelessWidget {
                 icon: Icons.science,
                 color: Colors.purple,
                 onTap: () => _navigateToTraceScreen(context, 2),
+              ),
+
+              // MEV Analysis Card
+              _buildFeatureCard(
+                context: context,
+                title: 'MEV Analysis',
+                description:
+                    'Analyze MEV activities including sandwich attacks, frontrunning, and transaction ordering. Monitor and detect MEV opportunities.',
+                icon: Icons.analytics,
+                color: Colors.orange,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MevAnalysisScreen(),
+                  ),
+                ),
               ),
 
               // Recent Activity Section

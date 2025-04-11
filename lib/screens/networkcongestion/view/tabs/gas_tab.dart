@@ -61,6 +61,9 @@ class _GasTabState extends State<GasTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return RefreshIndicator(
       onRefresh: _refreshData,
       child: SingleChildScrollView(
@@ -70,23 +73,24 @@ class _GasTabState extends State<GasTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Gas Price Overview Card
-            _buildGasOverviewCard(),
+            _buildGasOverviewCard(colorScheme),
 
             const SizedBox(height: 16),
 
             // Gas Price Trend Chart
-            _buildGasPriceSection(),
+            _buildGasPriceSection(colorScheme),
 
             const SizedBox(height: 16),
 
             // Gas Price Alert Settings Card
-            _buildGasPriceAlertCard(),
+            _buildGasPriceAlertCard(colorScheme),
 
             const SizedBox(height: 16),
 
             // Gas Fee Estimator
             GasFeeEstimator(
               currentGasPrice: _congestionData.currentGasPrice,
+              colorScheme: colorScheme,
             ),
           ],
         ),
@@ -106,61 +110,86 @@ class _GasTabState extends State<GasTab> {
   }
 
   // Gas Overview Card
-  Widget _buildGasOverviewCard() {
+  Widget _buildGasOverviewCard(ColorScheme colorScheme) {
     return Card(
-      elevation: 3,
+      elevation: 0,
+      color: colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Current Gas Prices',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildPriorityGasCard(
-                  'Low Priority',
-                  (_congestionData.currentGasPrice * 0.8).toStringAsFixed(3),
-                  'Slower',
-                  Colors.green,
-                ),
-                _buildPriorityGasCard(
-                  'Medium Priority',
-                  _congestionData.currentGasPrice.toStringAsFixed(3),
-                  'Standard',
-                  Colors.blue,
-                ),
-                _buildPriorityGasCard(
-                  'High Priority',
-                  (_congestionData.currentGasPrice * 1.2).toStringAsFixed(3),
-                  'Faster',
-                  Colors.orange,
-                ),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Current Gas Prices',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildPriorityGasCard(
+                    'Low Priority',
+                    (_congestionData.currentGasPrice * 0.8).toStringAsFixed(3),
+                    'Slower',
+                    Colors.green,
+                    colorScheme,
+                  ),
+                  _buildPriorityGasCard(
+                    'Medium Priority',
+                    _congestionData.currentGasPrice.toStringAsFixed(3),
+                    'Standard',
+                    Colors.blue,
+                    colorScheme,
+                  ),
+                  _buildPriorityGasCard(
+                    'High Priority',
+                    (_congestionData.currentGasPrice * 1.2).toStringAsFixed(3),
+                    'Faster',
+                    Colors.orange,
+                    colorScheme,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPriorityGasCard(
-      String title, String price, String speed, Color color) {
+  Widget _buildPriorityGasCard(String title, String price, String speed,
+      Color color, ColorScheme colorScheme) {
     return Column(
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: Colors.grey,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 4),
@@ -176,7 +205,12 @@ class _GasTabState extends State<GasTab> {
           margin: const EdgeInsets.only(top: 4),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.1),
+                color.withOpacity(0.05),
+              ],
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -193,172 +227,231 @@ class _GasTabState extends State<GasTab> {
   }
 
   // Gas Price Section
-  Widget _buildGasPriceSection() {
+  Widget _buildGasPriceSection(ColorScheme colorScheme) {
     final priceDiff =
         _congestionData.currentGasPrice - _congestionData.averageGasPrice;
     final priceDiffPercentage =
         (priceDiff / _congestionData.averageGasPrice * 100).abs();
 
     return Card(
-      elevation: 3,
+      elevation: 0,
+      color: colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Gas Price Trend',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Recent gas prices (Gwei) - lower is better',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: GasPriceChart(
-                gasPrices: _congestionData.historicalGasPrices,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildGasInfoItem(
-                  'Current',
-                  '${_congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
-                  _getGasPriceColor(priceDiffPercentage, priceDiff),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Gas Price Trend',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
                 ),
-                _buildGasInfoItem(
-                  'Average (24h)',
-                  '${_congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
-                  Colors.blue,
-                ),
-                _buildGasInfoItem(
-                  'Change',
-                  '${(priceDiff >= 0 ? "+" : "")}${priceDiffPercentage.toStringAsFixed(1)}%',
-                  _getGasPriceColor(priceDiffPercentage, priceDiff),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _getGasPriceColor(priceDiffPercentage, priceDiff)
-                    .withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              const SizedBox(height: 8),
+              Text(
+                'Recent gas prices (Gwei) - lower is better',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 200,
+                child: GasPriceChart(
+                  gasPrices: _congestionData.historicalGasPrices,
+                  colorScheme: colorScheme,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Icon(
-                    priceDiff >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: _getGasPriceColor(priceDiffPercentage, priceDiff),
+                  _buildGasInfoItem(
+                    'Current',
+                    '${_congestionData.currentGasPrice.toStringAsFixed(3)} Gwei',
+                    _getGasPriceColor(priceDiffPercentage, priceDiff),
+                    colorScheme,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${priceDiffPercentage.toStringAsFixed(1)}% ${priceDiff >= 0 ? 'higher' : 'lower'} than average',
-                    style: TextStyle(
-                      color: _getGasPriceColor(priceDiffPercentage, priceDiff),
-                      fontWeight: FontWeight.bold,
-                    ),
+                  _buildGasInfoItem(
+                    'Average (24h)',
+                    '${_congestionData.averageGasPrice.toStringAsFixed(3)} Gwei',
+                    Colors.blue,
+                    colorScheme,
+                  ),
+                  _buildGasInfoItem(
+                    'Change',
+                    '${(priceDiff >= 0 ? "+" : "")}${priceDiffPercentage.toStringAsFixed(1)}%',
+                    _getGasPriceColor(priceDiffPercentage, priceDiff),
+                    colorScheme,
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _getGasPriceColor(priceDiffPercentage, priceDiff)
+                          .withOpacity(0.1),
+                      _getGasPriceColor(priceDiffPercentage, priceDiff)
+                          .withOpacity(0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      priceDiff >= 0
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      color: _getGasPriceColor(priceDiffPercentage, priceDiff),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${priceDiffPercentage.toStringAsFixed(1)}% ${priceDiff >= 0 ? 'higher' : 'lower'} than average',
+                      style: TextStyle(
+                        color:
+                            _getGasPriceColor(priceDiffPercentage, priceDiff),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   // Update the gas price alert card to be more compact
-  Widget _buildGasPriceAlertCard() {
+  Widget _buildGasPriceAlertCard(ColorScheme colorScheme) {
     return Card(
-      elevation: 3,
+      elevation: 0,
+      color: colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Gas Price Alerts',
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Gas Price Alerts',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        _provider.gasPriceNotificationsEnabled
+                            ? 'Enabled'
+                            : 'Disabled',
+                        style: TextStyle(
+                          color: _provider.gasPriceNotificationsEnabled
+                              ? Colors.green
+                              : colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(
+                          Icons.settings,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const NotificationSettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_provider.gasPriceNotificationsEnabled) ...[
+                Text(
+                  'Alert threshold: ${_provider.gasPriceThreshold.round()} Gwei',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      _provider.gasPriceNotificationsEnabled
-                          ? 'Enabled'
-                          : 'Disabled',
-                      style: TextStyle(
-                        color: _provider.gasPriceNotificationsEnabled
-                            ? Colors.green
-                            : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.settings),
-                      onPressed: () {
-                        // Navigate to notification settings
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const NotificationSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  'You will be notified when gas price drops below ${_provider.gasPriceThreshold.round()} Gwei',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (_provider.gasPriceNotificationsEnabled) ...[
-              Text(
-                'Alert threshold: ${_provider.gasPriceThreshold.round()} Gwei',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
+              ] else
+                Text(
+                  'Enable notifications in Settings to get alerts when gas prices are low',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'You will be notified when gas price drops below ${_provider.gasPriceThreshold.round()} Gwei',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-            ] else
-              const Text(
-                'Enable notifications in Settings to get alerts when gas prices are low',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -368,10 +461,12 @@ class _GasTabState extends State<GasTab> {
 // Gas Fee Estimator
 class GasFeeEstimator extends StatefulWidget {
   final double currentGasPrice;
+  final ColorScheme colorScheme;
 
   const GasFeeEstimator({
     super.key,
     required this.currentGasPrice,
+    required this.colorScheme,
   });
 
   @override
@@ -579,7 +674,8 @@ class _GasFeeEstimatorState extends State<GasFeeEstimator> {
   }
 }
 
-Widget _buildGasInfoItem(String label, String value, Color color) {
+Widget _buildGasInfoItem(
+    String label, String value, Color color, ColorScheme colorScheme) {
   return Column(
     children: [
       Text(
@@ -592,9 +688,9 @@ Widget _buildGasInfoItem(String label, String value, Color color) {
       ),
       Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Colors.grey,
+          color: colorScheme.onSurfaceVariant,
         ),
       ),
     ],

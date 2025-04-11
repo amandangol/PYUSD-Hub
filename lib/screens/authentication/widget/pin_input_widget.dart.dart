@@ -32,7 +32,6 @@ class _PinInputState extends State<PinInput> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Box-style pin theme
     final defaultPinTheme = PinTheme(
       width: 46,
       height: 56,

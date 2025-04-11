@@ -71,7 +71,7 @@ class TransactionShimmerItem extends StatelessWidget {
                           width: 50,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: Color(0xFF3D56F0).withOpacity(0.1),
+                            color: const Color(0xFF3D56F0).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),

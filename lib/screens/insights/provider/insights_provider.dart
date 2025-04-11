@@ -4,7 +4,6 @@ import '../../../services/market_service.dart';
 import '../../../utils/provider_utils.dart';
 import 'dart:math' as math;
 
-// Add this enum for time frames
 enum TimeFrame { day, week, month, threeMonths }
 
 class InsightsProvider with ChangeNotifier, ProviderUtils {
@@ -13,7 +12,6 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
   String? _error;
   DateTime? _lastFetchTime;
 
-  // Add time frame selection
   TimeFrame _selectedTimeFrame = TimeFrame.week;
 
   // Market Data with default values
@@ -30,7 +28,6 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
     'last_updated': DateTime.now().toIso8601String(),
     'data_source': 'Default Values',
     'is_real_data': false,
-    // Add price history data for different time frames
     'price_history': {
       'day': [],
       'week': [],
@@ -47,25 +44,10 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
     fetchAllData(); // Fetch data immediately
   }
 
-  // Generate placeholder sparkline data that looks like a stable coin
-  // static List<double> _generatePlaceholderSparkline() {
-  //   final random = math.Random();
-  //   final List<double> data = [];
-  //   double value = 1.0;
-
-  //   for (int i = 0; i < 168; i++) {
-  //     // Small random fluctuation (±0.5%)
-  //     value += (random.nextDouble() - 0.5) * 0.01;
-  //     // Keep it close to 1.0
-  //     value = 0.995 + (value - 0.995) * 0.9;
-  //     data.add(value);
-  //   }
-
-  //   return data;
-  // }
-
   // Getters
+  @override
   bool get isLoading => _isLoading;
+  @override
   String? get error => _error;
   Map<String, dynamic> get marketData => _marketData;
   List<Map<String, dynamic>> get tickers => _tickers;
@@ -103,7 +85,7 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
     final data = getChartData(timeFrame);
 
     if (data.isEmpty) {
-      return [0.99, 1.01]; // Default range for stablecoin
+      return [0.99, 1.01];
     }
 
     double min = double.infinity;
@@ -114,7 +96,6 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
       if (point > max) max = point;
     }
 
-    // Add some padding to the range
     final padding = (max - min) * 0.1;
     return [min - padding, max + padding];
   }
@@ -147,7 +128,6 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
         // For day view, show hours in 4-hour intervals
         final hoursAgo = (totalPoints - 1 - index) * (24 / totalPoints).round();
         date = now.subtract(Duration(hours: hoursAgo));
-        // Only show label every 4 hours
         if (date.hour % 4 == 0) {
           return DateFormat('HH:mm').format(date);
         }
@@ -233,7 +213,7 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
       _lastFetchTime = DateTime.now();
       _error = null;
 
-      debugPrint('Data fetched successfully: ${_marketData['is_real_data']}');
+      // debugPrint('Data fetched successfully: ${_marketData['is_real_data']}');
     } catch (e) {
       debugPrint('Error fetching data: $e');
       _error = e.toString();
@@ -380,7 +360,6 @@ class InsightsProvider with ChangeNotifier, ProviderUtils {
       if (value > max) max = value;
     }
 
-    // Add some padding to the range
     final padding = (max - min) * 0.1;
     return [min - padding, max + padding];
   }

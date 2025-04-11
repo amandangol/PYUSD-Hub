@@ -275,7 +275,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                   Positioned(
                     top: 40,
                     left: 16,
-                    child: Container(
+                    child: SizedBox(
                       width: 200,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,34 +740,34 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
             ),
           ),
           const SizedBox(height: 8),
-          Row(
+          const Row(
             children: [
               TransactionVehicle(
-                transaction: const {'hash': '0x0'},
+                transaction: {'hash': '0x0'},
                 isPending: false,
                 speed: 'fast',
                 transactionType: 'pyusd',
                 animationValue: 0.0,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'PYUSD Transaction (Fast)',
                 style: TextStyle(color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Row(
+          const Row(
             children: [
               TransactionVehicle(
-                transaction: const {'hash': '0x0'},
+                transaction: {'hash': '0x0'},
                 isPending: false,
                 speed: 'medium',
                 transactionType: 'pyusd',
                 animationValue: 0.0,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: 8),
+              Text(
                 'PYUSD Transaction (Medium)',
                 style: TextStyle(color: Colors.white),
               ),
@@ -777,7 +777,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           const Row(
             children: [
               TransactionVehicle(
-                transaction: const {'hash': '0x0'},
+                transaction: {'hash': '0x0'},
                 isPending: false,
                 speed: 'slow',
                 transactionType: 'pyusd',
@@ -794,7 +794,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           const Row(
             children: [
               TransactionVehicle(
-                transaction: const {'hash': '0x0'},
+                transaction: {'hash': '0x0'},
                 isPending: false,
                 speed: 'medium',
                 transactionType: 'other',
@@ -811,7 +811,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           const Row(
             children: [
               TransactionVehicle(
-                transaction: const {'hash': '0x0'},
+                transaction: {'hash': '0x0'},
                 isPending: true,
                 speed: 'medium',
                 transactionType: 'pyusd',

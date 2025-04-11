@@ -10,7 +10,7 @@ class StatsCard extends StatelessWidget {
   final double? width;
 
   const StatsCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     required this.icon,
@@ -18,7 +18,7 @@ class StatsCard extends StatelessWidget {
     required this.description,
     this.isListView = false,
     this.width,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

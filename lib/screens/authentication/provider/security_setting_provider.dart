@@ -10,7 +10,6 @@ enum PinChangeStep {
 class SecuritySettingsProvider with ChangeNotifier {
   final AuthProvider _authProvider;
 
-  // Add a public getter for authProvider
   AuthProvider get authProvider => _authProvider;
 
   // Biometrics state
@@ -39,7 +38,6 @@ class SecuritySettingsProvider with ChangeNotifier {
   String? get currentPin => _currentPin;
   String? get error => _error;
 
-  // Initialize settings
   Future<void> _initializeSettings() async {
     await _checkBiometrics();
   }
@@ -184,7 +182,6 @@ class SecuritySettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Add methods to toggle PIN visibility
   void togglePinVisibility() {
     _isPinVisible = !_isPinVisible;
     notifyListeners();
@@ -195,7 +192,6 @@ class SecuritySettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Clear error message
   void clearError() {
     _error = null;
     notifyListeners();

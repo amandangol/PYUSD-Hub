@@ -65,7 +65,6 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (!mounted) return;
 
-      // Add a minimum delay to show the splash screen
       await Future.delayed(const Duration(seconds: 2));
 
       if (!mounted) return;
@@ -101,7 +100,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -126,7 +124,6 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo with animations
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(

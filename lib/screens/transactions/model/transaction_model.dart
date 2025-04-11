@@ -190,6 +190,7 @@ class TransactionDetailModel extends TransactionModel {
     this.transactionTrace,
   });
 
+  @override
   TransactionDetailModel copyWith({
     String? hash,
     DateTime? timestamp,
