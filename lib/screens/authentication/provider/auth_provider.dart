@@ -423,12 +423,30 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isAuthenticated', false);
 
+      // Clear any cached data
+      await _clearCachedData();
+
       // Notify listeners after all cleanup is done
       notifyListeners();
     } catch (e) {
       _setError('Failed to logout: $e');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Helper method to clear cached data
+  Future<void> _clearCachedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Clear any cached wallet data
+      await prefs.remove('wallet_metadata');
+      await prefs.remove('last_used_network');
+      await prefs.remove('balance_visibility');
+      await prefs.remove('transaction_filter');
+      await prefs.remove('network_selector_visible');
+    } catch (e) {
+      print('Error clearing cached data: $e');
     }
   }
 
@@ -447,6 +465,9 @@ class AuthProvider extends ChangeNotifier {
 
         // Delete authentication data
         await _authService.deleteAuthData();
+
+        // Clear cached data
+        await _clearCachedData();
 
         // Clear memory
         _wallet = null;

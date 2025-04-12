@@ -31,6 +31,7 @@ class _WalletScreenState extends State<WalletScreen>
   final bool _hasError = false;
   Timer? _debounceTimer;
   NetworkProvider? _networkProvider;
+  TransactionProvider? _transactionProvider;
   bool _isRefreshing = false;
 
   @override
@@ -41,7 +42,10 @@ class _WalletScreenState extends State<WalletScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _networkProvider = Provider.of<NetworkProvider>(context, listen: false);
+      _transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
       _networkProvider?.addListener(_onNetworkChanged);
+      _transactionProvider?.addListener(_onTransactionUpdate);
       _initializeData();
     });
   }
@@ -49,8 +53,10 @@ class _WalletScreenState extends State<WalletScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Store a reference to the provider here to safely use in dispose
+    // Store references to providers here to safely use in dispose
     _networkProvider = Provider.of<NetworkProvider>(context, listen: false);
+    _transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
   }
 
   Future<void> _initializeData() async {
@@ -58,13 +64,8 @@ class _WalletScreenState extends State<WalletScreen>
 
     final walletScreenProvider =
         Provider.of<WaletScreenProvider>(context, listen: false);
-    final transactionProvider =
-        Provider.of<TransactionProvider>(context, listen: false);
     final walletStateProvider =
         Provider.of<WalletStateProvider>(context, listen: false);
-
-    // Add listener for transaction updates
-    transactionProvider.addListener(_onTransactionUpdate);
 
     await walletScreenProvider.refreshAllData();
     await walletStateProvider.refreshBalances();
@@ -81,15 +82,14 @@ class _WalletScreenState extends State<WalletScreen>
 
   @override
   void dispose() {
-    // Safely remove listener using the stored reference
+    // Safely remove listeners using stored references
     if (_networkProvider != null) {
       _networkProvider!.removeListener(_onNetworkChanged);
     }
 
-    // Remove transaction update listener
-    final transactionProvider =
-        Provider.of<TransactionProvider>(context, listen: false);
-    transactionProvider.removeListener(_onTransactionUpdate);
+    if (_transactionProvider != null) {
+      _transactionProvider!.removeListener(_onTransactionUpdate);
+    }
 
     _debounceTimer?.cancel();
     _scrollController.dispose();
@@ -112,106 +112,100 @@ class _WalletScreenState extends State<WalletScreen>
   Future<void> _showNetworkSelector() async {
     if (!mounted) return;
 
-    final result = await showModalBottomSheet<bool>(
+    final networkProvider = _networkProvider;
+    if (networkProvider == null) return;
+
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    final result = await showModalBottomSheet<NetworkType>(
       context: context,
       backgroundColor: Colors.transparent,
+      isDismissible: true,
+      isScrollControlled: true,
       builder: (context) => PyusdBottomSheet(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select Network',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildNetworkOption(
-                context: context,
-                networkProvider: _networkProvider!,
-                networkType: NetworkType.sepoliaTestnet,
-                icon: Icons.wifi_tethering,
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 12),
-              _buildNetworkOption(
-                context: context,
-                networkProvider: _networkProvider!,
-                networkType: NetworkType.ethereumMainnet,
-                icon: Icons.public,
-                color: Colors.green,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (result == true && mounted) {
-      try {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white10
-                  : Colors.black12,
-              content: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white70
-                            : Colors.black54,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.wifi_tethering,
+                        color: theme.colorScheme.primary,
+                        size: 24,
                       ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Select Network',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Choose the network you want to connect to',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Switching network...',
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white70
-                          : Colors.black54,
+                  const SizedBox(height: 24),
+                  _buildNetworkOption(
+                    context: context,
+                    networkProvider: networkProvider,
+                    networkType: NetworkType.sepoliaTestnet,
+                    icon: Icons.wifi_tethering,
+                    color: Colors.orange,
+                    name: 'Sepolia Testnet',
+                    description: 'Test network for development',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNetworkOption(
+                    context: context,
+                    networkProvider: networkProvider,
+                    networkType: NetworkType.ethereumMainnet,
+                    icon: Icons.public,
+                    color: Colors.green,
+                    name: 'Ethereum Mainnet',
+                    description: 'Production network',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
                     ),
                   ),
                 ],
               ),
-              duration: const Duration(seconds: 2),
             ),
-          );
-        }
-      } catch (e) {
-        print('Error during network switch UI update: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Error switching network. Please try again.',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : Colors.black54,
-                ),
-              ),
-              backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white10
-                  : Colors.black12,
-            ),
-          );
-        }
-      }
+          ],
+        ),
+      ),
+    );
+
+    // Handle network switch
+    if (result != null && mounted) {
+      await _handleNetworkSwitch(result);
     }
   }
 
@@ -221,25 +215,24 @@ class _WalletScreenState extends State<WalletScreen>
     required NetworkType networkType,
     required IconData icon,
     required Color color,
+    required String name,
+    required String description,
   }) {
     final isSelected = networkProvider.currentNetwork == networkType;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: networkProvider.isSwitching
             ? null
-            : () async {
-                await networkProvider.switchNetwork(networkType);
-                Navigator.pop(context, true);
-              },
+            : () => Navigator.pop(context, networkType),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(
-              color: isSelected ? color : Colors.grey.withOpacity(0.2),
+              color: isSelected ? color : theme.dividerColor.withOpacity(0.2),
               width: isSelected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -260,37 +253,169 @@ class _WalletScreenState extends State<WalletScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      networkProvider.getNetworkName(networkType),
-                      style: TextStyle(
-                        fontSize: 14,
+                      name,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isDarkMode ? Colors.white : Colors.black87,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      networkType == NetworkType.sepoliaTestnet
-                          ? 'Test network for development'
-                          : 'Production network',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.textTheme.bodySmall?.color?.withOpacity(0.7),
                       ),
                     ),
                   ],
                 ),
               ),
               if (isSelected)
-                Icon(
-                  Icons.check_circle,
-                  color: color,
-                  size: 20,
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: color,
+                    size: 20,
+                  ),
                 ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleNetworkSwitch(NetworkType newNetwork) async {
+    if (!mounted) return;
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
+    scaffoldMessenger.clearSnackBars();
+
+    try {
+      // Show switching network indicator
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    theme.brightness == Brightness.dark
+                        ? Colors.white
+                        : theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Switching network...',
+                style: TextStyle(
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.white
+                      : theme.colorScheme.onPrimary,
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: theme.brightness == Brightness.dark
+              ? theme.colorScheme.primary.withOpacity(0.8)
+              : theme.colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.all(16),
+          elevation: 4,
+        ),
+      );
+
+      // Perform network switch
+      await _networkProvider?.switchNetwork(newNetwork);
+
+      if (mounted) {
+        // Show success message
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.white,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Successfully switched to ${_networkProvider?.getNetworkName(newNetwork)}',
+                    style: TextStyle(
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+            elevation: 4,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error switching network: $e');
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.white,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Failed to switch network. Please try again.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+            elevation: 4,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override

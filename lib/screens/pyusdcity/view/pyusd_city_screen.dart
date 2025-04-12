@@ -619,16 +619,16 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width / 3 - 20,
-                child: StatsCard(
-                  title: 'Blocks/Hour',
-                  value: data.blocksPerHour.toString(),
-                  icon: Icons.storage,
-                  color: Colors.blue,
-                  description: 'Block rate',
-                ),
-              ),
+              // SizedBox(
+              //   width: MediaQuery.of(context).size.width / 3 - 20,
+              //   child: StatsCard(
+              //     title: 'Blocks/Hour',
+              //     value: data.blocksPerHour.toString(),
+              //     icon: Icons.storage,
+              //     color: Colors.blue,
+              //     description: 'Block rate',
+              //   ),
+              // ),
               SizedBox(
                 width: MediaQuery.of(context).size.width / 3 - 20,
                 child: StatsCard(

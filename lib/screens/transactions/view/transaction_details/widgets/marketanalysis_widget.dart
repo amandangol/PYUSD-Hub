@@ -45,17 +45,32 @@ class MarketAnalysisWidget extends StatelessWidget {
           children: [
             // Header with improved visual hierarchy
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.analytics_outlined, size: 22, color: primaryColor),
-                const SizedBox(width: 10),
-                Text(
-                  'Market Analysis',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
+                Row(
+                  children: [
+                    Icon(Icons.analytics_outlined,
+                        size: 22, color: primaryColor),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Market Analysis',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                  ],
                 ),
+                if (!isLoadingMarketData && marketPrices.isNotEmpty)
+                  Text(
+                    'Live Data',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: subtitleColor,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
               ],
             ),
             const Divider(height: 30),
@@ -63,11 +78,36 @@ class MarketAnalysisWidget extends StatelessWidget {
             // Market data section
             if (isLoadingMarketData)
               _buildLoadingIndicator()
+            else if (marketPrices.isEmpty)
+              _buildNoDataView()
             else
               _buildMarketDataSection(
                   tokenSymbol, currentPrice, txValueUsd, gasFeeUsd, context),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNoDataView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: subtitleColor,
+            size: 24,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Market data not available',
+            style: TextStyle(
+              color: subtitleColor,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }

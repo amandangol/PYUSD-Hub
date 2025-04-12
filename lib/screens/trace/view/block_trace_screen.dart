@@ -1561,12 +1561,16 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   }
 
   Widget _buildSandwichAttackDetails(Map<String, dynamic> data) {
-    final attacks = data['attacks'] as List;
+    final attacks = data['attacks'] as List? ?? [];
+    if (attacks.isEmpty) {
+      return const Text('No sandwich attacks detected in this block');
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${attacks.length} Sandwich Attack Pattern${attacks.length == 1 ? '' : 's'} Detected',
+          '${attacks.length} Sandwich Attack${attacks.length == 1 ? '' : 's'} Detected',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -1582,20 +1586,29 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                          'Frontrun: ${FormatterUtils.formatHash(attack['frontrun']['hash'])}'),
-                      Text(
-                          'Victim: ${FormatterUtils.formatHash(attack['victim']['hash'])}'),
-                      Text(
-                          'Backrun: ${FormatterUtils.formatHash(attack['backrun']['hash'])}'),
-                      if (attack['profit'] != null)
+                      _buildTransactionDetail('Frontrun', attack['frontrun']),
+                      _buildTransactionDetail('Victim', attack['victim']),
+                      _buildTransactionDetail('Backrun', attack['backrun']),
+                      if (attack['profit'] != null) ...[
+                        const SizedBox(height: 8),
                         Text(
-                          'Estimated Profit: \$${attack['profit'].toStringAsFixed(2)}',
+                          'Estimated Profit: \$${(attack['profit'] as double).toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ],
+                      if ((attack['details'] as List?)?.isNotEmpty ??
+                          false) ...[
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        ...((attack['details'] as List).map((detail) => Text(
+                              '• $detail',
+                              style: const TextStyle(fontSize: 13),
+                            ))),
+                      ],
                     ],
                   ),
                 ))
@@ -1604,8 +1617,38 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
     );
   }
 
+  Widget _buildTransactionDetail(String label, Map<String, dynamic> txData) {
+    final hash = txData['hash'] as String? ?? 'Unknown';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(FormatterUtils.formatHash(hash)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: hash));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Transaction hash copied to clipboard')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTransactionOrderingDetails(Map<String, dynamic> data) {
-    final transactions = data['transactions'] as List;
+    final transactions = data['transactions'] as List? ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1665,7 +1708,7 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   }
 
   Widget _buildMEVOpportunitiesDetails(Map<String, dynamic> data) {
-    final opportunities = data['opportunities'] as List;
+    final opportunities = data['opportunities'] as List? ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1737,22 +1780,49 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
     try {
       final provider = Provider.of<TraceProvider>(context, listen: false);
       final result = await provider.analyzeSandwichAttacks(_blockData['hash']);
-      if (result['success']) {
-        setState(() {
-          _mevResults.add({
-            'type': 'Sandwich Attacks',
-            'data': {
-              'summary':
-                  '${result['sandwichAttacks'].length} potential sandwich attacks found',
-              'attacks': result['sandwichAttacks'],
-            },
-          });
-        });
+
+      final attacks = result['sandwichAttacks'] as List? ?? [];
+      double totalProfit = 0.0;
+
+      for (var attack in attacks) {
+        totalProfit += attack['profit'] as double? ?? 0.0;
       }
+
+      if (!mounted) return;
+
+      setState(() {
+        _mevResults.add({
+          'type': 'Sandwich Attacks',
+          'data': {
+            'summary': attacks.isEmpty
+                ? 'No sandwich attacks detected in this block'
+                : '${attacks.length} sandwich attack${attacks.length == 1 ? '' : 's'} detected with total profit of \$${totalProfit.toStringAsFixed(2)}',
+            'attacks': attacks
+                .map((attack) => {
+                      'frontrun': attack['frontrun'] ?? {},
+                      'victim': attack['victim'] ?? {},
+                      'backrun': attack['backrun'] ?? {},
+                      'profit': attack['profit'] ?? 0.0,
+                      'details': attack['details'] ?? [],
+                    })
+                .toList(),
+            'profit': totalProfit,
+          },
+        });
+      });
     } catch (e) {
-      print('Error analyzing sandwich attacks: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error analyzing sandwich attacks: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+      }
     }
   }
 
@@ -1760,24 +1830,50 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
     setState(() => _isAnalyzing = true);
     try {
       final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result = await provider
-          .analyzeTransactionOrdering(widget.blockNumber.toString());
-      if (result['success']) {
-        setState(() {
-          _mevResults.add({
-            'type': 'Transaction Ordering',
-            'data': {
-              'summary':
-                  '${result['transactions'].length} transactions analyzed',
-              'transactions': result['transactions'],
-            },
-          });
+      final result =
+          await provider.analyzeTransactionOrdering(_blockData['hash']);
+
+      if (!mounted) return;
+
+      final transactions = result['transactions'] as List? ?? [];
+      final suspiciousOrdering = result['suspiciousOrdering'] ?? false;
+      final mevImpact = result['mevImpact'] as double? ?? 0.0;
+
+      setState(() {
+        _mevResults.add({
+          'type': 'Transaction Ordering',
+          'data': {
+            'summary': suspiciousOrdering
+                ? 'Suspicious transaction ordering detected with potential MEV impact of \$${mevImpact.toStringAsFixed(2)}'
+                : 'No suspicious transaction ordering patterns detected',
+            'transactions': transactions
+                .map((tx) => {
+                      'hash': tx['hash'] ?? '',
+                      'gasPrice': tx['gasPrice'] ?? 0.0,
+                      'position': tx['position'] ?? 0,
+                      'isPYUSDInteraction': tx['isPYUSDInteraction'] ?? false,
+                      'details': tx['details'] ?? [],
+                    })
+                .toList(),
+            'suspiciousOrdering': suspiciousOrdering,
+            'mevImpact': mevImpact,
+          },
         });
-      }
+      });
     } catch (e) {
-      print('Error analyzing transaction ordering: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Error analyzing transaction ordering: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+      }
     }
   }
 
@@ -1785,24 +1881,50 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
     setState(() => _isAnalyzing = true);
     try {
       final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result =
-          await provider.identifyMEVOpportunities(_blockData['hash']);
-      if (result['success']) {
-        setState(() {
-          _mevResults.add({
-            'type': 'MEV Opportunities',
-            'data': {
-              'summary':
-                  '${result['opportunities'].length} MEV opportunities found',
-              'opportunities': result['opportunities'],
-            },
-          });
-        });
+      final result = await provider.analyzeMevOpportunities(_blockData['hash']);
+
+      if (!mounted) return;
+
+      final opportunities = result['opportunities'] as List? ?? [];
+      double totalValue = 0.0;
+
+      for (var opp in opportunities) {
+        totalValue += opp['estimatedProfit'] as double? ?? 0.0;
       }
+
+      setState(() {
+        _mevResults.add({
+          'type': 'MEV Opportunities',
+          'data': {
+            'summary': opportunities.isEmpty
+                ? 'No MEV opportunities detected in this block'
+                : '${opportunities.length} MEV opportunit${opportunities.length == 1 ? 'y' : 'ies'} found with total value of \$${totalValue.toStringAsFixed(2)}',
+            'opportunities': opportunities
+                .map((opp) => {
+                      'type': opp['type'] ?? 'Unknown',
+                      'transaction': opp['transaction'] ?? {},
+                      'estimatedProfit': opp['estimatedProfit'] ?? 0.0,
+                      'details': opp['details'] ?? [],
+                      'riskLevel': opp['riskLevel'] ?? 'Unknown',
+                    })
+                .toList(),
+            'totalValue': totalValue,
+          },
+        });
+      });
     } catch (e) {
-      print('Error identifying MEV opportunities: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error identifying MEV opportunities: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+      }
     }
   }
 }

@@ -376,7 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     ListTile(
                       leading: Icon(Icons.newspaper, color: primaryColor),
-                      title: Text('PYUSD News',
+                      title: Text('Crypto News',
                           style: theme.textTheme.titleMedium),
                       subtitle:
                           Text('Latest updates about PYUSD and crypto markets',

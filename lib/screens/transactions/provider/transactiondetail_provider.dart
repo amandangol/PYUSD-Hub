@@ -297,10 +297,14 @@ class TransactionDetailProvider
       _ongoingOperations.remove('trace_$txHash');
 
       if (traceData != null) {
+        // Save to cache with timestamp
         _traceCache[txHash] = {
           'data': traceData,
           'timestamp': DateTime.now(),
         };
+
+        // Save to persistent storage
+        await _saveTraceDataToStorage(txHash, traceData);
       }
 
       return traceData;
@@ -343,10 +347,14 @@ class TransactionDetailProvider
       _ongoingOperations.remove('market_$txHash');
 
       if (marketData.isNotEmpty) {
+        // Save to cache with timestamp
         _marketCache[txHash] = {
           'data': marketData,
           'timestamp': DateTime.now(),
         };
+
+        // Save to persistent storage
+        await _saveMarketDataToStorage(txHash, marketData);
       }
 
       return marketData;
@@ -354,6 +362,68 @@ class TransactionDetailProvider
       _ongoingOperations.remove('market_$txHash');
       setError(this, 'Error fetching market data: $e');
       return {};
+    }
+  }
+
+  // Helper method to save trace data to persistent storage
+  Future<void> _saveTraceDataToStorage(
+      String txHash, Map<String, dynamic> traceData) async {
+    try {
+      // Implement storage logic here using shared_preferences or other storage solution
+      // Example using shared_preferences:
+      // final prefs = await SharedPreferences.getInstance();
+      // await prefs.setString('trace_$txHash', jsonEncode({
+      //   'data': traceData,
+      //   'timestamp': DateTime.now().toIso8601String(),
+      // }));
+    } catch (e) {
+      print('Error saving trace data to storage: $e');
+    }
+  }
+
+  // Helper method to save market data to persistent storage
+  Future<void> _saveMarketDataToStorage(
+      String txHash, Map<String, double> marketData) async {
+    try {
+      // Implement storage logic here using shared_preferences or other storage solution
+      // Example using shared_preferences:
+      // final prefs = await SharedPreferences.getInstance();
+      // await prefs.setString('market_$txHash', jsonEncode({
+      //   'data': marketData,
+      //   'timestamp': DateTime.now().toIso8601String(),
+      // }));
+    } catch (e) {
+      print('Error saving market data to storage: $e');
+    }
+  }
+
+  // Load cached data from storage on initialization
+  Future<void> loadCachedData() async {
+    try {
+      // Implement loading logic here using shared_preferences or other storage solution
+      // Example using shared_preferences:
+      // final prefs = await SharedPreferences.getInstance();
+      // final keys = prefs.getKeys();
+      //
+      // for (final key in keys) {
+      //   if (key.startsWith('trace_')) {
+      //     final txHash = key.substring(6);
+      //     final data = jsonDecode(prefs.getString(key)!);
+      //     _traceCache[txHash] = {
+      //       'data': data['data'],
+      //       'timestamp': DateTime.parse(data['timestamp']),
+      //     };
+      //   } else if (key.startsWith('market_')) {
+      //     final txHash = key.substring(7);
+      //     final data = jsonDecode(prefs.getString(key)!);
+      //     _marketCache[txHash] = {
+      //       'data': data['data'],
+      //       'timestamp': DateTime.parse(data['timestamp']),
+      //     };
+      //   }
+      // }
+    } catch (e) {
+      print('Error loading cached data: $e');
     }
   }
 

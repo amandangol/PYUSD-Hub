@@ -617,15 +617,48 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
       final provider = Provider.of<TraceProvider>(context, listen: false);
       final result = await provider.analyzeFrontrunning(widget.txHash);
 
+      if (!mounted) return;
+
+      // Check if this transaction is involved in frontrunning
+      final isFrontrunning = result['isFrontrunning'] ?? false;
+      final impact = result['impact'] ?? 0.0;
+      final details = result['details'] as List<String>? ?? [];
+
       setState(() {
         _mevAnalysisResult = {
           'type': 'Frontrunning Analysis',
-          'summary': result['summary'],
-          'details': result['details'],
-          'profit': result['profit'],
+          'summary': isFrontrunning
+              ? 'This transaction appears to be involved in frontrunning activity.'
+              : 'No clear evidence of frontrunning detected in this transaction.',
+          'details': [
+            if (isFrontrunning) ...[
+              'Transaction shows patterns consistent with frontrunning behavior.',
+              'Potential price impact: \$${impact.toStringAsFixed(2)}',
+              ...details,
+            ] else ...[
+              'Transaction appears to be a normal transaction.',
+              'No suspicious ordering or timing patterns detected.',
+              'No significant price impact observed.',
+              ...details,
+            ],
+          ],
+          'profit': impact,
         };
       });
     } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _mevAnalysisResult = {
+          'type': 'Frontrunning Analysis',
+          'summary': 'Unable to perform frontrunning analysis.',
+          'details': [
+            'An error occurred while analyzing the transaction.',
+            'Error: ${e.toString()}',
+          ],
+        };
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error analyzing frontrunning: ${e.toString()}'),
@@ -633,9 +666,11 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
         ),
       );
     } finally {
-      setState(() {
-        _isAnalyzing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
     }
   }
 
@@ -649,15 +684,38 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
       final provider = Provider.of<TraceProvider>(context, listen: false);
       final result = await provider.analyzeMEVImpact(widget.txHash);
 
+      if (!mounted) return;
+
+      final impact = result['impact'] ?? 0.0;
+      final riskLevel = result['riskLevel'] ?? 'Low';
+      final details = result['details'] as List<String>? ?? [];
+
       setState(() {
         _mevAnalysisResult = {
           'type': 'MEV Impact Analysis',
-          'summary': result['summary'],
-          'details': result['details'],
-          'profit': result['impact'],
+          'summary': _getMEVImpactSummary(impact, riskLevel),
+          'details': [
+            'Risk Level: $riskLevel',
+            'Estimated Value at Risk: \$${impact.toStringAsFixed(2)}',
+            ...details,
+          ],
+          'profit': impact,
         };
       });
     } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _mevAnalysisResult = {
+          'type': 'MEV Impact Analysis',
+          'summary': 'Unable to analyze MEV impact.',
+          'details': [
+            'An error occurred while analyzing the transaction.',
+            'Error: ${e.toString()}',
+          ],
+        };
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error analyzing MEV impact: ${e.toString()}'),
@@ -665,9 +723,28 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
         ),
       );
     } finally {
-      setState(() {
-        _isAnalyzing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
+    }
+  }
+
+  String _getMEVImpactSummary(double impact, String riskLevel) {
+    if (impact <= 0) {
+      return 'No significant MEV impact detected in this transaction.';
+    }
+
+    switch (riskLevel.toLowerCase()) {
+      case 'high':
+        return 'High MEV impact detected. This transaction was significantly affected by MEV activities.';
+      case 'medium':
+        return 'Moderate MEV impact detected. This transaction shows some exposure to MEV activities.';
+      case 'low':
+        return 'Low MEV impact detected. This transaction was minimally affected by MEV activities.';
+      default:
+        return 'Transaction analyzed for MEV impact.';
     }
   }
 

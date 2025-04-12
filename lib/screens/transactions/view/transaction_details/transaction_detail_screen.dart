@@ -62,6 +62,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
     // Initialize tab controller with 4 tabs (added Trace tab)
     _tabController = TabController(length: 4, vsync: this);
 
+    // Load cached data first
+    _loadCachedData();
+
+    // Then initialize fresh data
     _initializeData();
   }
 
@@ -76,6 +80,60 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       Navigator.pop(context, widget.transaction);
     }
     super.dispose();
+  }
+
+  Future<void> _loadCachedData() async {
+    if (!mounted) return;
+
+    try {
+      // Check for cached transaction details
+      if (_transactionDetailProvider
+          .isTransactionCached(widget.transaction.hash)) {
+        final cachedData = _transactionDetailProvider
+            .getCachedTransactionDetails(widget.transaction.hash);
+        if (cachedData != null) {
+          setState(() {
+            _detailedTransaction = cachedData;
+            _isInitializing = false;
+          });
+        }
+      }
+
+      // Check for cached trace data
+      final cachedTrace = await _transactionDetailProvider.getTransactionTrace(
+        txHash: widget.transaction.hash,
+        rpcUrl: widget.rpcUrl,
+      );
+      if (cachedTrace != null && mounted) {
+        setState(() {
+          _traceData = cachedTrace;
+          _isLoadingTrace = false;
+        });
+      }
+
+      // Check for cached market data
+      if (_detailedTransaction != null && mounted) {
+        final tokensToFetch = ['ETH'];
+        if (_detailedTransaction?.tokenSymbol != null &&
+            _detailedTransaction!.tokenSymbol!.isNotEmpty) {
+          tokensToFetch.add(_detailedTransaction!.tokenSymbol!);
+        }
+
+        final cachedMarketData = await _transactionDetailProvider.getMarketData(
+          txHash: widget.transaction.hash,
+          tokens: tokensToFetch,
+        );
+
+        if (cachedMarketData.isNotEmpty && mounted) {
+          setState(() {
+            _marketPrices = cachedMarketData;
+            _isLoadingMarketData = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading cached data: $e');
+    }
   }
 
   Future<void> _initializeData() async {
@@ -102,9 +160,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       // Start fetching fresh data in the background
       await _fetchTransactionDetails();
 
-      // After fetching transaction details, fetch market data and trace data
+      // After fetching transaction details, fetch market data and trace data in parallel
       if (_detailedTransaction != null && mounted) {
-        // Fetch market data and trace data in parallel
         await Future.wait([
           _fetchMarketData(),
           _fetchTransactionTrace(),

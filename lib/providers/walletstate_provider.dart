@@ -28,6 +28,7 @@ class WalletStateProvider extends ChangeNotifier {
   bool _isDisposed = false;
 
   Timer? _debounceTimer;
+  StreamSubscription? _networkChangeSubscription;
 
   final bool _isRefreshLocked = false;
   static const Duration _minRefreshInterval = Duration(seconds: 5);
@@ -58,10 +59,14 @@ class WalletStateProvider extends ChangeNotifier {
   })  : _authProvider = authProvider,
         _networkProvider = networkProvider {
     _initializeBalanceMaps();
-
-    _networkProvider.addListener(_onNetworkChanged);
-
+    _setupNetworkListener();
     _loadInitialBalances();
+  }
+
+  void _setupNetworkListener() {
+    // Remove any existing listener first
+    _networkChangeSubscription?.cancel();
+    _networkProvider.addListener(_onNetworkChanged);
   }
 
   // Initialize maps for all available networks
@@ -206,6 +211,7 @@ class WalletStateProvider extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _debounceTimer?.cancel();
+    _networkChangeSubscription?.cancel();
     _networkProvider.removeListener(_onNetworkChanged);
     super.dispose();
   }
