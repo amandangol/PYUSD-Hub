@@ -365,16 +365,88 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                if (_mevAnalysisResult != null)
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () {
+                      setState(() => _mevAnalysisResult = null);
+                    },
+                    tooltip: 'Clear Results',
+                  ),
               ],
             ),
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 16),
-            _buildMEVAnalysisButtons(),
-            if (_mevAnalysisResult != null) ...[
-              const SizedBox(height: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select Analysis Type',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildMEVAnalysisButtons(),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_isAnalyzing)
+              const Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text(
+                      'Analyzing MEV activities...',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_mevAnalysisResult == null)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                ),
+                child: const Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.analytics_outlined,
+                          size: 48, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No MEV Analysis Results',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Select an analysis type above to start',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
               _buildMEVAnalysisResult(),
-            ],
           ],
         ),
       ),
@@ -391,30 +463,37 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
           Icons.speed,
           Colors.purple,
           () => _analyzeFrontrunning(),
+          'Analyze potential frontrunning activity',
         ),
         _buildMEVButton(
           'MEV Impact',
           Icons.trending_up,
           Colors.green,
           () => _analyzeMEVImpact(),
+          'Analyze MEV impact on this transaction',
         ),
       ],
     );
   }
 
-  Widget _buildMEVButton(
-      String label, IconData icon, Color color, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      onPressed: _isAnalyzing ? null : onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
-        foregroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: color.withOpacity(0.5)),
+  Widget _buildMEVButton(String label, IconData icon, Color color,
+      VoidCallback onPressed, String tooltip) {
+    return Tooltip(
+      message: tooltip,
+      child: ElevatedButton.icon(
+        onPressed: _isAnalyzing ? null : onPressed,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withOpacity(0.1),
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: color.withOpacity(0.5)),
+          ),
+          disabledBackgroundColor: Colors.grey.withOpacity(0.1),
+          disabledForegroundColor: Colors.grey,
         ),
       ),
     );
@@ -422,53 +501,76 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
 
   Widget _buildMEVAnalysisResult() {
     final result = _mevAnalysisResult!;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final type = result['type'] as String;
+    final Color cardColor =
+        type == 'Frontrunning Analysis' ? Colors.purple : Colors.green;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(),
-        const SizedBox(height: 16),
-        Text(
-          result['type'] ?? 'Analysis Results',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: cardColor.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    type == 'Frontrunning Analysis'
+                        ? Icons.speed
+                        : Icons.trending_up,
+                    size: 20,
+                    color: cardColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    type,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: cardColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                result['summary'] ?? 'No summary available',
+                style: const TextStyle(height: 1.5),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        if (result['summary'] != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
-            ),
-            child: Text(
-              result['summary'],
-              style: TextStyle(
-                color: textColor,
-                height: 1.5,
-              ),
+        if (result['details'] != null &&
+            (result['details'] as List).isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Detailed Analysis',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        if (result['details'] != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           ...List.generate(
             (result['details'] as List).length,
             (index) => Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.withOpacity(0.2)),
               ),
               child: Text(
                 result['details'][index],
-                style: TextStyle(color: textColor),
+                style: const TextStyle(height: 1.5),
               ),
             ),
           ),
@@ -476,6 +578,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
         if (result['profit'] != null) ...[
           const SizedBox(height: 16),
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.green.withOpacity(0.1),
@@ -486,7 +589,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Estimated Profit:',
+                  'Estimated Profit/Impact:',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
@@ -514,24 +617,25 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
       final provider = Provider.of<TraceProvider>(context, listen: false);
       final result = await provider.analyzeFrontrunning(widget.txHash);
 
-      if (result['success']) {
-        setState(() {
-          _mevAnalysisResult = {
-            'type': 'Frontrunning Analysis',
-            'summary': 'Analysis of potential frontrunning activity',
-            'details': result['frontrunners']
-                .map((f) =>
-                    'Transaction ${FormatterUtils.formatHash(f['transaction']['hash'])} with profit \$${f['profit'].toStringAsFixed(2)}')
-                .toList(),
-            'profit': result['frontrunners']
-                .fold(0.0, (sum, f) => sum + (f['profit'] as double)),
-          };
-        });
-      }
+      setState(() {
+        _mevAnalysisResult = {
+          'type': 'Frontrunning Analysis',
+          'summary': result['summary'],
+          'details': result['details'],
+          'profit': result['profit'],
+        };
+      });
     } catch (e) {
-      print('Error analyzing frontrunning: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error analyzing frontrunning: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      setState(() => _isAnalyzing = false);
+      setState(() {
+        _isAnalyzing = false;
+      });
     }
   }
 
@@ -543,85 +647,28 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
 
     try {
       final provider = Provider.of<TraceProvider>(context, listen: false);
-      final blockNumber = FormatterUtils.parseHexSafely(
-              _analysisData['transaction']['blockNumber']) ??
-          0;
+      final result = await provider.analyzeMEVImpact(widget.txHash);
 
-      // Get block data for context
-      final blockData = await provider.getBlockWithTransactions(blockNumber);
-      if (blockData['success']) {
-        final block = blockData['block'];
-        final transactions = block['transactions'] as List;
-        final txIndex =
-            transactions.indexWhere((tx) => tx['hash'] == widget.txHash);
-
-        // Analyze MEV impact
-        final impact = await _calculateMEVImpact(transactions, txIndex);
-        setState(() {
-          _mevAnalysisResult = {
-            'type': 'MEV Impact Analysis',
-            'summary': impact['summary'],
-            'details': impact['details'],
-            'profit': impact['profit'],
-          };
-        });
-      }
+      setState(() {
+        _mevAnalysisResult = {
+          'type': 'MEV Impact Analysis',
+          'summary': result['summary'],
+          'details': result['details'],
+          'profit': result['impact'],
+        };
+      });
     } catch (e) {
-      print('Error analyzing MEV impact: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error analyzing MEV impact: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      setState(() => _isAnalyzing = false);
+      setState(() {
+        _isAnalyzing = false;
+      });
     }
-  }
-
-  Future<Map<String, dynamic>> _calculateMEVImpact(
-      List<dynamic> transactions, int txIndex) async {
-    final details = <String>[];
-    double totalProfit = 0.0;
-
-    // Analyze transactions before and after the target transaction
-    final beforeTx = txIndex > 0 ? transactions[txIndex - 1] : null;
-    final afterTx =
-        txIndex < transactions.length - 1 ? transactions[txIndex + 1] : null;
-
-    if (beforeTx != null) {
-      final gasPrice = int.parse(beforeTx['gasPrice'].toString()) / 1e9;
-      details.add(
-          'Previous transaction gas price: ${gasPrice.toStringAsFixed(2)} Gwei');
-    }
-
-    if (afterTx != null) {
-      final gasPrice = int.parse(afterTx['gasPrice'].toString()) / 1e9;
-      details.add(
-          'Next transaction gas price: ${gasPrice.toStringAsFixed(2)} Gwei');
-    }
-
-    // Calculate potential MEV impact
-    final currentGasPrice =
-        int.parse(_analysisData['transaction']['gasPrice'].toString()) / 1e9;
-    details.add(
-        'Current transaction gas price: ${currentGasPrice.toStringAsFixed(2)} Gwei');
-
-    // Simple MEV impact calculation (this could be more sophisticated)
-    if (beforeTx != null && afterTx != null) {
-      final avgGasPrice = (int.parse(beforeTx['gasPrice'].toString()) +
-              int.parse(afterTx['gasPrice'].toString())) /
-          2e9;
-      final gasPriceDiff = currentGasPrice - avgGasPrice;
-      totalProfit = gasPriceDiff *
-          (int.parse(_analysisData['receipt']['gasUsed'].toString()) / 1e9) *
-          2000;
-
-      if (gasPriceDiff > 0) {
-        details.add(
-            'Transaction paid ${gasPriceDiff.toStringAsFixed(2)} Gwei more than average');
-      }
-    }
-
-    return {
-      'summary': 'Analysis of MEV impact on this transaction',
-      'details': details,
-      'profit': totalProfit.abs(),
-    };
   }
 
   Widget _buildAiAnalysisCard() {
@@ -1255,7 +1302,7 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade600.withOpacity(0.5),
+                    color: Colors.grey.shade600.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   height: 300,

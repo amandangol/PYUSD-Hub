@@ -33,7 +33,7 @@ class TraceHomeScreen extends StatelessWidget {
 
               // Main features section
               Text(
-                'Tracing Features',
+                'Core Tracing Features',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -73,21 +73,10 @@ class TraceHomeScreen extends StatelessWidget {
                 onTap: () => _navigateToTraceScreen(context, 2),
               ),
 
-              // MEV Analysis Card
-              _buildFeatureCard(
-                context: context,
-                title: 'MEV Analysis',
-                description:
-                    'Analyze MEV activities including sandwich attacks, frontrunning, and transaction ordering. Monitor and detect MEV opportunities.',
-                icon: Icons.analytics,
-                color: Colors.orange,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MevAnalysisScreen(),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 32),
+
+              // MEV Analysis Section
+              _buildMEVAnalysisSection(context),
 
               // Recent Activity Section
               if (recentTraces.isNotEmpty) ...[
@@ -325,7 +314,7 @@ class TraceHomeScreen extends StatelessWidget {
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -341,19 +330,40 @@ class TraceHomeScreen extends StatelessWidget {
               description:
                   'Transaction tracing allows you to see the step-by-step execution of a transaction, including all internal calls and state changes.',
             ),
-            const Divider(),
+            const SizedBox(height: 8),
             _buildDocItem(
               context: context,
               title: 'When to use block tracing?',
               description:
                   'Block tracing is useful when you want to analyze all transactions in a specific block, especially during high network activity periods.',
             ),
-            const Divider(),
+            const SizedBox(height: 8),
             _buildDocItem(
               context: context,
               title: 'Advanced tracing capabilities',
               description:
                   'Advanced tracing provides specialized methods for detailed blockchain analysis, including raw transaction tracing and storage inspection.',
+            ),
+            const SizedBox(height: 8),
+            _buildDocItem(
+              context: context,
+              title: 'Understanding MEV',
+              description:
+                  'Maximal Extractable Value (MEV) refers to the maximum value that can be extracted from block production in excess of the standard block reward and gas fees.',
+            ),
+            const SizedBox(height: 8),
+            _buildDocItem(
+              context: context,
+              title: 'Common MEV Strategies',
+              description:
+                  'MEV can be extracted through various strategies including sandwich attacks (front and back-running), arbitrage opportunities, and liquidations. Our tools help detect and analyze these patterns.',
+            ),
+            const SizedBox(height: 8),
+            _buildDocItem(
+              context: context,
+              title: 'Why Monitor MEV?',
+              description:
+                  'Monitoring MEV activities helps protect PYUSD users from potential value extraction, ensures fair trading conditions, and provides insights into market manipulation attempts.',
             ),
           ],
         ),
@@ -367,26 +377,55 @@ class TraceHomeScreen extends StatelessWidget {
     required String description,
   }) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+        ),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          backgroundColor: colorScheme.surface,
+          collapsedBackgroundColor: colorScheme.surface,
+          title: Text(
             title,
-            style: theme.textTheme.titleSmall?.copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
-            ),
+          iconColor: colorScheme.primary,
+          collapsedIconColor: colorScheme.primary,
+          leading: Icon(
+            Icons.info_outline,
+            color: colorScheme.primary,
+            size: 20,
           ),
-        ],
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Divider(color: colorScheme.outline.withOpacity(0.2)),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                description,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -417,5 +456,171 @@ class TraceHomeScreen extends StatelessWidget {
     } else {
       return 'Just now';
     }
+  }
+
+  Widget _buildMEVAnalysisSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'MEV Analysis Tools',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDarkMode
+                  ? [
+                      Colors.orange.withOpacity(0.2),
+                      Colors.deepOrange.withOpacity(0.1),
+                    ]
+                  : [
+                      Colors.orange.withOpacity(0.1),
+                      Colors.deepOrange.withOpacity(0.05),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.orange.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.analytics,
+                      color: Colors.deepOrange,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Maximal Extractable Value Analysis',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Monitor and analyze MEV activities in real-time',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isDarkMode ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildMEVFeatureItem(
+                context: context,
+                icon: Icons.warning_amber,
+                title: 'Sandwich Attack Detection',
+                description:
+                    'Identify and analyze sandwich attacks targeting PYUSD transactions',
+              ),
+              const SizedBox(height: 12),
+              _buildMEVFeatureItem(
+                context: context,
+                icon: Icons.speed,
+                title: 'Frontrunning Analysis',
+                description:
+                    'Detect frontrunning attempts and analyze their impact',
+              ),
+              const SizedBox(height: 12),
+              _buildMEVFeatureItem(
+                context: context,
+                icon: Icons.sort,
+                title: 'Transaction Ordering',
+                description:
+                    'Examine transaction ordering and its effects on PYUSD trades',
+              ),
+              const SizedBox(height: 20),
+              TraceButton(
+                text: 'Open MEV Analysis Tools',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MevAnalysisScreen(),
+                  ),
+                ),
+                backgroundColor: Colors.orange.withOpacity(0.2),
+                icon: Icons.analytics,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMEVFeatureItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: Colors.deepOrange,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                description,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDarkMode ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

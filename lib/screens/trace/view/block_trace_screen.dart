@@ -1331,6 +1331,15 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                if (_mevResults.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () {
+                      setState(() => _mevResults.clear());
+                    },
+                    tooltip: 'Clear Results',
+                  ),
               ],
             ),
             const SizedBox(height: 16),
@@ -1338,7 +1347,24 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
             const SizedBox(height: 16),
             _buildMEVOpportunityButtons(),
             const SizedBox(height: 16),
-            _buildMEVResults(),
+            if (_isAnalyzing)
+              const Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text(
+                      'Analyzing MEV activities...',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              _buildMEVResults(),
           ],
         ),
       ),
@@ -1346,45 +1372,67 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   }
 
   Widget _buildMEVOpportunityButtons() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildMEVButton(
-          'Sandwich Attacks',
-          Icons.fastfood,
-          Colors.red,
-          () => _analyzeSandwichAttacks(),
+        const Text(
+          'Select Analysis Type',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
         ),
-        _buildMEVButton(
-          'Transaction Ordering',
-          Icons.reorder,
-          Colors.blue,
-          () => _analyzeTransactionOrdering(),
-        ),
-        _buildMEVButton(
-          'MEV Opportunities',
-          Icons.trending_up,
-          Colors.green,
-          () => _identifyMEVOpportunities(),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildMEVButton(
+              'Sandwich Attacks',
+              Icons.fastfood,
+              Colors.red,
+              () => _analyzeSandwichAttacks(),
+              'Detect sandwich attack patterns in this block',
+            ),
+            _buildMEVButton(
+              'Transaction Ordering',
+              Icons.reorder,
+              Colors.blue,
+              () => _analyzeTransactionOrdering(),
+              'Analyze transaction ordering and gas prices',
+            ),
+            _buildMEVButton(
+              'MEV Opportunities',
+              Icons.trending_up,
+              Colors.green,
+              () => _identifyMEVOpportunities(),
+              'Find potential MEV opportunities',
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildMEVButton(
-      String label, IconData icon, Color color, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
-        foregroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: color.withOpacity(0.5)),
+  Widget _buildMEVButton(String label, IconData icon, Color color,
+      VoidCallback onPressed, String tooltip) {
+    return Tooltip(
+      message: tooltip,
+      child: ElevatedButton.icon(
+        onPressed: _isAnalyzing ? null : onPressed,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withOpacity(0.1),
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: color.withOpacity(0.5)),
+          ),
+          disabledBackgroundColor: Colors.grey.withOpacity(0.1),
+          disabledForegroundColor: Colors.grey,
         ),
       ),
     );
@@ -1392,12 +1440,35 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
 
   Widget _buildMEVResults() {
     if (_mevResults.isEmpty) {
-      return const Center(
-        child: Text(
-          'Click on any analysis type above to start MEV analysis',
-          style: TextStyle(
-            color: Colors.grey,
-            fontStyle: FontStyle.italic,
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        ),
+        child: const Center(
+          child: Column(
+            children: [
+              Icon(Icons.analytics_outlined, size: 48, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'No MEV Analysis Results',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Select an analysis type above to start',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -1413,34 +1484,252 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
-        ..._buildMEVResultWidgets(),
+        const SizedBox(height: 12),
+        ..._mevResults.map((result) => _buildMEVResultCard(result)).toList(),
       ],
     );
   }
 
-  List<Widget> _buildMEVResultWidgets() {
-    return _mevResults.map((result) {
-      final type = result['type'] as String;
-      final data = result['data'] as Map<String, dynamic>;
+  Widget _buildMEVResultCard(Map<String, dynamic> result) {
+    final type = result['type'] as String;
+    final data = result['data'] as Map<String, dynamic>;
+    final Color cardColor = _getMEVResultColor(type);
 
-      return Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          title: Text(type),
-          subtitle: Text(data['summary'] ?? 'No summary available'),
-          trailing: Text(
-            data['profit'] != null
-                ? '\$${data['profit'].toStringAsFixed(2)}'
-                : '',
-            style: const TextStyle(
-              color: Colors.green,
-              fontWeight: FontWeight.bold,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: cardColor.withOpacity(0.5)),
+      ),
+      child: ExpansionTile(
+        title: Row(
+          children: [
+            Icon(_getMEVResultIcon(type), size: 20, color: cardColor),
+            const SizedBox(width: 8),
+            Text(
+              type,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: cardColor,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Text(
+          data['summary'] ?? 'No summary available',
+          style: const TextStyle(fontSize: 13),
+        ),
+        trailing: data['profit'] != null
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Text(
+                  '\$${data['profit'].toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : null,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _buildDetailedResults(type, data),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedResults(String type, Map<String, dynamic> data) {
+    switch (type) {
+      case 'Sandwich Attacks':
+        return _buildSandwichAttackDetails(data);
+      case 'Transaction Ordering':
+        return _buildTransactionOrderingDetails(data);
+      case 'MEV Opportunities':
+        return _buildMEVOpportunitiesDetails(data);
+      default:
+        return const Text('No detailed information available');
+    }
+  }
+
+  Widget _buildSandwichAttackDetails(Map<String, dynamic> data) {
+    final attacks = data['attacks'] as List;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${attacks.length} Sandwich Attack Pattern${attacks.length == 1 ? '' : 's'} Detected',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...attacks
+            .map((attack) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          'Frontrun: ${FormatterUtils.formatHash(attack['frontrun']['hash'])}'),
+                      Text(
+                          'Victim: ${FormatterUtils.formatHash(attack['victim']['hash'])}'),
+                      Text(
+                          'Backrun: ${FormatterUtils.formatHash(attack['backrun']['hash'])}'),
+                      if (attack['profit'] != null)
+                        Text(
+                          'Estimated Profit: \$${attack['profit'].toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ))
+            .toList(),
+      ],
+    );
+  }
+
+  Widget _buildTransactionOrderingDetails(Map<String, dynamic> data) {
+    final transactions = data['transactions'] as List;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${transactions.length} Transactions Analyzed',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...transactions
+            .take(5)
+            .map((tx) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Hash: ${FormatterUtils.formatHash(tx['hash'])}'),
+                      Text(
+                          'Gas Price: ${tx['gasPrice'].toStringAsFixed(2)} Gwei'),
+                      if (tx['isPYUSDInteraction'])
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'PYUSD',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ))
+            .toList(),
+        if (transactions.length > 5)
+          Text(
+            '... and ${transactions.length - 5} more transactions',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildMEVOpportunitiesDetails(Map<String, dynamic> data) {
+    final opportunities = data['opportunities'] as List;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${opportunities.length} MEV Opportunit${opportunities.length == 1 ? 'y' : 'ies'} Found',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-      );
-    }).toList();
+        const SizedBox(height: 12),
+        ...opportunities
+            .map((opp) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Type: ${opp['type']}'),
+                      if (opp['transaction'] != null)
+                        Text(
+                            'Transaction: ${FormatterUtils.formatHash(opp['transaction']['hash'])}'),
+                      if (opp['estimatedProfit'] != null)
+                        Text(
+                          'Estimated Profit: \$${opp['estimatedProfit'].toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ))
+            .toList(),
+      ],
+    );
+  }
+
+  Color _getMEVResultColor(String type) {
+    switch (type) {
+      case 'Sandwich Attacks':
+        return Colors.red;
+      case 'Transaction Ordering':
+        return Colors.blue;
+      case 'MEV Opportunities':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getMEVResultIcon(String type) {
+    switch (type) {
+      case 'Sandwich Attacks':
+        return Icons.fastfood;
+      case 'Transaction Ordering':
+        return Icons.reorder;
+      case 'MEV Opportunities':
+        return Icons.trending_up;
+      default:
+        return Icons.analytics;
+    }
   }
 
   Future<void> _analyzeSandwichAttacks() async {
@@ -1471,8 +1760,8 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
     setState(() => _isAnalyzing = true);
     try {
       final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result =
-          await provider.analyzeTransactionOrdering(widget.blockNumber);
+      final result = await provider
+          .analyzeTransactionOrdering(widget.blockNumber.toString());
       if (result['success']) {
         setState(() {
           _mevResults.add({

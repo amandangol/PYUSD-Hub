@@ -32,28 +32,43 @@ class LoadingOverlay extends StatelessWidget {
                       color: Colors.black.withOpacity(0.3),
                     ),
                   ),
-                  // Loading content
+                  // Loading content in container
                   Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        if (loadingText != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            loadingText!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 24, horizontal: 32),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            spreadRadius: 2,
                           ),
                         ],
-                      ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          if (loadingText != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              loadingText!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ],

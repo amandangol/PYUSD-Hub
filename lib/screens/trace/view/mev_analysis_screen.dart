@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../provider/trace_provider.dart';
 import '../../../widgets/pyusd_components.dart';
+import '../../../widgets/loading_overlay.dart';
 import '../widgets/trace_widgets.dart';
+import '../../../utils/formatter_utils.dart';
 
 class MevAnalysisScreen extends StatefulWidget {
   const MevAnalysisScreen({super.key});
@@ -54,12 +57,12 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
               await provider.analyzeFrontrunning(_txHashController.text.trim());
           break;
         case 'Transaction Ordering':
-          final blockNumber = int.parse(_blockHashController.text.trim());
-          result = await provider.analyzeTransactionOrdering(blockNumber);
+          result = await provider
+              .analyzeTransactionOrdering(_blockHashController.text.trim());
           break;
         case 'MEV Opportunities':
           result = await provider
-              .identifyMEVOpportunities(_blockHashController.text.trim());
+              .analyzeMevOpportunities(_blockHashController.text.trim());
           break;
         case 'Historical MEV Events':
           final startBlock = int.parse(_startBlockController.text.trim());
@@ -90,6 +93,7 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
     switch (_selectedAnalysisType) {
       case 'Sandwich Attack Analysis':
       case 'MEV Opportunities':
+      case 'Transaction Ordering':
         if (_blockHashController.text.trim().isEmpty) {
           setState(() => _error = 'Block hash is required');
           return false;
@@ -107,19 +111,6 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
         }
         if (!_txHashController.text.trim().startsWith('0x')) {
           setState(() => _error = 'Transaction hash must start with 0x');
-          return false;
-        }
-        break;
-
-      case 'Transaction Ordering':
-        if (_blockHashController.text.trim().isEmpty) {
-          setState(() => _error = 'Block number is required');
-          return false;
-        }
-        try {
-          int.parse(_blockHashController.text.trim());
-        } catch (e) {
-          setState(() => _error = 'Invalid block number');
           return false;
         }
         break;
@@ -149,10 +140,106 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
     return true;
   }
 
-  Widget _buildAnalysisInputs() {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: PyusdAppBar(
+        title: 'MEV Analysis',
+        showLogo: false,
+        isDarkMode: Theme.of(context).brightness == Brightness.dark,
+        onRefreshPressed: _analysisResult != null ? _performAnalysis : null,
+      ),
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        loadingText: 'Analyzing MEV activities...',
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoSection(context),
+              _buildAnalysisTools(),
+              if (_error.isNotEmpty) _buildErrorMessage(),
+              if (_analysisResult != null) _buildAnalysisResults(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisTools() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'MEV Analysis Tools',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            _buildMethodSelector(),
+            const SizedBox(height: 24),
+            _buildInputFields(),
+            const SizedBox(height: 24),
+            _buildAnalyzeButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMethodSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select Analysis Type',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            'Sandwich Attack Analysis',
+            'Frontrunning Analysis',
+            'Transaction Ordering',
+            'MEV Opportunities',
+            'Historical MEV Events',
+          ]
+              .map((type) => ChoiceChip(
+                    label: Text(type),
+                    selected: _selectedAnalysisType == type,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedAnalysisType = type;
+                          _error = '';
+                          _analysisResult = null;
+                        });
+                      }
+                    },
+                  ))
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputFields() {
     switch (_selectedAnalysisType) {
       case 'Sandwich Attack Analysis':
       case 'MEV Opportunities':
+      case 'Transaction Ordering':
         return TraceInputField(
           controller: _blockHashController,
           label: 'Block Hash',
@@ -166,15 +253,6 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
           label: 'Transaction Hash',
           hintText: '0x...',
           prefixIcon: Icons.receipt,
-        );
-
-      case 'Transaction Ordering':
-        return TraceInputField(
-          controller: _blockHashController,
-          label: 'Block Number',
-          hintText: 'Enter block number',
-          prefixIcon: Icons.numbers,
-          isHexInput: false,
         );
 
       case 'Historical MEV Events':
@@ -203,27 +281,74 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
     }
   }
 
+  Widget _buildAnalyzeButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: TraceButton(
+        text: 'Analyze',
+        icon: Icons.analytics,
+        onPressed: _performAnalysis,
+        isLoading: _isLoading,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _error,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnalysisResults() {
-    if (_analysisResult == null) return const SizedBox();
-
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
     return Card(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Analysis Results',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(
+                  _getAnalysisIcon(),
+                  color: _getAnalysisColor(),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Analysis Results',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.copy),
+                  tooltip: 'Copy Results',
+                  onPressed: () => _copyResults(),
+                ),
+              ],
             ),
-            const Divider(),
-            const SizedBox(height: 8),
+            const Divider(height: 24),
             _buildResultContent(),
           ],
         ),
@@ -232,8 +357,6 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
   }
 
   Widget _buildResultContent() {
-    if (_analysisResult == null) return const SizedBox();
-
     switch (_selectedAnalysisType) {
       case 'Sandwich Attack Analysis':
         return _buildSandwichAttackResults();
@@ -253,327 +376,227 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
   Widget _buildSandwichAttackResults() {
     final attacks = _analysisResult?['sandwichAttacks'] as List? ?? [];
     if (attacks.isEmpty) {
-      return const Text('No sandwich attacks detected in this block');
+      return _buildEmptyResults('No sandwich attacks detected in this block');
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: attacks.map((attack) {
-        final profit = attack['profit'] as double? ?? 0.0;
-        return ListTile(
-          title: Text('Sandwich Attack'),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Frontrun: ${_truncateHash(attack['frontrun']['hash'])}'),
-              Text('Victim: ${_truncateHash(attack['victim']['hash'])}'),
-              Text('Backrun: ${_truncateHash(attack['backrun']['hash'])}'),
-              Text('Profit: \$${profit.toStringAsFixed(2)}'),
-            ],
-          ),
-        );
-      }).toList(),
+      children:
+          attacks.map((attack) => _buildSandwichAttackCard(attack)).toList(),
     );
   }
 
-  Widget _buildFrontrunningResults() {
-    final frontrunners = _analysisResult?['frontrunners'] as List? ?? [];
-    if (frontrunners.isEmpty) {
-      return const Text('No frontrunning detected for this transaction');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: frontrunners.map((frontrunner) {
-        final profit = frontrunner['profit'] as double? ?? 0.0;
-        return ListTile(
-          title: const Text('Frontrunning Transaction'),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                  'Hash: ${_truncateHash(frontrunner['transaction']['hash'])}'),
-              Text('Profit: \$${profit.toStringAsFixed(2)}'),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildTransactionOrderingResults() {
-    final transactions = _analysisResult?['transactions'] as List? ?? [];
-    if (transactions.isEmpty) {
-      return const Text('No transactions found in this block');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: transactions.map((tx) {
-        return ListTile(
-          title: Text(_truncateHash(tx['hash'])),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Gas Price: ${tx['gasPrice']} Gwei'),
-              if (tx['isPYUSDInteraction'])
-                const Text('PYUSD Interaction',
-                    style: TextStyle(color: Colors.blue)),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildMEVOpportunitiesResults() {
-    final opportunities = _analysisResult?['opportunities'] as List? ?? [];
-    if (opportunities.isEmpty) {
-      return const Text('No MEV opportunities detected in this block');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: opportunities.map((opp) {
-        return ListTile(
-          title: Text(opp['type']),
-          subtitle: Text(
-              'Estimated Profit: \$${(opp['estimatedProfit'] as double? ?? 0.0).toStringAsFixed(2)}'),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildHistoricalMEVResults() {
-    final events = _analysisResult?['events'] as List? ?? [];
-    if (events.isEmpty) {
-      return const Text('No MEV events found in the specified range');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: events.map((event) {
-        return ListTile(
-          title: Text('Block ${event['blockNumber']}'),
-          subtitle: Text('Type: ${event['type']}'),
-          onTap: () => _showEventDetails(event),
-        );
-      }).toList(),
-    );
-  }
-
-  void _showEventDetails(Map<String, dynamic> event) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('MEV Event Details'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Block: ${event['blockNumber']}'),
-              Text('Type: ${event['type']}'),
-              const SizedBox(height: 8),
-              Text('Data:', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text(event['data'].toString()),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _truncateHash(String hash) {
-    if (hash.length <= 10) return hash;
-    return '${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PyusdAppBar(
-        title: 'MEV Analysis',
-        showLogo: false,
-        isDarkMode: Theme.of(context).brightness == Brightness.dark,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoSection(context),
-            const SizedBox(height: 24),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'MEV Analysis Tools',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    TraceMethodSelector(
-                      selectedMethod: _selectedAnalysisType,
-                      onMethodChanged: (String newValue) {
-                        setState(() {
-                          _selectedAnalysisType = newValue;
-                          _error = '';
-                          _analysisResult = null;
-                        });
-                      },
-                      availableMethods: const [
-                        'Sandwich Attack Analysis',
-                        'Frontrunning Analysis',
-                        'Transaction Ordering',
-                        'MEV Opportunities',
-                        'Historical MEV Events',
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAnalysisInputs(),
-                    if (_error.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _error,
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    TraceButton(
-                      text: 'Analyze',
-                      icon: Icons.analytics,
-                      onPressed: _performAnalysis,
-                      isLoading: _isLoading,
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_analysisResult != null) _buildAnalysisResults(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
+  Widget _buildSandwichAttackCard(Map<String, dynamic> attack) {
+    final profit = attack['profit'] as double? ?? 0.0;
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDarkMode
-              ? [
-                  theme.colorScheme.primary.withOpacity(0.2),
-                  theme.colorScheme.primary.withOpacity(0.05),
-                ]
-              : [
-                  theme.colorScheme.primary.withOpacity(0.1),
-                  theme.colorScheme.primary.withOpacity(0.1),
-                ],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.analytics,
-                  color: theme.colorScheme.secondary,
-                  size: 24,
+              const Icon(Icons.warning_amber, color: Colors.orange),
+              const SizedBox(width: 8),
+              const Text(
+                'Sandwich Attack Detected',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
-                  'MEV Analysis Tools',
-                  style: theme.textTheme.titleLarge?.copyWith(
+                  '\$${profit.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.green,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Analyze Maximal Extractable Value (MEV) activities on the Ethereum network. Monitor sandwich attacks, frontrunning, and other MEV opportunities involving PYUSD.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          _buildMEVStats(context),
+          const Divider(height: 24),
+          _buildTransactionRow('Frontrun', attack['frontrun']['hash']),
+          _buildTransactionRow('Victim', attack['victim']['hash']),
+          _buildTransactionRow('Backrun', attack['backrun']['hash']),
         ],
       ),
     );
   }
 
-  Widget _buildMEVStats(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            context,
-            'Total MEV Events',
-            '${_analysisResult?['events']?.length ?? 0}',
-            Icons.timeline,
+  Widget _buildTransactionRow(String label, String hash) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.w500),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            context,
-            'Total Profit',
-            '\$${_calculateTotalProfit().toStringAsFixed(2)}',
-            Icons.attach_money,
+          Text(FormatterUtils.formatHash(hash)),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: hash));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Hash copied to clipboard')),
+              );
+            },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
+  Widget _buildFrontrunningResults() {
+    final frontrunning = _analysisResult?['frontrunning'];
+    if (frontrunning == null) {
+      return _buildEmptyResults(
+          'No frontrunning detected for this transaction');
+    }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode
-            ? theme.colorScheme.surface.withOpacity(0.1)
-            : theme.colorScheme.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.purple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.purple.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.speed, color: Colors.purple),
+              const SizedBox(width: 8),
+              const Text(
+                'Frontrunning Detected',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '\$${(frontrunning['frontrun']['profit'] as double? ?? 0.0).toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          _buildTransactionRow('Frontrunner', frontrunning['frontrun']['hash']),
+          _buildTransactionRow('Victim', frontrunning['victim']['hash']),
+          const SizedBox(height: 16),
+          Text(
+            'Block: ${frontrunning['blockNumber']}',
+            style: const TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionOrderingResults() {
+    final transactions = _analysisResult?['transactions'] as List? ?? [];
+    if (transactions.isEmpty) {
+      return _buildEmptyResults('No transactions found in this block');
+    }
+
+    return Column(
+      children:
+          transactions.map((tx) => _buildTransactionOrderCard(tx)).toList(),
+    );
+  }
+
+  Widget _buildTransactionOrderCard(Map<String, dynamic> tx) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTransactionRow('Transaction', tx['hash']),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                  'Gas Price: ${(tx['gasPrice'] / 1e9).toStringAsFixed(2)} Gwei'),
+              Text('Gas Used: ${tx['gasUsed']}'),
+            ],
+          ),
+          if (tx['status'] != null)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: tx['status'] == '0x1'
+                    ? Colors.green.withOpacity(0.1)
+                    : Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                tx['status'] == '0x1' ? 'Success' : 'Failed',
+                style: TextStyle(
+                  color: tx['status'] == '0x1' ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMEVOpportunitiesResults() {
+    final opportunities = _analysisResult?['opportunities'] as List? ?? [];
+    if (opportunities.isEmpty) {
+      return _buildEmptyResults('No MEV opportunities detected in this block');
+    }
+
+    return Column(
+      children: opportunities.map((opp) => _buildOpportunityCard(opp)).toList(),
+    );
+  }
+
+  Widget _buildOpportunityCard(Map<String, dynamic> opportunity) {
+    final profit = opportunity['profit'] as double? ?? 0.0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,54 +604,329 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
           Row(
             children: [
               Icon(
-                icon,
-                size: 16,
-                color: theme.colorScheme.primary,
+                opportunity['type'] == 'arbitrage'
+                    ? Icons.swap_horiz
+                    : Icons.warning,
+                color: Colors.green,
               ),
               const SizedBox(width: 8),
               Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                opportunity['type'].toString().toUpperCase(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '\$${profit.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const Divider(height: 24),
+          _buildTransactionRow('Transaction', opportunity['hash']),
+          const SizedBox(height: 8),
           Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            'Gas Price: ${(opportunity['gasPrice'] / 1e9).toStringAsFixed(2)} Gwei',
+            style: const TextStyle(color: Colors.grey),
           ),
         ],
       ),
     );
   }
 
-  double _calculateTotalProfit() {
-    if (_analysisResult == null) return 0.0;
-
-    double total = 0.0;
-
-    // Add profits from sandwich attacks
-    final attacks = _analysisResult?['sandwichAttacks'] as List? ?? [];
-    for (final attack in attacks) {
-      total += attack['profit'] as double? ?? 0.0;
+  Widget _buildHistoricalMEVResults() {
+    final events = _analysisResult?['events'] as List? ?? [];
+    if (events.isEmpty) {
+      return _buildEmptyResults('No MEV events found in the specified range');
     }
 
-    // Add profits from frontrunning
-    final frontrunners = _analysisResult?['frontrunners'] as List? ?? [];
-    for (final frontrunner in frontrunners) {
-      total += frontrunner['profit'] as double? ?? 0.0;
-    }
-
-    // Add profits from MEV opportunities
-    final opportunities = _analysisResult?['opportunities'] as List? ?? [];
-    for (final opp in opportunities) {
-      total += opp['estimatedProfit'] as double? ?? 0.0;
-    }
-
-    return total;
+    return Column(
+      children: [
+        _buildHistoricalStats(events),
+        const SizedBox(height: 16),
+        ...events.map((event) => _buildHistoricalEventCard(event)).toList(),
+      ],
+    );
   }
+
+  Widget _buildHistoricalStats(List<dynamic> events) {
+    double totalProfit = 0;
+    int sandwichAttacks = 0;
+    int mevOpportunities = 0;
+
+    for (final event in events) {
+      if (event['type'] == 'sandwich_attack') {
+        sandwichAttacks++;
+        totalProfit += event['data']['profit'] as double? ?? 0.0;
+      } else if (event['type'] == 'mev_opportunity') {
+        mevOpportunities++;
+        totalProfit += event['data']['profit'] as double? ?? 0.0;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Historical Analysis Summary',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const Divider(height: 24),
+          _buildStatRow('Total Events', events.length.toString()),
+          _buildStatRow('Sandwich Attacks', sandwichAttacks.toString()),
+          _buildStatRow('MEV Opportunities', mevOpportunities.toString()),
+          _buildStatRow('Total Profit', '\$${totalProfit.toStringAsFixed(2)}'),
+          _buildStatRow(
+            'Block Range',
+            '${_analysisResult!['startBlock']} - ${_analysisResult!['endBlock']}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoricalEventCard(Map<String, dynamic> event) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _getEventColor(event['type']).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border:
+            Border.all(color: _getEventColor(event['type']).withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_getEventIcon(event['type']),
+                  color: _getEventColor(event['type'])),
+              const SizedBox(width: 8),
+              Text(
+                _formatEventType(event['type']),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Text('Block: ${event['blockNumber']}'),
+          const SizedBox(height: 8),
+          if (event['data'] != null) ...[
+            if (event['data']['profit'] != null)
+              Text(
+                'Profit: \$${(event['data']['profit'] as double).toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyResults(String message) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              _getAnalysisIcon(),
+              size: 48,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getAnalysisIcon() {
+    switch (_selectedAnalysisType) {
+      case 'Sandwich Attack Analysis':
+        return Icons.warning_amber;
+      case 'Frontrunning Analysis':
+        return Icons.speed;
+      case 'Transaction Ordering':
+        return Icons.sort;
+      case 'MEV Opportunities':
+        return Icons.analytics;
+      case 'Historical MEV Events':
+        return Icons.history;
+      default:
+        return Icons.analytics;
+    }
+  }
+
+  Color _getAnalysisColor() {
+    switch (_selectedAnalysisType) {
+      case 'Sandwich Attack Analysis':
+        return Colors.orange;
+      case 'Frontrunning Analysis':
+        return Colors.purple;
+      case 'Transaction Ordering':
+        return Colors.blue;
+      case 'MEV Opportunities':
+        return Colors.green;
+      case 'Historical MEV Events':
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getEventColor(String type) {
+    switch (type) {
+      case 'sandwich_attack':
+        return Colors.orange;
+      case 'mev_opportunity':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getEventIcon(String type) {
+    switch (type) {
+      case 'sandwich_attack':
+        return Icons.warning_amber;
+      case 'mev_opportunity':
+        return Icons.analytics;
+      default:
+        return Icons.info;
+    }
+  }
+
+  String _formatEventType(String type) {
+    return type
+        .split('_')
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+  }
+
+  void _copyResults() {
+    final jsonString = FormatterUtils.formatJson(_analysisResult);
+    Clipboard.setData(ClipboardData(text: jsonString));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Analysis results copied to clipboard')),
+    );
+  }
+}
+
+Widget _buildInfoSection(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDarkMode = theme.brightness == Brightness.dark;
+
+  return Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isDarkMode
+            ? [
+                theme.colorScheme.primary.withOpacity(0.2),
+                theme.colorScheme.primary.withOpacity(0.05),
+              ]
+            : [
+                theme.colorScheme.primary.withOpacity(0.1),
+                theme.colorScheme.primary.withOpacity(0.1),
+              ],
+      ),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.analytics,
+                color: theme.colorScheme.secondary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'MEV Analysis Tools',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Analyze Maximal Extractable Value (MEV) activities on the Ethereum network. Monitor sandwich attacks, frontrunning, and other MEV opportunities involving PYUSD.',
+          style: theme.textTheme.bodyMedium,
+        ),
+      ],
+    ),
+  );
 }
