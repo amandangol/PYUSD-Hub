@@ -40,6 +40,48 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
     }
   }
 
+  Widget _buildFilterChips() {
+    return Consumer<NewsProvider>(
+      builder: (context, provider, child) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: NewsCategory.values.map((category) {
+                final isSelected =
+                    provider.selectedCategories.contains(category);
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: FilterChip(
+                    selected: isSelected,
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          category.icon,
+                          size: 16,
+                          color: isSelected
+                              ? Colors.white
+                              : category.color.withOpacity(0.8),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(category.displayName),
+                      ],
+                    ),
+                    selectedColor: category.color,
+                    checkmarkColor: Colors.white,
+                    onSelected: (_) => provider.toggleCategory(category),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -62,7 +104,7 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
           slivers: [
             // News Section Header
             SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               sliver: SliverToBoxAdapter(
                 child: Text(
                   'Latest News',
@@ -71,6 +113,15 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                   ),
                 ),
               ),
+            ),
+
+            // Filter Chips
+            SliverToBoxAdapter(
+              child: _buildFilterChips(),
+            ),
+
+            const SliverPadding(
+              padding: EdgeInsets.symmetric(vertical: 8),
             ),
 
             // News List
@@ -115,9 +166,26 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                 final filteredNews = newsProvider.filterNews();
 
                 if (filteredNews.isEmpty) {
-                  return const SliverFillRemaining(
+                  return SliverFillRemaining(
                     child: Center(
-                      child: Text('No news available'),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.article_outlined,
+                            size: 64,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No news available for selected categories',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
@@ -128,20 +196,6 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                       final article = filteredNews[index];
                       final publishedAt =
                           DateTime.parse(article['publishedAt']);
-                      final title = article['title'].toLowerCase();
-                      final description =
-                          article['description']?.toLowerCase() ?? '';
-                      final content = article['content']?.toLowerCase() ?? '';
-
-                      final isEthereumFocused = title.contains('ethereum') ||
-                          description.contains('ethereum') ||
-                          content.contains('ethereum');
-                      final isPYUSDFocused = title.contains('pyusd') ||
-                          description.contains('pyusd') ||
-                          content.contains('pyusd') ||
-                          title.contains('paypal usd') ||
-                          description.contains('paypal usd') ||
-                          content.contains('paypal usd');
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(
@@ -185,34 +239,6 @@ class _NewsExploreScreenState extends State<NewsExploreScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        children: [
-                                          if (isEthereumFocused)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  right: 8),
-                                              child: Chip(
-                                                label: const Text('ETH'),
-                                                backgroundColor: Colors.blue
-                                                    .withOpacity(0.2),
-                                                labelStyle: TextStyle(
-                                                    color: Colors.blue.shade700,
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ),
-                                          if (isPYUSDFocused)
-                                            Chip(
-                                              label: const Text('PYUSD'),
-                                              backgroundColor:
-                                                  Colors.green.withOpacity(0.2),
-                                              labelStyle: TextStyle(
-                                                  color: Colors.green.shade700,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
                                       Text(
                                         article['title'],
                                         style: theme.textTheme.titleMedium

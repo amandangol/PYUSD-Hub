@@ -47,9 +47,9 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
       await authProvider.createWallet(_pinController.text);
 
       if (mounted && authProvider.wallet != null) {
-        // Navigate to mnemonic confirmation screen with the PIN
+        // Navigate to show mnemonic screen with the PIN
         Navigator.of(context).pushNamed(
-          AppRoutes.mnemonic,
+          AppRoutes.showMnemonic,
           arguments: {
             'mnemonic': authProvider.wallet!.mnemonic,
             'pin': _pinController.text,

@@ -15,7 +15,7 @@ import 'providers/gemini_provider.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
-import 'screens/insights/service/news_service.dart';
+import 'screens/news/service/news_service.dart';
 import 'screens/insights/view/insights_screen.dart';
 import 'screens/settings/view/settings_screen.dart';
 import 'screens/trace/provider/trace_provider.dart';
@@ -33,7 +33,7 @@ import 'services/notification_service.dart';
 // Screens
 import 'screens/wallet/view/wallet_screen.dart';
 import 'screens/networkcongestion/view/network_congestion_screen.dart';
-import 'screens/insights/provider/news_provider.dart';
+import 'screens/news/provider/news_provider.dart';
 import 'services/bigquery_service.dart';
 import 'providers/navigation_provider.dart';
 import 'widgets/bottom_navigation.dart';

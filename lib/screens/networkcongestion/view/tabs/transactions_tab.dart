@@ -65,7 +65,6 @@ class _TransactionsTabState extends State<TransactionsTab> {
     // Calculate unique addresses
     int uniqueAddresses = _calculateUniqueAddresses(transactions);
 
-    // Use the actual count of recent transactions for consistency
     final recentTxCount = transactions.length;
 
     return Card(

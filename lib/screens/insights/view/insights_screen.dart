@@ -7,7 +7,7 @@ import '../provider/insights_provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../widgets/exchangelist_screen.dart';
 import '../widgets/exchange_list_item.dart';
-import 'news_explore_screen.dart';
+import '../../news/view/news_explore_screen.dart';
 
 class InsightsScreen extends StatelessWidget {
   const InsightsScreen({super.key});

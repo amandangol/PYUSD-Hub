@@ -7,7 +7,7 @@ import '../../authentication/provider/auth_provider.dart';
 import '../../authentication/model/wallet.dart';
 import '../../authentication/widget/pin_input_widget.dart.dart';
 import '../../../utils/snackbar_utils.dart';
-import '../../insights/view/news_explore_screen.dart';
+import '../../news/view/news_explore_screen.dart';
 import 'notification_settings_screen.dart';
 import '../../../routes/app_routes.dart';
 import 'pyusd_info_screen.dart';

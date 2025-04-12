@@ -5,7 +5,8 @@ import '../screens/authentication/screen/login_screen.dart';
 import '../screens/authentication/screen/wallet_selection_screen.dart';
 import '../screens/authentication/screen/create_wallet_screen.dart';
 import '../screens/authentication/screen/import_wallet_screen.dart';
-import '../screens/authentication/screen/mnemonic_screen.dart';
+import '../screens/authentication/screen/show_mnemonic_screen.dart';
+import '../screens/authentication/screen/verify_mnemonic_screen.dart';
 import '../screens/settings/view/settings_screen.dart';
 import '../screens/onboarding/view/onboarding_screen.dart';
 
@@ -26,7 +27,8 @@ class AppRoutes {
   static const String walletSelection = '/wallet-selection';
   static const String createWallet = '/create-wallet';
   static const String importWallet = '/import-wallet';
-  static const String mnemonic = '/mnemonic';
+  static const String showMnemonic = '/show-mnemonic';
+  static const String verifyMnemonic = '/verify-mnemonic';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     final String? routeName = settings.name;
@@ -89,10 +91,19 @@ class AppRoutes {
         builder: (_) => const ImportWalletScreen(),
         settings: settings,
       );
-    } else if (routeName == mnemonic) {
+    } else if (routeName == showMnemonic) {
       final args = settings.arguments as Map<String, dynamic>?;
       return MaterialPageRoute(
-        builder: (_) => MnemonicConfirmationScreen(
+        builder: (_) => ShowMnemonicScreen(
+          mnemonic: args?['mnemonic'] as String,
+          pin: args?['pin'] as String,
+        ),
+        settings: settings,
+      );
+    } else if (routeName == verifyMnemonic) {
+      final args = settings.arguments as Map<String, dynamic>?;
+      return MaterialPageRoute(
+        builder: (_) => VerifyMnemonicScreen(
           mnemonic: args?['mnemonic'] as String,
           pin: args?['pin'] as String,
         ),

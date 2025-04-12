@@ -242,27 +242,11 @@ class TransactionProvider extends ChangeNotifier
     try {
       final currentNetwork = _networkProvider.currentNetwork;
 
-      // Get current pending transactions before refreshing
-      final currentPendingTransactions = _pendingTransactions.values
-          .where((tx) => tx.network == currentNetwork)
-          .toList();
+      // Store current pending transactions before refresh
+      final currentPendingTransactions =
+          Map<String, TransactionModel>.from(_pendingTransactions);
 
-      // Check if we have cached data that's still valid
-      if (!forceRefresh &&
-          _transactionsByNetwork.containsKey(currentNetwork) &&
-          _transactionsByNetwork[currentNetwork]!.isNotEmpty &&
-          _lastRefresh != null) {
-        final cacheAge = DateTime.now().difference(_lastRefresh!);
-        if (cacheAge < const Duration(minutes: 5)) {
-          // Use cached data if it's less than 5 minutes old
-          _isFetchingTransactions = false;
-          safeNotifyListeners(this);
-          _isRefreshLocked = false;
-          return;
-        }
-      }
-
-      // Use a more efficient approach to fetch transactions
+      // Get transactions from network
       final transactions = await _fetchAllTransactions(address, currentNetwork);
 
       if (disposed) return;
@@ -270,9 +254,14 @@ class TransactionProvider extends ChangeNotifier
       // Update transaction state while preserving pending transactions
       _updateTransactionState(transactions, currentNetwork, forceRefresh);
 
-      // Restart monitoring for any pending transactions that were preserved
-      for (var pendingTx in currentPendingTransactions) {
-        if (_pendingTransactions.containsKey(pendingTx.hash)) {
+      // Restore pending transactions that weren't found in new transactions
+      for (var pendingTx in currentPendingTransactions.values) {
+        final isStillPending = !transactions.any((tx) =>
+            tx.hash == pendingTx.hash &&
+            tx.status != TransactionStatus.pending);
+
+        if (isStillPending) {
+          _pendingTransactions[pendingTx.hash] = pendingTx;
           _startTransactionMonitoring(pendingTx.hash);
         }
       }
@@ -364,22 +353,37 @@ class TransactionProvider extends ChangeNotifier
     }
 
     // Get current pending transactions for this network
-    final currentPendingTransactions = _pendingTransactions.values
-        .where((tx) => tx.network == network)
-        .toList();
+    final currentPendingTransactions =
+        Map<String, TransactionModel>.from(_pendingTransactions)
+            .values
+            .where((tx) => tx.network == network)
+            .toList();
 
     // Filter out any pending transactions that have been confirmed or failed
     final updatedPendingTransactions =
         currentPendingTransactions.where((pendingTx) {
-      final newTx = newTransactions.firstWhere(
+      final matchingNewTx = newTransactions.firstWhere(
         (tx) => tx.hash == pendingTx.hash,
         orElse: () => pendingTx,
       );
-      return newTx.status == TransactionStatus.pending;
+
+      // Keep the transaction as pending if it's still pending or not found in new transactions
+      return matchingNewTx.status == TransactionStatus.pending;
     }).toList();
 
-    // Update pending transactions map
+    // Update pending transactions map while preserving network-specific pending transactions
+    final otherNetworkPendingTxs = _pendingTransactions.values
+        .where((tx) => tx.network != network)
+        .toList();
+
     _pendingTransactions.clear();
+
+    // Restore pending transactions for other networks
+    for (var tx in otherNetworkPendingTxs) {
+      _pendingTransactions[tx.hash] = tx;
+    }
+
+    // Add back pending transactions for current network
     for (var tx in updatedPendingTransactions) {
       _pendingTransactions[tx.hash] = tx;
     }
@@ -566,7 +570,7 @@ class TransactionProvider extends ChangeNotifier
   Future<void> _monitorInBackground(String txHash) async {
     Timer? monitoringTimer;
     int retryCount = 0;
-    const maxRetries = 20; // Maximum number of retries (1 minute total)
+    const maxRetries = 60; // Increased max retries to 3 minutes total
 
     monitoringTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (!_activeMonitoring.containsKey(txHash) ||
@@ -604,9 +608,6 @@ class TransactionProvider extends ChangeNotifier
 
             // Force refresh to update the transaction list and balances
             await refreshWalletData(forceRefresh: true);
-
-            // Notify listeners to update UI
-            notifyListeners();
           }
         } else if (details?.status == TransactionStatus.failed) {
           _pendingTransactions.remove(txHash);
@@ -615,29 +616,60 @@ class TransactionProvider extends ChangeNotifier
 
           // Force refresh to update the transaction list
           await refreshWalletData(forceRefresh: true);
-          notifyListeners();
         } else {
           // Transaction is still pending
           retryCount++;
           if (retryCount >= maxRetries) {
-            // If we've reached max retries, stop monitoring but keep the transaction as pending
-            _activeMonitoring[txHash] = false;
+            // If we've reached max retries, keep monitoring but at a longer interval
             timer.cancel();
-            print(
-                'Stopped monitoring transaction $txHash after $maxRetries retries');
+            _monitorWithLongerInterval(txHash);
           }
         }
       } catch (e) {
         print('Background monitoring error for $txHash: $e');
         retryCount++;
         if (retryCount >= maxRetries) {
-          _activeMonitoring[txHash] = false;
           timer.cancel();
+          _monitorWithLongerInterval(txHash);
         }
+      }
+
+      if (!disposed) {
+        notifyListeners();
       }
     });
 
     _pendingTransactionTimers[txHash] = monitoringTimer;
+  }
+
+  void _monitorWithLongerInterval(String txHash) {
+    Timer? longerIntervalTimer;
+    longerIntervalTimer =
+        Timer.periodic(const Duration(minutes: 1), (timer) async {
+      try {
+        final details = await _rpcService.getTransactionDetails(
+          _networkProvider.currentRpcEndpoint,
+          txHash,
+          _networkProvider.currentNetwork,
+          _authProvider.getCurrentAddress() ?? '',
+        );
+
+        if (details?.status != TransactionStatus.pending) {
+          timer.cancel();
+          _activeMonitoring[txHash] = false;
+          _pendingTransactions.remove(txHash);
+          await refreshWalletData(forceRefresh: true);
+        }
+      } catch (e) {
+        print('Long interval monitoring error for $txHash: $e');
+      }
+
+      if (!disposed) {
+        notifyListeners();
+      }
+    });
+
+    _pendingTransactionTimers[txHash] = longerIntervalTimer;
   }
 
   Future<void> refreshWalletData({bool forceRefresh = false}) async {
