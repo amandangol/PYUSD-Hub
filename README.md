@@ -62,6 +62,13 @@ flutter run
 - **Import Functionality**: Recovery phrase wallet import
 - **Multi-factor Authentication**: Additional security layers
 - **Session Management**: Automatic timeout and secure persistence
+  
+<img src="https://github.com/user-attachments/assets/aca4bba5-59d4-44c9-9c9b-901e43d97005" alt="onboarding" height="500">
+<img src="https://github.com/user-attachments/assets/14630495-b293-4d68-aeaa-3fd17e0a6dbd" alt="walletselection" height="500">
+<img src="https://github.com/user-attachments/assets/0b6f7b06-dabe-4520-82ae-d868bb85544e" alt="login" height="500">
+<img src="https://github.com/user-attachments/assets/0f28bde0-a42d-42c5-81b7-06a57587dabd" alt="mnemonic" height="500">
+<img src="https://github.com/user-attachments/assets/f2ab9f82-5728-4dac-9315-aa9618d52b22" alt="importscreen" height="500">
+
 
 ### 💼 Wallet Management
 - **Balance Tracking**: Real-time ETH and PYUSD balances
