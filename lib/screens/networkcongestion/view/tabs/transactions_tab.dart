@@ -356,6 +356,11 @@ class _TransactionsTabState extends State<TransactionsTab> {
                             ),
                             _buildTransactionListItem(
                                 context, transaction, colorScheme),
+                            Divider(
+                              height: 1,
+                              color:
+                                  colorScheme.outlineVariant.withOpacity(0.2),
+                            ),
                           ],
                         );
                       }

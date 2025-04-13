@@ -167,7 +167,7 @@ class InsightsScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Image.asset(
-                    'assets/images/pyusd_logo.png',
+                    'assets/images/pyusdlogo.png',
                     width: 36,
                     height: 36,
                   ),

@@ -177,7 +177,6 @@ class MarketService {
   // Expanded fallback logo URLs for common exchanges using more reliable sources
   String _getFallbackLogoUrl(String exchangeName) {
     final Map<String, String> logoUrls = {
-      // Major exchanges using Cryptoicons.org (very reliable)
       'binance': 'https://cryptoicons.org/api/icon/bnb/200',
       'coinbase':
           'https://assets.coingecko.com/markets/images/23/small/Coinbase_Coin_Primary.png?1621471875',
@@ -189,20 +188,22 @@ class MarketService {
           'https://altcoinsbox.com/wp-content/uploads/photo-gallery/imported_from_media_libray/thumb/full-okx-logo.webp?bwg=1678268855',
       'hotcoin':
           'https://play-lh.googleusercontent.com/HbJkWMMZCwJQcA6LARySFQ-oimSubel1f2b0YCXyDgPYeny4rkZKq0cAX208wNZofBDO=w240-h480-rw',
-
-      // Using Cryptologos.cc (very stable CDN)
-      'uniswap': 'https://cryptologos.cc/logos/uniswap-uni-logo.png',
-      'curve': 'https://cryptologos.cc/logos/curve-dao-token-crv-logo.png',
-      'orca': 'https://cryptologos.cc/logos/orca-orca-logo.png',
-      'raydium': 'https://cryptologos.cc/logos/raydium-ray-logo.png',
+      'uniswap':
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Uniswap_Logo.svg/1200px-Uniswap_Logo.svg.png',
+      'curve':
+          'https://cdn.jsdelivr.net/gh/curvefi/curve-assets/branding/logo.png',
+      'orca':
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQDdu_bh5yJc4fXMxsGEDyZ9_SxawifHtMh8A&s',
+      'raydium': 'https://s2.coinmarketcap.com/static/img/coins/64x64/8526.png',
       'bitget':
-          'https://cryptologos.cc/logos/bitget-token-new-bgb-logo.png?v=040',
+          'https://s2.coinmarketcap.com/static/img/coins/200x200/11092.png',
       'htx': 'https://img.cryptorank.io/exchanges/150x150.htx1694688626857.png',
-      'latoken': 'https://cryptologos.cc/logos/latoken-la-logo.png?v=040',
-      'kucoin': 'https://cryptologos.cc/logos/kucoin-token-kcs-logo.png?v=040',
+      'latoken': 'https://api.latoken.com/doc/v2/logo.png',
+      'kucoin': 'https://avatars.githubusercontent.com/u/6188901?s=280&v=4',
       'grovex':
           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPGzinAdxmz_eOFtSfwN8BOe3XDvAJs0WxWQ&s',
-      // Using CDN-hosted logos from exchange websites (most reliable)
+      'bingx':
+          'https://upload.wikimedia.org/wikipedia/commons/1/1e/Bingxlogo.png',
       'bullish':
           'https://pbs.twimg.com/profile_images/1675741304209408000/SMMO4Sd1_400x400.jpg',
       'bybit':
@@ -210,18 +211,17 @@ class MarketService {
       'mexc': 'https://www.mexc.com/assets/images/logo/mexc-logo.svg',
       'crypto.com':
           'https://assets.coingecko.com/markets/images/589/small/crypto_com.jpg?1629861084',
-      'gate.io': 'https://www.gate.io/images/logo/gate-logo-black.svg',
+      'gate.io':
+          'https://cdn6.aptoide.com/imgs/5/d/e/5def8825b276d757f9f0bcd00bdf842a_fgraphic.png',
       'bitfinex': 'https://www.bitfinex.com/assets/bfx-stacked-darkmode.svg',
       'changenow':
-          'https://images.seeklogo.com/logo-png/45/1/changenow-now-logo-png_seeklogo-452688.png',
-
-      // Using GitHub repositories for logos (also reliable)
-      'gemini':
-          'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xd0d6D6C5Fe4a677D343cC433536BB717bAe167dD/logo.png',
-      'bitstamp':
-          'https://raw.githubusercontent.com/trustwallet/assets/master/dapps/bitstamp.com.png',
-      'bittrex':
-          'https://raw.githubusercontent.com/trustwallet/assets/master/dapps/bittrex.com.png',
+          'https://www.cryptimi.com/wp-content/uploads/2019/07/ChangeNow-Exchange-Logo.png',
+      'icrypex':
+          'https://logowik.com/content/uploads/images/icrypex-crypto-exchange2909.jpg',
+      'tokenize':
+          'https://tokenize.exchange/assets/images/common/tokenize-logo.png',
+      'manifest':
+          'https://www.manifestmedex.org/wp-content/uploads/Email-Header-690x330px-40.png',
     };
 
     // Try exact match first

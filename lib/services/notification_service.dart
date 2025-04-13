@@ -1,8 +1,6 @@
 import 'dart:io';
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
-
 import '../screens/transactions/model/transaction_model.dart';
 
 class NotificationService {
@@ -304,7 +302,6 @@ class NotificationService {
     }
   }
 
-  // Add getters and setters for notification states
   bool get networkCongestionNotificationsEnabled =>
       _networkCongestionNotificationsEnabled;
 

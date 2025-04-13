@@ -67,6 +67,7 @@ dependencies:
   google_generative_ai: ^0.2.0
   flutter_markdown: ^0.7.6+2
   flutter_svg: ^2.0.17
+  flutter_launcher_icons: ^0.14.3
 
 dev_dependencies:
   flutter_test:

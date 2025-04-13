@@ -354,17 +354,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const FirstTimeOnboardingScreen(),
-                              ));
-                        },
-                        child: const Text('Test Onboarding')),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),

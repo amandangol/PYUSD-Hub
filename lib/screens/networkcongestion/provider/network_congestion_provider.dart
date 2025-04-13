@@ -506,12 +506,12 @@ class NetworkCongestionProvider with ChangeNotifier {
       );
 
       // Log the results for debugging
-      print('Pending Queue Status:');
-      print('Total Pending: $pendingCount');
-      print('Total Queued: $queuedCount');
-      print('PYUSD Pending: $pyusdPendingCount');
-      print('PYUSD Queued: $pyusdQueuedCount');
-      print('Average PYUSD Fee: $averagePyusdFee Gwei');
+      // print('Pending Queue Status:');
+      // print('Total Pending: $pendingCount');
+      // print('Total Queued: $queuedCount');
+      // print('PYUSD Pending: $pyusdPendingCount');
+      // print('PYUSD Queued: $pyusdQueuedCount');
+      // print('Average PYUSD Fee: $averagePyusdFee Gwei');
 
       _safeNotifyListeners();
     } catch (e) {

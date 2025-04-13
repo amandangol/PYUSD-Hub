@@ -5,6 +5,7 @@ import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
 import '../../../widgets/pyusd_components.dart';
+import '../provider/mev_analysis_provider.dart';
 import '../provider/trace_provider.dart';
 import '../widgets/trace_widgets.dart';
 import 'transaction_trace_screen.dart';
@@ -1778,8 +1779,10 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   Future<void> _analyzeSandwichAttacks() async {
     setState(() => _isAnalyzing = true);
     try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result = await provider.analyzeSandwichAttacks(_blockData['hash']);
+      final mevProvider =
+          Provider.of<MevAnalysisProvider>(context, listen: false);
+      final result =
+          await mevProvider.analyzeSandwichAttacks(_blockData['hash']);
 
       final attacks = result['sandwichAttacks'] as List? ?? [];
       double totalProfit = 0.0;
@@ -1829,9 +1832,11 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   Future<void> _analyzeTransactionOrdering() async {
     setState(() => _isAnalyzing = true);
     try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
+      final mevProvider =
+          Provider.of<MevAnalysisProvider>(context, listen: false);
+
       final result =
-          await provider.analyzeTransactionOrdering(_blockData['hash']);
+          await mevProvider.analyzeTransactionOrdering(_blockData['hash']);
 
       if (!mounted) return;
 
@@ -1880,8 +1885,11 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
   Future<void> _identifyMEVOpportunities() async {
     setState(() => _isAnalyzing = true);
     try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result = await provider.analyzeMevOpportunities(_blockData['hash']);
+      final mevProvider =
+          Provider.of<MevAnalysisProvider>(context, listen: false);
+
+      final result =
+          await mevProvider.analyzeMevOpportunities(_blockData['hash']);
 
       if (!mounted) return;
 

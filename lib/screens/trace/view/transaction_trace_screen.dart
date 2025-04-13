@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import '../../../../widgets/loading_overlay.dart';
 
 import '../../../widgets/pyusd_components.dart';
+import '../provider/mev_analysis_provider.dart';
 import '../provider/trace_provider.dart';
 import '../../../providers/gemini_provider.dart';
 import '../widgets/trace_widgets.dart';
@@ -614,8 +616,10 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
     });
 
     try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result = await provider.analyzeFrontrunning(widget.txHash);
+      final mevProvider =
+          Provider.of<MevAnalysisProvider>(context, listen: false);
+
+      final result = await mevProvider.analyzeFrontrunning(widget.txHash);
 
       if (!mounted) return;
 
@@ -681,8 +685,10 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
     });
 
     try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
-      final result = await provider.analyzeMEVImpact(widget.txHash);
+      final mevProvider =
+          Provider.of<MevAnalysisProvider>(context, listen: false);
+
+      final result = await mevProvider.analyzeMEVImpact(widget.txHash);
 
       if (!mounted) return;
 
@@ -959,24 +965,28 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                       color: Colors.blue.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      txType,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                    child: MarkdownBody(
+                      data: txType,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          fontSize: 15,
+                          height: 1.5,
+                          color: textColor,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                summary,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: textColor,
+              MarkdownBody(
+                data: summary,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: textColor,
+                  ),
                 ),
               ),
             ],
@@ -1088,12 +1098,14 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
           leading: const Icon(Icons.code),
           childrenPadding: const EdgeInsets.all(16),
           children: [
-            Text(
-              technicalInsights,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: textColor,
+            MarkdownBody(
+              data: technicalInsights,
+              styleSheet: MarkdownStyleSheet(
+                p: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: textColor,
+                ),
               ),
             ),
           ],
@@ -1104,12 +1116,14 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
           leading: const Icon(Icons.local_gas_station),
           childrenPadding: const EdgeInsets.all(16),
           children: [
-            Text(
-              gasAnalysis,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: textColor,
+            MarkdownBody(
+              data: gasAnalysis,
+              styleSheet: MarkdownStyleSheet(
+                p: TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: textColor,
+                ),
               ),
             ),
           ],
@@ -1167,12 +1181,14 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                humanReadable,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: textColor,
+              MarkdownBody(
+                data: humanReadable,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: textColor,
+                  ),
                 ),
               ),
             ],

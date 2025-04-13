@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
@@ -136,61 +137,61 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final provider = Provider.of<TraceProvider>(context);
 
-    return LoadingOverlay(
-      isLoading: provider.isLoading,
-      loadingText: 'Loading advanced trace data...',
-      body: Scaffold(
-        appBar: CustomAppBar(
-          title: 'Advanced Trace: ${widget.traceMethod}',
-          isDarkMode: isDarkMode,
-          onBackPressed: () => Navigator.pop(context),
-          onRefreshPressed: _loadTraceData,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.psychology),
-              tooltip: 'AI Analysis',
-              onPressed: _isLoading ? null : _getAiAnalysis,
-            ),
-          ],
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage.isNotEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.red,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Error',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _errorMessage,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _loadTraceData,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Try Again'),
-                          ),
-                        ],
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Advanced Trace: ${widget.traceMethod}',
+        isDarkMode: isDarkMode,
+        onBackPressed: () => Navigator.pop(context),
+        onRefreshPressed: _loadTraceData,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.psychology),
+            tooltip: 'AI Analysis',
+            onPressed: _isLoading ? null : _getAiAnalysis,
+          ),
+        ],
+      ),
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        loadingText: 'Loading advanced trace data...',
+        body: _errorMessage.isNotEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 48,
                       ),
-                    ),
-                  )
-                : _buildTraceContent(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMessage,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 24),
+                      TraceButton(
+                        text: 'Try Again',
+                        horizontalPadding: 20,
+                        onPressed: _loadTraceData,
+                        icon: Icons.refresh,
+                        backgroundColor: Colors.blue,
+                        verticalPadding: 10,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : _buildTraceContent(),
       ),
     );
   }
@@ -271,32 +272,28 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            ...widget.traceParams.entries
-                .map((entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${entry.key}: ',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              entry.value.toString(),
-                              style: TextStyle(
-                                color: isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
+            ...widget.traceParams.entries.map((entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${entry.key}: ',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ))
-                ,
+                      Expanded(
+                        child: Text(
+                          entry.value.toString(),
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
           ],
         ),
       ),
@@ -494,12 +491,14 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                summary,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: textColor,
+              MarkdownBody(
+                data: summary,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: textColor,
+                  ),
                 ),
               ),
             ],
@@ -535,12 +534,14 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                technicalDetails,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: textColor,
+              MarkdownBody(
+                data: technicalDetails,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: textColor,
+                  ),
                 ),
               ),
             ],
@@ -576,12 +577,14 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                insights,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: textColor,
+              MarkdownBody(
+                data: insights,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: textColor,
+                  ),
                 ),
               ),
             ],
@@ -617,12 +620,14 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                recommendations,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: textColor,
+              MarkdownBody(
+                data: recommendations,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: textColor,
+                  ),
                 ),
               ),
             ],
@@ -760,140 +765,406 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
   }
 
   Widget _buildTransactionTraceVisualization() {
-    final traces = _traceData['trace'] ?? _traceData['traces'];
-    if (traces == null) {
+    final traceData = _traceData['trace'];
+    if (traceData == null) {
       return const Center(child: Text('No trace data available'));
     }
+
+    final transaction = _traceData['transaction'] as Map<String, dynamic>?;
+    final receipt = _traceData['receipt'] as Map<String, dynamic>?;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        // Transaction Overview Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Transaction Overview',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (transaction != null) ...[
+                _buildTransactionDetail(
+                    'Hash', transaction['hash']?.toString()),
+                _buildTransactionDetail(
+                    'From', transaction['from']?.toString()),
+                _buildTransactionDetail('To', transaction['to']?.toString()),
+                _buildTransactionDetail(
+                  'Value',
+                  FormatterUtils.formatEthFromHex(
+                      transaction['value']?.toString() ?? '0x0'),
+                ),
+                _buildTransactionDetail(
+                  'Gas Price',
+                  FormatterUtils.formatGasPrice(
+                      int.parse(transaction['gasPrice']?.toString() ?? '0x0')),
+                ),
+              ],
+              if (receipt != null) ...[
+                _buildTransactionDetail(
+                  'Status',
+                  receipt['status'] == '0x1' ? 'Success' : 'Failed',
+                  color: receipt['status'] == '0x1' ? Colors.green : Colors.red,
+                ),
+                _buildTransactionDetail(
+                  'Gas Used',
+                  FormatterUtils.formatGas(
+                      receipt['gasUsed']?.toString() ?? '0x0'),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Call Hierarchy Section
+        Text(
           'Call Hierarchy',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 16),
-        _buildTraceTree(traces),
+        _buildCallTree(traceData as Map<String, dynamic>?),
+
+        const SizedBox(height: 24),
+
+        // Trace Statistics
+        if (traceData is Map<String, dynamic>) _buildTraceStatistics(traceData),
       ],
     );
   }
 
-  Widget _buildBlockTraceVisualization() {
-    final traces = _traceData['traces'];
-    if (traces == null || traces is! List) {
-      return const Center(child: Text('No trace data available'));
-    }
+  Widget _buildTransactionDetail(String label, String? value,
+      {String? suffix, Color? color}) {
+    if (value == null) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Block: ${widget.traceParams['blockNumber']}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text('Transactions: ${traces.length}'),
-        const SizedBox(height: 16),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: traces.length > 5 ? 5 : traces.length,
-          itemBuilder: (context, index) {
-            final trace = traces[index];
-            final txHash = trace['transactionHash'] ?? 'Unknown';
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title:
-                    Text('Transaction: ${FormatterUtils.formatHash(txHash)}'),
-                subtitle: Text('Calls: ${_countCalls(trace)}'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  // Show detailed trace
-                  _showTraceDetailsDialog(trace);
-                },
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
               ),
-            );
-          },
-        ),
-        if (traces.length > 5)
-          Center(
-            child: TextButton(
-              onPressed: () {
-                // Show all traces
-                _showAllTracesDialog(traces);
-              },
-              child: Text('Show all ${traces.length} transactions'),
             ),
           ),
-      ],
+          Expanded(
+            child: Text(
+              suffix != null ? '$value $suffix' : value,
+              style: TextStyle(
+                color: color,
+                fontFamily: label == 'Hash' || label == 'From' || label == 'To'
+                    ? 'monospace'
+                    : null,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  int _countCalls(dynamic trace) {
-    if (trace is! Map) return 0;
+  Widget _buildTraceStatistics(Map<String, dynamic> traceData) {
+    final calls = _countCalls(traceData);
+    final valueTransfers = _countValueTransfers(traceData);
+    final errors = _countErrors(traceData);
 
-    int count = 0;
-    if (trace['calls'] is List) {
-      count += (trace['calls'] as List).length;
-      for (var call in trace['calls']) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Trace Statistics',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildStatRow('Total Calls', calls),
+          _buildStatRow('Value Transfers', valueTransfers),
+          _buildStatRow('Errors', errors, isError: errors > 0),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, int value, {bool isError = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value.toString(),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isError && value > 0 ? Colors.red : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _countCalls(Map<String, dynamic> trace) {
+    int count = 1;
+    final calls = trace['calls'] as List? ?? [];
+    for (var call in calls) {
+      if (call is Map<String, dynamic>) {
         count += _countCalls(call);
       }
     }
     return count;
   }
 
-  Widget _buildTraceTree(dynamic trace, {int depth = 0}) {
-    if (trace is! Map) return const SizedBox.shrink();
+  int _countValueTransfers(Map<String, dynamic> trace) {
+    int count = trace['value'] != null && trace['value'] != '0x0' ? 1 : 0;
+    final calls = trace['calls'] as List? ?? [];
+    for (var call in calls) {
+      if (call is Map<String, dynamic>) {
+        count += _countValueTransfers(call);
+      }
+    }
+    return count;
+  }
 
-    final callType = trace['type'] ?? 'call';
-    final to = trace['to'] ?? 'Unknown';
-    final gasUsed = trace['gasUsed'] ?? '0x0';
+  int _countErrors(Map<String, dynamic> trace) {
+    int count = trace['error'] != null ? 1 : 0;
+    final calls = trace['calls'] as List? ?? [];
+    for (var call in calls) {
+      if (call is Map<String, dynamic>) {
+        count += _countErrors(call);
+      }
+    }
+    return count;
+  }
 
-    final callTypeColor = _getCallTypeColor(callType);
+  Widget _buildCallTree(Map<String, dynamic>? call, {int depth = 0}) {
+    if (call == null || call.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            'No call data available',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    final type = call['type']?.toString().toUpperCase() ?? 'CALL';
+    final to = call['to']?.toString() ?? 'Unknown';
+    final from = call['from']?.toString() ?? 'Unknown';
+    final value = call['value']?.toString() ?? '0x0';
+    final input = call['input']?.toString() ?? '0x';
+    final error = call['error']?.toString();
+    final calls = call['calls'] as List? ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onTap: () {
-            // Show call details
-            _showCallDetailsDialog(trace as Map<String, dynamic>);
-          },
-          child: Padding(
-            padding: EdgeInsets.only(left: depth * 20.0),
-            child: Row(
+          onTap: () => _showCallDetails(call),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            margin: EdgeInsets.only(left: depth * 20.0),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: _getCallTypeColor(type),
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 4,
-                  height: 24,
-                  color: callTypeColor,
-                  margin: const EdgeInsets.only(right: 8),
-                ),
-                Expanded(
-                  child: Text(
-                    '$callType to ${FormatterUtils.formatHash(to)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: callTypeColor,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getCallTypeColor(type).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        type,
+                        style: TextStyle(
+                          color: _getCallTypeColor(type),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (error != null)
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'ERROR',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  'Gas: ${FormatterUtils.formatGas(gasUsed)}',
+                  'To: ${FormatterUtils.formatHash(to)}',
                   style: const TextStyle(fontSize: 12),
                 ),
+                if (value != '0x0')
+                  Text(
+                    'Value: ${FormatterUtils.formatEthFromHex(value)} ETH',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.green,
+                    ),
+                  ),
               ],
             ),
           ),
         ),
-        if (trace['calls'] is List)
-          ...List.generate((trace['calls'] as List).length, (index) {
-            return _buildTraceTree(trace['calls'][index], depth: depth + 1);
-          }),
+        ...calls.map((subcall) => _buildCallTree(
+              subcall as Map<String, dynamic>?,
+              depth: depth + 1,
+            )),
       ],
     );
+  }
+
+  void _showCallDetails(Map<String, dynamic> call) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(call['type']?.toString().toUpperCase() ?? 'CALL'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('From', call['from']?.toString() ?? 'Unknown'),
+              _buildDetailRow('To', call['to']?.toString() ?? 'Unknown'),
+              _buildDetailRow(
+                'Value',
+                FormatterUtils.formatEthFromHex(
+                    call['value']?.toString() ?? '0x0'),
+              ),
+              if (call['input'] != null && call['input'] != '0x')
+                _buildDetailRow('Input', call['input']),
+              if (call['output'] != null && call['output'] != '0x')
+                _buildDetailRow('Output', call['output']),
+              if (call['error'] != null)
+                _buildDetailRow('Error', call['error'], isError: true),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isError = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: isError ? Colors.red : null,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const Divider(),
+        ],
+      ),
+    );
+  }
+
+  String _formatGasPrice(String hexGasPrice) {
+    try {
+      final gasPriceWei = BigInt.parse(hexGasPrice);
+      final gasPriceGwei = gasPriceWei / BigInt.from(1e9);
+      return '${gasPriceGwei.toStringAsFixed(2)} Gwei';
+    } catch (e) {
+      return '0 Gwei';
+    }
+  }
+
+  Color _getCallTypeColor(String type) {
+    switch (type.toUpperCase()) {
+      case 'CALL':
+        return Colors.blue;
+      case 'STATICCALL':
+        return Colors.purple;
+      case 'DELEGATECALL':
+        return Colors.orange;
+      case 'CREATE':
+        return Colors.green;
+      case 'CREATE2':
+        return Colors.teal;
+      case 'SELFDESTRUCT':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _buildRawTraceDataCard() {
@@ -941,15 +1212,18 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.grey.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: Text(
-                FormatterUtils.formatJson(_traceData),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Text(
+                  FormatterUtils.formatJson(_traceData),
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
@@ -959,182 +1233,302 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
     );
   }
 
-  void _copyTraceData() {
-    Clipboard.setData(ClipboardData(
-      text: FormatterUtils.formatJson(_traceData),
-    ));
-    SnackbarUtil.showSnackbar(
-      context: context,
-      message: 'Trace data copied to clipboard',
-      icon: Icons.check_circle,
-    );
-  }
+  Widget _buildBlockTraceVisualization() {
+    final traces = _traceData['traces'];
+    if (traces == null || traces is! List) {
+      return const Center(child: Text('No trace data available'));
+    }
 
-  void _showCallDetailsDialog(Map<String, dynamic> call) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${call['type'] ?? 'Call'} Details'),
-        content: SingleChildScrollView(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Block Overview Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('From', call['from'] ?? 'Unknown'),
-              _buildDetailRow('To', call['to'] ?? 'Unknown'),
-              _buildDetailRow('Value',
-                  FormatterUtils.formatEthFromHex(call['value'] ?? '0x0')),
-              _buildDetailRow(
-                  'Gas', FormatterUtils.formatGas(call['gas'] ?? '0x0')),
-              _buildDetailRow('Gas Used',
-                  FormatterUtils.formatGas(call['gasUsed'] ?? '0x0')),
-              if (call['input'] != null)
-                _buildDetailRow('Input', call['input']),
-              if (call['output'] != null)
-                _buildDetailRow('Output', call['output']),
-              if (call['error'] != null)
-                _buildDetailRow('Error', call['error'], isError: true),
+              Text(
+                'Block #${widget.traceParams['blockNumber']}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Block Hash: ${FormatterUtils.formatHash(_traceData['blockHash'] ?? '')}',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Transactions: ${traces.length}',
+                style: const TextStyle(fontSize: 14),
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildDetailRow(String label, String value, {bool isError = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: isError ? Colors.red : null,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const Divider(),
-        ],
-      ),
-    );
-  }
+        const SizedBox(height: 16),
 
-  void _showTraceDetailsDialog(Map<String, dynamic> trace) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-            'Transaction: ${FormatterUtils.formatHash(trace['transactionHash'] ?? 'Unknown')}'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDetailRow('Block Hash', trace['blockHash'] ?? 'Unknown'),
-                _buildDetailRow(
-                    'Block Number', trace['blockNumber'] ?? 'Unknown'),
-                _buildDetailRow('Transaction Index',
-                    trace['transactionPosition'] ?? 'Unknown'),
-                const Divider(thickness: 2),
-                const SizedBox(height: 8),
-                const Text(
-                  'Call Hierarchy',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildTraceTree(trace),
-              ],
-            ),
-          ),
+        // Show first 5 transactions
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: traces.length > 5 ? 5 : traces.length,
+          itemBuilder: (context, index) => _buildTransactionCard(traces[index]),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+
+        // Show "View All" button if there are more than 5 transactions
+        if (traces.length > 5)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: TextButton.icon(
+                onPressed: () => _showAllTracesDialog(traces),
+                icon: const Icon(Icons.list),
+                label: Text('Show all ${traces.length} transactions'),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.blue.withOpacity(0.1),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
   void _showAllTracesDialog(List<dynamic> traces) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-            'All Transactions in Block ${widget.traceParams['blockNumber']}'),
-        content: SizedBox(
+      builder: (context) => Dialog(
+        child: Container(
           width: double.maxFinite,
-          height: 400,
-          child: ListView.builder(
-            itemCount: traces.length,
-            itemBuilder: (context, index) {
-              final trace = traces[index];
-              final txHash = trace['transactionHash'] ?? 'Unknown';
-
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                child: ListTile(
-                  title: Text(FormatterUtils.formatHash(txHash)),
-                  subtitle: Text(
-                      'From: ${FormatterUtils.formatHash(trace['from'] ?? 'Unknown')} To: ${FormatterUtils.formatHash(trace['to'] ?? 'Unknown')}'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showTraceDetailsDialog(trace);
-                  },
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            children: [
+              // Dialog Header
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Text(
+                      'All ${traces.length} Transactions',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
-              );
-            },
+              ),
+              const Divider(height: 1),
+              // Scrollable Transaction List
+              Expanded(
+                child: ListView.builder(
+                  itemCount: traces.length,
+                  itemBuilder: (context, index) =>
+                      _buildTransactionCard(traces[index]),
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      ),
+    );
+  }
+
+  Widget _buildTransactionCard(Map<String, dynamic> trace) {
+    final tx = trace['transaction'] as Map<String, dynamic>;
+    final receipt = trace['receipt'] as Map<String, dynamic>?;
+    final traceData = trace['trace'] as Map<String, dynamic>?;
+
+    // Determine transaction status
+    final bool isSuccess = receipt != null &&
+        (receipt['status'] == '0x1' || receipt['status'] == true);
+
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: ExpansionTile(
+        title: Row(
+          children: [
+            Icon(
+              Icons.swap_horiz,
+              size: 16,
+              color: isSuccess ? Colors.green : Colors.red,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                FormatterUtils.formatHash(tx['hash'] ?? ''),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: (isSuccess ? Colors.green : Colors.red).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                receipt == null
+                    ? 'Pending'
+                    : (isSuccess ? 'Success' : 'Failed'),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: receipt == null
+                      ? Colors.orange
+                      : (isSuccess ? Colors.green : Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            _buildAddressRow('From', tx['from'] ?? ''),
+            _buildAddressRow('To', tx['to'] ?? ''),
+            if (tx['value'] != null && tx['value'] != '0x0')
+              Text(
+                'Value: ${FormatterUtils.formatEthFromHex(tx['value'])} ETH',
+                style: const TextStyle(fontSize: 12),
+              ),
+          ],
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Gas Information
+                if (receipt != null) // Only show gas info if receipt exists
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildGasInfo(
+                          'Gas Used',
+                          FormatterUtils.formatGas(receipt['gasUsed'] ?? '0x0'),
+                          Icons.local_gas_station,
+                        ),
+                        _buildGasInfo(
+                          'Gas Price',
+                          FormatterUtils.formatGasPrice(
+                            int.parse(tx['gasPrice']?.toString() ?? '0x0'),
+                          ),
+                          Icons.price_change,
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Call Trace',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (traceData != null)
+                  _buildCallTree(traceData)
+                else
+                  const Text(
+                    'No trace data available',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Color _getCallTypeColor(String callType) {
-    switch (callType.toLowerCase()) {
-      case 'call':
-        return Colors.blue;
-      case 'staticcall':
-        return Colors.purple;
-      case 'delegatecall':
-        return Colors.orange;
-      case 'create':
-        return Colors.green;
-      case 'create2':
-        return Colors.teal;
-      case 'selfdestruct':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+  Widget _buildAddressRow(String label, String address) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            FormatterUtils.formatHash(address),
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGasInfo(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _copyTraceData() {
+    Clipboard.setData(ClipboardData(
+      text: FormatterUtils.formatJson(_traceData),
+    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Trace data copied to clipboard')),
+    );
   }
 }

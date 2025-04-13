@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../provider/trace_provider.dart';
+import '../provider/mev_analysis_provider.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../../widgets/loading_overlay.dart';
 import '../widgets/trace_widgets.dart';
@@ -26,7 +27,51 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
   String _error = '';
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with stored values from provider
+    final provider = Provider.of<MevAnalysisProvider>(context, listen: false);
+    _blockHashController.text = provider.lastMevBlockHash ?? '';
+    _startBlockController.text = provider.lastMevStartBlock ?? '';
+    _endBlockController.text = provider.lastMevEndBlock ?? '';
+    _txHashController.text = provider.lastMevTxHash ?? '';
+    _selectedAnalysisType =
+        provider.lastMevAnalysisType ?? 'Sandwich Attack Analysis';
+
+    // Add listeners to update provider when text changes
+    _blockHashController.addListener(() {
+      provider.updateLastMevBlockHash(_blockHashController.text);
+    });
+    _startBlockController.addListener(() {
+      provider.updateLastMevStartBlock(_startBlockController.text);
+    });
+    _endBlockController.addListener(() {
+      provider.updateLastMevEndBlock(_endBlockController.text);
+    });
+    _txHashController.addListener(() {
+      provider.updateLastMevTxHash(_txHashController.text);
+    });
+  }
+
+  @override
   void dispose() {
+    // Remove listeners before disposing
+    final provider = Provider.of<MevAnalysisProvider>(context, listen: false);
+    provider.updateLastMevAnalysisType(_selectedAnalysisType);
+
+    _blockHashController.removeListener(() {
+      provider.updateLastMevBlockHash(_blockHashController.text);
+    });
+    _startBlockController.removeListener(() {
+      provider.updateLastMevStartBlock(_startBlockController.text);
+    });
+    _endBlockController.removeListener(() {
+      provider.updateLastMevEndBlock(_endBlockController.text);
+    });
+    _txHashController.removeListener(() {
+      provider.updateLastMevTxHash(_txHashController.text);
+    });
+
     _blockHashController.dispose();
     _startBlockController.dispose();
     _endBlockController.dispose();
@@ -44,7 +89,7 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
     });
 
     try {
-      final provider = Provider.of<TraceProvider>(context, listen: false);
+      final provider = Provider.of<MevAnalysisProvider>(context, listen: false);
       Map<String, dynamic> result;
 
       switch (_selectedAnalysisType) {
@@ -221,8 +266,12 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
                     selected: _selectedAnalysisType == type,
                     onSelected: (selected) {
                       if (selected) {
+                        final provider = Provider.of<MevAnalysisProvider>(
+                            context,
+                            listen: false);
                         setState(() {
                           _selectedAnalysisType = type;
+                          provider.updateLastMevAnalysisType(type);
                           _error = '';
                           _analysisResult = null;
                         });
@@ -245,6 +294,14 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
           label: 'Block Hash',
           hintText: '0x...',
           prefixIcon: Icons.view_module,
+          onPaste: () async {
+            final data = await Clipboard.getData('text/plain');
+            if (data != null && data.text != null) {
+              setState(() {
+                _blockHashController.text = data.text!.trim();
+              });
+            }
+          },
         );
 
       case 'Frontrunning Analysis':
@@ -253,6 +310,14 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
           label: 'Transaction Hash',
           hintText: '0x...',
           prefixIcon: Icons.receipt,
+          onPaste: () async {
+            final data = await Clipboard.getData('text/plain');
+            if (data != null && data.text != null) {
+              setState(() {
+                _txHashController.text = data.text!.trim();
+              });
+            }
+          },
         );
 
       case 'Historical MEV Events':
@@ -264,6 +329,14 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
               hintText: 'Enter start block number',
               prefixIcon: Icons.start,
               isHexInput: false,
+              onPaste: () async {
+                final data = await Clipboard.getData('text/plain');
+                if (data != null && data.text != null) {
+                  setState(() {
+                    _startBlockController.text = data.text!.trim();
+                  });
+                }
+              },
             ),
             const SizedBox(height: 16),
             TraceInputField(
@@ -272,6 +345,14 @@ class _MevAnalysisScreenState extends State<MevAnalysisScreen> {
               hintText: 'Enter end block number',
               prefixIcon: Icons.stop,
               isHexInput: false,
+              onPaste: () async {
+                final data = await Clipboard.getData('text/plain');
+                if (data != null && data.text != null) {
+                  setState(() {
+                    _endBlockController.text = data.text!.trim();
+                  });
+                }
+              },
             ),
           ],
         );

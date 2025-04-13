@@ -39,6 +39,7 @@ import 'routes/app_routes.dart';
 // Theme
 import 'theme/app_theme.dart';
 import 'providers/pyusd_analytics_provider.dart';
+import 'package:pyusd_hub/screens/trace/provider/mev_analysis_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -147,6 +148,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
         ChangeNotifierProvider(create: (_) => TraceProvider()),
+        ChangeNotifierProvider(create: (_) => MevAnalysisProvider()),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(
         builder: (context, themeProvider, sessionProvider, child) {

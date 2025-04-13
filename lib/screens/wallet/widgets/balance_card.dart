@@ -106,7 +106,7 @@ class BalanceCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Image.asset(
-                "assets/images/pyusd_logo.png",
+                "assets/images/pyusdlogo.png",
                 height: 16,
               ),
             ),

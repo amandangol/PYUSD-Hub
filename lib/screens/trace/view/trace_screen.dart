@@ -29,26 +29,17 @@ class TraceScreen extends StatefulWidget {
 class _TraceScreenState extends State<TraceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _txHashController = TextEditingController();
-  final TextEditingController _blockNumberController = TextEditingController();
-
-  // Advanced tracing controllers
-  final TextEditingController _rawTxController = TextEditingController();
-  final TextEditingController _replayBlockController = TextEditingController();
-  final TextEditingController _replayTxController = TextEditingController();
-  final TextEditingController _contractAddressController =
-      TextEditingController();
-  final TextEditingController _blockHashController = TextEditingController();
-  final TextEditingController _txIndexController = TextEditingController();
-
-  // Add these controllers for Trace Call
-  final TextEditingController _traceCallToController = TextEditingController();
-  final TextEditingController _traceCallDataController =
-      TextEditingController();
-
-  // Add this controller for Trace Call From Address
-  final TextEditingController _traceCallFromController =
-      TextEditingController();
+  late TextEditingController _txHashController;
+  late TextEditingController _blockNumberController;
+  late TextEditingController _rawTxController;
+  late TextEditingController _replayBlockController;
+  late TextEditingController _replayTxController;
+  late TextEditingController _contractAddressController;
+  late TextEditingController _blockHashController;
+  late TextEditingController _txIndexController;
+  late TextEditingController _traceCallToController;
+  late TextEditingController _traceCallDataController;
+  late TextEditingController _traceCallFromController;
 
   bool _isLoadingTx = false;
   bool _isLoadingBlock = false;
@@ -71,10 +62,97 @@ class _TraceScreenState extends State<TraceScreen>
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
+
+    // Initialize controllers with stored values from provider
+    final provider = Provider.of<TraceProvider>(context, listen: false);
+    _txHashController = TextEditingController(text: provider.lastTxHash);
+    _blockNumberController =
+        TextEditingController(text: provider.lastBlockNumber);
+    _rawTxController = TextEditingController();
+    _replayBlockController =
+        TextEditingController(text: provider.lastReplayBlock);
+    _replayTxController = TextEditingController(text: provider.lastReplayTx);
+    _contractAddressController =
+        TextEditingController(text: provider.lastContractAddress);
+    _blockHashController = TextEditingController(text: provider.lastBlockHash);
+    _txIndexController = TextEditingController(text: provider.lastTxIndex);
+    _traceCallToController =
+        TextEditingController(text: provider.lastTraceCallTo);
+    _traceCallDataController =
+        TextEditingController(text: provider.lastTraceCallData);
+    _traceCallFromController =
+        TextEditingController(text: provider.lastTraceCallFrom);
+
+    // Add listeners to update provider when text changes
+    _txHashController.addListener(() {
+      provider.updateLastTxHash(_txHashController.text);
+    });
+    _blockNumberController.addListener(() {
+      provider.updateLastBlockNumber(_blockNumberController.text);
+    });
+    _replayBlockController.addListener(() {
+      provider.updateLastReplayBlock(_replayBlockController.text);
+    });
+    _replayTxController.addListener(() {
+      provider.updateLastReplayTx(_replayTxController.text);
+    });
+    _blockHashController.addListener(() {
+      provider.updateLastBlockHash(_blockHashController.text);
+    });
+    _txIndexController.addListener(() {
+      provider.updateLastTxIndex(_txIndexController.text);
+    });
+    _contractAddressController.addListener(() {
+      provider.updateLastContractAddress(_contractAddressController.text);
+    });
+    _traceCallToController.addListener(() {
+      provider.updateLastTraceCallTo(_traceCallToController.text);
+    });
+    _traceCallDataController.addListener(() {
+      provider.updateLastTraceCallData(_traceCallDataController.text);
+    });
+    _traceCallFromController.addListener(() {
+      provider.updateLastTraceCallFrom(_traceCallFromController.text);
+    });
   }
 
   @override
   void dispose() {
+    // Remove listeners before disposing
+    final provider = Provider.of<TraceProvider>(context, listen: false);
+    provider.updateLastSelectedMethod(_selectedAdvancedMethod);
+
+    _txHashController.removeListener(() {
+      provider.updateLastTxHash(_txHashController.text);
+    });
+    _blockNumberController.removeListener(() {
+      provider.updateLastBlockNumber(_blockNumberController.text);
+    });
+    _replayBlockController.removeListener(() {
+      provider.updateLastReplayBlock(_replayBlockController.text);
+    });
+    _replayTxController.removeListener(() {
+      provider.updateLastReplayTx(_replayTxController.text);
+    });
+    _blockHashController.removeListener(() {
+      provider.updateLastBlockHash(_blockHashController.text);
+    });
+    _txIndexController.removeListener(() {
+      provider.updateLastTxIndex(_txIndexController.text);
+    });
+    _contractAddressController.removeListener(() {
+      provider.updateLastContractAddress(_contractAddressController.text);
+    });
+    _traceCallToController.removeListener(() {
+      provider.updateLastTraceCallTo(_traceCallToController.text);
+    });
+    _traceCallDataController.removeListener(() {
+      provider.updateLastTraceCallData(_traceCallDataController.text);
+    });
+    _traceCallFromController.removeListener(() {
+      provider.updateLastTraceCallFrom(_traceCallFromController.text);
+    });
+
     _tabController.dispose();
     _txHashController.dispose();
     _blockNumberController.dispose();
@@ -88,6 +166,13 @@ class _TraceScreenState extends State<TraceScreen>
     _traceCallDataController.dispose();
     _traceCallFromController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = Provider.of<TraceProvider>(context, listen: false);
+    _selectedAdvancedMethod = provider.lastSelectedMethod;
   }
 
   Future<void> _traceTransaction() async {
@@ -244,19 +329,39 @@ class _TraceScreenState extends State<TraceScreen>
           final fromAddress = _traceCallFromController.text.trim();
 
           if (toAddress.isEmpty) {
+            setState(() {
+              _isLoadingAdvanced = false;
+              _advancedError = 'To address is required';
+            });
             return;
           }
           if (!toAddress.startsWith('0x')) {
+            setState(() {
+              _isLoadingAdvanced = false;
+              _advancedError = 'To address must start with 0x';
+            });
             return;
           }
           if (toAddress.length != 42) {
+            setState(() {
+              _isLoadingAdvanced = false;
+              _advancedError = 'To address must be 42 characters long';
+            });
             return;
           }
 
           if (data.isEmpty) {
+            setState(() {
+              _isLoadingAdvanced = false;
+              _advancedError = 'Call data is required';
+            });
             return;
           }
           if (!data.startsWith('0x')) {
+            setState(() {
+              _isLoadingAdvanced = false;
+              _advancedError = 'Call data must start with 0x';
+            });
             return;
           }
 
@@ -279,7 +384,7 @@ class _TraceScreenState extends State<TraceScreen>
         _isLoadingAdvanced = false;
       });
 
-      // Navigate to the advanced trace screen
+      // Navigate to the advanced trace screen only if successful
       if (result['success'] == true) {
         Navigator.push(
           context,
@@ -290,6 +395,10 @@ class _TraceScreenState extends State<TraceScreen>
             ),
           ),
         );
+      } else {
+        setState(() {
+          _advancedError = result['error'] ?? 'Unknown error occurred';
+        });
       }
     } catch (e) {
       if (!mounted) return;
@@ -499,8 +608,12 @@ class _TraceScreenState extends State<TraceScreen>
           TraceMethodSelector(
             selectedMethod: _selectedAdvancedMethod,
             onMethodChanged: (String newValue) {
+              final provider =
+                  Provider.of<TraceProvider>(context, listen: false);
               setState(() {
                 _selectedAdvancedMethod = newValue;
+                provider.updateLastSelectedMethod(
+                    newValue); // Update provider immediately
                 _advancedError = '';
                 _advancedTraceResult = null;
               });

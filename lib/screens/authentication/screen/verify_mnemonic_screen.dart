@@ -37,7 +37,7 @@ class _VerifyMnemonicScreenState extends State<VerifyMnemonicScreen> {
     // Select 4 random words for verification
     final indices = List.generate(_mnemonicWords.length, (index) => index)
       ..shuffle();
-    _verificationIndices = indices.take(4).toList()..sort();
+    _verificationIndices = indices.take(3).toList()..sort();
 
     // Initialize controllers and validation state for each verification position
     for (var index in _verificationIndices) {
