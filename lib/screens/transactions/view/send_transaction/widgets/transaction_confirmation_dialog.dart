@@ -121,7 +121,8 @@ class _TransactionConfirmationDialogState
               decoration: BoxDecoration(
                 color: isDarkMode
                     ? theme.colorScheme.surfaceContainerHighest
-                    : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    : theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(

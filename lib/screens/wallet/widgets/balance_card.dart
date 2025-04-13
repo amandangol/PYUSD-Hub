@@ -10,9 +10,10 @@ import 'shimmer/shimmer_effect.dart';
 class BalanceCard extends StatelessWidget {
   final double? ethBalance;
   final double? tokenBalance;
-  final String walletAddress;
+  final String? walletAddress;
   final bool isRefreshing;
   final Color primaryColor;
+  final bool showWalletAddress;
 
   // Cache common styles and colors
   static const _paypalBlue = Color(0xFF142C8E);
@@ -24,9 +25,10 @@ class BalanceCard extends StatelessWidget {
     super.key,
     required this.ethBalance,
     required this.tokenBalance,
-    required this.walletAddress,
+    this.walletAddress,
     required this.isRefreshing,
     required this.primaryColor,
+    this.showWalletAddress = true,
   });
 
   // Memoize common styles
@@ -58,8 +60,10 @@ class BalanceCard extends StatelessWidget {
                   ? _buildBalanceLoadingSkeleton(isDarkMode)
                   : _buildBalanceSection(context, isDarkMode),
             ),
-            const SizedBox(height: 16),
-            _buildWalletAddressSection(context, isDarkMode),
+            if (showWalletAddress && walletAddress != null) ...[
+              const SizedBox(height: 16),
+              _buildWalletAddressSection(context, isDarkMode),
+            ],
           ],
         ),
       ),
@@ -391,7 +395,7 @@ class BalanceCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatWalletAddress(walletAddress),
+                  _formatWalletAddress(walletAddress ?? ''),
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black87,
                     fontSize: 14,
@@ -433,7 +437,7 @@ class BalanceCard extends StatelessWidget {
   }
 
   void _copyWalletAddress(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: walletAddress));
+    Clipboard.setData(ClipboardData(text: walletAddress ?? ''));
     SnackbarUtil.showSnackbar(
       context: context,
       message: 'Wallet address copied to clipboard',

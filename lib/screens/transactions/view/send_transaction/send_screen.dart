@@ -22,11 +22,11 @@ class SendTransactionScreen extends StatefulWidget {
   const SendTransactionScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _SendTransactionScreenState createState() => _SendTransactionScreenState();
 }
 
-class _SendTransactionScreenState extends State<SendTransactionScreen> {
+class _SendTransactionScreenState extends State<SendTransactionScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
   final _amountController = TextEditingController();
@@ -47,18 +47,29 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
   // Add a debounce timer for gas estimation
   Timer? _debounceTimer;
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
-    _loadGasOptions();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _animationController.forward();
 
-    // Add listeners for text fields to optimize gas estimation
+    _loadGasOptions();
     _addressController.addListener(_onAddressChanged);
     _amountController.addListener(_onAmountChanged);
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _mounted = false;
     _addressController.removeListener(_onAddressChanged);
     _amountController.removeListener(_onAmountChanged);
@@ -476,118 +487,87 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
           onBackPressed: () => Navigator.of(context).pop(false),
         ),
         body: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Asset Selection and Transaction Fee
-                    TransactionFeeCard(
-                      selectedAsset: _selectedAsset,
-                      onAssetSelected: (asset) {
-                        setState(() {
-                          _selectedAsset = asset;
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Asset Selection and Transaction Fee
+                      TransactionFeeCard(
+                        selectedAsset: _selectedAsset,
+                        onAssetSelected: (asset) {
+                          setState(() {
+                            _selectedAsset = asset;
+                            _estimateGasFee();
+                          });
+                        },
+                        estimatedGasFee: _estimatedGasFee,
+                        selectedGasOption: _selectedGasOption,
+                        isEstimatingGas: _isEstimatingGas,
+                        ethBalance: walletProvider.ethBalance,
+                        tokenBalance: walletProvider.tokenBalance,
+                        onGasOptionsPressed: _showGasOptions,
+                        isLoadingGasPrice: _isLoadingGasPrice,
+                        networkName: networkProvider.currentNetwork.name,
+                        maxSendableEth: maxSendableEth,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Remove BalanceDisplayCard and directly show Recipient Card
+                      RecipientCard(
+                        addressController: _addressController,
+                        isValidAddress: _isValidAddress,
+                        onAddressChanged: _validateAddress,
+                        onScanQRCode: _scanQRCode,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Amount Input
+                      AmountCard(
+                        amountController: _amountController,
+                        selectedAsset: _selectedAsset,
+                        availableBalance: availableBalance,
+                        maxSendableEth: maxSendableEth,
+                        onAmountChanged: (_) => _estimateGasFee(),
+                        onMaxPressed: () {
+                          setState(() {
+                            if (_selectedAsset == 'ETH' &&
+                                _estimatedGasFee > 0) {
+                              _amountController.text =
+                                  maxSendableEth.toString();
+                            } else {
+                              _amountController.text =
+                                  availableBalance.toString();
+                            }
+                          });
                           _estimateGasFee();
-                        });
-                      },
-                      estimatedGasFee: _estimatedGasFee,
-                      selectedGasOption: _selectedGasOption,
-                      isEstimatingGas: _isEstimatingGas,
-                      ethBalance: walletProvider.ethBalance,
-                      tokenBalance: walletProvider.tokenBalance,
-                      onGasOptionsPressed: _showGasOptions,
-                      isLoadingGasPrice: _isLoadingGasPrice,
-                      networkName: networkProvider.currentNetwork.name,
-                      maxSendableEth: maxSendableEth,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Remove BalanceDisplayCard and directly show Recipient Card
-                    RecipientCard(
-                      addressController: _addressController,
-                      isValidAddress: _isValidAddress,
-                      onAddressChanged: _validateAddress,
-                      onScanQRCode: _scanQRCode,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Amount Input
-                    AmountCard(
-                      amountController: _amountController,
-                      selectedAsset: _selectedAsset,
-                      availableBalance: availableBalance,
-                      maxSendableEth: maxSendableEth,
-                      onAmountChanged: (_) => _estimateGasFee(),
-                      onMaxPressed: () {
-                        setState(() {
-                          if (_selectedAsset == 'ETH' && _estimatedGasFee > 0) {
-                            _amountController.text = maxSendableEth.toString();
-                          } else {
-                            _amountController.text =
-                                availableBalance.toString();
-                          }
-                        });
-                        _estimateGasFee();
-                      },
-                      estimatedGasFee: _estimatedGasFee,
-                      focusNode: _amountFocusNode,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Send Button
-                    SendButton(
-                      selectedAsset: _selectedAsset,
-                      isValidAddress: _isValidAddress,
-                      amountController: _amountController,
-                      isLoading: _isSending,
-                      isEstimatingGas: _isEstimatingGas,
-                      estimatedGasFee: _estimatedGasFee,
-                      onPressed: _sendTransaction,
-                    ),
-
-                    // Note about gas fees
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.dividerTheme.color ?? Colors.transparent,
-                          width: 1,
-                        ),
+                        },
+                        estimatedGasFee: _estimatedGasFee,
+                        focusNode: _amountFocusNode,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Transaction requires ETH for gas fees regardless of which asset you send.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
-                    // Faucet Section - Only show on Sepolia testnet
-                    const SizedBox(height: 8),
-                    if (networkProvider.currentNetwork.name
-                        .toLowerCase()
-                        .contains('testnet'))
+                      const SizedBox(height: 16),
+
+                      // Send Button
+                      SendButton(
+                        selectedAsset: _selectedAsset,
+                        isValidAddress: _isValidAddress,
+                        amountController: _amountController,
+                        isLoading: _isSending,
+                        isEstimatingGas: _isEstimatingGas,
+                        estimatedGasFee: _estimatedGasFee,
+                        onPressed: _sendTransaction,
+                      ),
+
+                      // Note about gas fees
+                      const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -599,83 +579,121 @@ class _SendTransactionScreenState extends State<SendTransactionScreen> {
                             width: 1,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.water_drop,
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.7),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Need tokens? Get them from the faucet:',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            Icon(
+                              Icons.info_outline,
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.7),
+                              size: 20,
                             ),
-                            const SizedBox(height: 8),
-                            InkWell(
-                              onTap: () => _launchURL(
-                                  'https://cloud.google.com/application/web3/faucet/ethereum/sepolia'),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.link,
-                                      color: theme.colorScheme.primary,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Sepolia ETH Faucet',
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.primary,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () =>
-                                  _launchURL('https://faucet.paxos.com/'),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.link,
-                                      color: theme.colorScheme.primary,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'PYUSD Faucet',
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.primary,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Transaction requires ETH for gas fees regardless of which asset you send.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                  ],
+
+                      // Faucet Section - Only show on Sepolia testnet
+                      const SizedBox(height: 8),
+                      if (networkProvider.currentNetwork.name
+                          .toLowerCase()
+                          .contains('testnet'))
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.dividerTheme.color ??
+                                  Colors.transparent,
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.water_drop,
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.7),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Need tokens? Get them from the faucet:',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              InkWell(
+                                onTap: () => _launchURL(
+                                    'https://cloud.google.com/application/web3/faucet/ethereum/sepolia'),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.link,
+                                        color: theme.colorScheme.primary,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Sepolia ETH Faucet',
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () =>
+                                    _launchURL('https://faucet.paxos.com/'),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.link,
+                                        color: theme.colorScheme.primary,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'PYUSD Faucet',
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

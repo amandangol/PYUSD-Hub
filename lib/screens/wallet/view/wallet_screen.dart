@@ -629,6 +629,7 @@ class _WalletScreenState extends State<WalletScreen>
         walletAddress: walletAddress,
         isRefreshing: isRefreshing || isInitialLoad,
         primaryColor: primaryColor,
+        showWalletAddress: true,
       ),
     );
   }
