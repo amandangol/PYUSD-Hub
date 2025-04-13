@@ -111,6 +111,7 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
     final provider =
         Provider.of<NetworkCongestionProvider>(context, listen: false);
     try {
+      provider.setLoading(true); // Set loading state before refresh
       await provider.reconnectWebSocket();
       await provider.refreshData();
     } catch (e) {
@@ -121,6 +122,10 @@ class _NetworkCongestionScreenState extends State<NetworkCongestionScreen>
             backgroundColor: Colors.red,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        provider.setLoading(false); // Reset loading state after refresh
       }
     }
   }

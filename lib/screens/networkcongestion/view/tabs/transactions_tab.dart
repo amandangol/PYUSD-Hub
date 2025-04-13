@@ -274,15 +274,32 @@ class _TransactionsTabState extends State<TransactionsTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'PYUSD Transactions',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'PYUSD Transactions',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      if (widget.provider.isLoading)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  if (transactions.isNotEmpty || pendingTransactions > 0)
+                  if (!widget.provider.isLoading &&
+                      (transactions.isNotEmpty || pendingTransactions > 0))
                     Text(
                       '${transactions.length} confirmed, $pendingTransactions pending',
                       style: TextStyle(
@@ -292,7 +309,9 @@ class _TransactionsTabState extends State<TransactionsTab> {
                     ),
                 ],
               ),
-              if (oldestBlockNumber != null && latestBlockNumber > 0) ...[
+              if (oldestBlockNumber != null &&
+                  latestBlockNumber > 0 &&
+                  !widget.provider.isLoading) ...[
                 const SizedBox(height: 8),
                 Container(
                   padding:
@@ -329,7 +348,26 @@ class _TransactionsTabState extends State<TransactionsTab> {
                 ),
               ],
               const SizedBox(height: 16),
-              if (transactions.isEmpty && pendingTransactions == 0)
+              if (widget.provider.isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading recent transactions...',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (transactions.isEmpty && pendingTransactions == 0)
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),

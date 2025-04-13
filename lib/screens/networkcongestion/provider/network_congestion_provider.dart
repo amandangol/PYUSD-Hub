@@ -72,7 +72,7 @@ class NetworkCongestionProvider with ChangeNotifier {
   );
 
   NetworkCongestionData get congestionData => _congestionData;
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool get isLoading => _isLoading;
 
   late List<Map<String, dynamic>> _recentBlocks = [];
@@ -734,6 +734,18 @@ class NetworkCongestionProvider with ChangeNotifier {
           pyusdTxCount++;
         } catch (e) {
           print('Error processing PYUSD transaction log: $e');
+        }
+      }
+
+      // After fetching transactions, get their receipts
+      for (var tx in _recentPyusdTransactions) {
+        if (tx['hash'] != null) {
+          final receipt = await _fetchTransactionReceipt(tx['hash']);
+          if (receipt != null) {
+            tx['receipt'] = receipt;
+            // Update status based on receipt
+            tx['status'] = receipt['status'];
+          }
         }
       }
 
@@ -1733,6 +1745,28 @@ class NetworkCongestionProvider with ChangeNotifier {
       if (_isDisposed) return;
       hasError = true;
       _safeNotifyListeners();
+    }
+  }
+
+  void setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>?> _fetchTransactionReceipt(String txHash) async {
+    if (_transactionReceiptCache.containsKey(txHash)) {
+      return _transactionReceiptCache[txHash];
+    }
+
+    try {
+      final receipt = await _makeRpcCall('eth_getTransactionReceipt', [txHash]);
+      if (receipt != null) {
+        _transactionReceiptCache[txHash] = receipt;
+      }
+      return receipt;
+    } catch (e) {
+      print('Error fetching receipt for $txHash: $e');
+      return null;
     }
   }
 }

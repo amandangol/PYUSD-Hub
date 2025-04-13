@@ -326,7 +326,7 @@ class TransactionProvider extends ChangeNotifier
 
       return [...firebaseTransactions, ...cachedTransactions];
     } catch (e) {
-      print('Error fetching all transactions: $e');
+      // print('Error fetching all transactions: $e');
       // Return cached transactions if available, otherwise empty list
       return await _loadCachedTransactions(address, network);
     }

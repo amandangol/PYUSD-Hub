@@ -20,174 +20,169 @@ class TransactionVehicle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    // Calculate vehicle color based on type and speed
-    Color vehicleColor;
-    if (transactionType == 'pyusd') {
-      vehicleColor = isPending ? Colors.orange : Colors.green;
-    } else {
-      vehicleColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700;
-    }
-
-    // Calculate vehicle size based on speed
-    double vehicleSize;
-    switch (speed) {
-      case 'fast':
-        vehicleSize = 30.0;
-        break;
-      case 'medium':
-        vehicleSize = 25.0;
-        break;
-      case 'slow':
-        vehicleSize = 20.0;
-        break;
-      default:
-        vehicleSize = 25.0;
-    }
-
-    // Calculate vehicle opacity based on animation
-    final opacity = 0.8 + (0.2 * (1 - animationValue));
-
-    return Transform.translate(
-      offset: Offset(0, 5 * sin(animationValue * 2 * 3.14159)),
-      child: Opacity(
-        opacity: opacity,
-        child: Container(
-          width: vehicleSize,
-          height: vehicleSize,
-          decoration: BoxDecoration(
-            color: vehicleColor.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: [
-              BoxShadow(
-                color: vehicleColor.withOpacity(0.5),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Vehicle body
-              Center(
-                child: Icon(
-                  _getVehicleIcon(),
-                  size: vehicleSize * 0.7,
-                  color: Colors.white,
-                ),
-              ),
-              // Pending indicator
-              if (isPending)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.orange,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Icon(
-                      Icons.access_time,
-                      size: 8,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              // Speed indicator
-              Positioned(
-                left: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: _getSpeedColor(),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Icon(
-                    _getSpeedIcon(),
-                    size: 8,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return Transform.scale(
+      scale: 0.8,
+      child: CustomPaint(
+        size: const Size(60, 30),
+        painter: CarPainter(
+          speed: speed,
+          isPending: isPending,
+          transactionType: transactionType,
+          animationValue: animationValue,
         ),
       ),
     );
   }
+}
 
-  IconData _getVehicleIcon() {
-    if (transactionType == 'pyusd') {
-      return Icons.local_shipping;
-    } else {
-      return Icons.directions_car;
-    }
-  }
+class CarPainter extends CustomPainter {
+  final String speed;
+  final bool isPending;
+  final String transactionType;
+  final double animationValue;
 
-  IconData _getSpeedIcon() {
-    switch (speed) {
-      case 'fast':
-        return Icons.flash_on;
-      case 'medium':
-        return Icons.speed;
-      case 'slow':
-        return Icons.slow_motion_video;
-      default:
-        return Icons.speed;
-    }
-  }
+  CarPainter({
+    required this.speed,
+    required this.isPending,
+    required this.transactionType,
+    required this.animationValue,
+  });
 
-  Color _getSpeedColor() {
-    switch (speed) {
-      case 'fast':
-        return Colors.green;
-      case 'medium':
-        return Colors.orange;
-      case 'slow':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 2.0;
 
-  void _showTransactionDetails(BuildContext context) {
-    final String hash = transaction['hash']?.toString() ?? 'Unknown';
-    final String from = transaction['from']?.toString() ?? 'Unknown';
-    final String to = transaction['to']?.toString() ?? 'Unknown';
+    // Define colors based on transaction type and status
+    final Color baseColor = transactionType == 'pyusd'
+        ? (isPending ? Colors.orange : Colors.blue)
+        : Colors.grey;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(transactionType == 'pyusd'
-            ? (isPending ? 'Pending PYUSD Transaction' : 'PYUSD Transaction')
-            : (isPending ? 'Pending Transaction' : 'Other Transaction')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Hash: ${FormatterUtils.formatHash(hash)}'),
-            const SizedBox(height: 8),
-            if (from != 'Unknown')
-              Text('From: ${FormatterUtils.formatAddress(from)}'),
-            if (to != 'Unknown')
-              Text('To: ${FormatterUtils.formatAddress(to)}'),
-            const SizedBox(height: 8),
-            Text('Status: ${isPending ? "Pending" : "Confirmed"}'),
-            Text('Speed: ${speed.toUpperCase()}'),
-            Text('Type: ${transactionType.toUpperCase()}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+    final Color wheelColor = Colors.black87;
+    final Color windowColor = Colors.lightBlueAccent.withOpacity(0.7);
+
+    // Create gradient for the car body
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        baseColor,
+        baseColor.withOpacity(0.8),
+      ],
     );
+
+    // Apply shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    // Draw shadow
+    canvas.drawOval(
+      Rect.fromLTWH(5, size.height - 5, size.width - 10, 4),
+      shadowPaint,
+    );
+
+    // Main car body path
+    final bodyPath = Path()
+      ..moveTo(10, size.height - 8) // Start at bottom left
+      ..lineTo(15, size.height - 15) // Up to wheel arch
+      ..lineTo(20, size.height - 18) // Front slope
+      ..lineTo(25, size.height - 22) // Hood start
+      ..lineTo(size.width - 25, size.height - 22) // Hood top
+      ..lineTo(size.width - 20, size.height - 18) // Rear slope
+      ..lineTo(size.width - 15, size.height - 15) // Down to wheel arch
+      ..lineTo(size.width - 10, size.height - 8) // Bottom rear
+      ..close();
+
+    // Draw car body with gradient
+    paint.shader = gradient.createShader(bodyPath.getBounds());
+    canvas.drawPath(bodyPath, paint);
+
+    // Draw windows
+    final windowPath = Path()
+      ..moveTo(25, size.height - 22) // Start at hood
+      ..lineTo(30, size.height - 26) // Up to windshield
+      ..lineTo(size.width - 30, size.height - 26) // Across roof
+      ..lineTo(size.width - 25, size.height - 22) // Down rear window
+      ..close();
+
+    paint
+      ..shader = null
+      ..color = windowColor;
+    canvas.drawPath(windowPath, paint);
+
+    // Draw wheels
+    paint.color = wheelColor;
+    // Front wheel with animation
+    final frontWheelCenter = Offset(20, size.height - 8);
+    canvas.save();
+    canvas.translate(frontWheelCenter.dx, frontWheelCenter.dy);
+    canvas.rotate(animationValue * 6.28318); // 2*pi
+    canvas.translate(-frontWheelCenter.dx, -frontWheelCenter.dy);
+    canvas.drawCircle(frontWheelCenter, 4, paint);
+    canvas.restore();
+
+    // Rear wheel with animation
+    final rearWheelCenter = Offset(size.width - 20, size.height - 8);
+    canvas.save();
+    canvas.translate(rearWheelCenter.dx, rearWheelCenter.dy);
+    canvas.rotate(animationValue * 6.28318); // 2*pi
+    canvas.translate(-rearWheelCenter.dx, -rearWheelCenter.dy);
+    canvas.drawCircle(rearWheelCenter, 4, paint);
+    canvas.restore();
+
+    // Add speed indicator
+    if (speed == 'fast') {
+      _drawSpeedLines(canvas, size, paint);
+    }
+
+    // Add pending indicator if needed
+    if (isPending) {
+      _drawPendingIndicator(canvas, size, paint);
+    }
+  }
+
+  void _drawSpeedLines(Canvas canvas, Size size, Paint paint) {
+    paint.color = Colors.white.withOpacity(0.6);
+    paint.strokeWidth = 1.5;
+    paint.style = PaintingStyle.stroke;
+
+    final speedOffset = (animationValue * 10).toInt();
+    for (var i = 0; i < 3; i++) {
+      final x = size.width - 15 - (i * 8) + speedOffset;
+      canvas.drawLine(
+        Offset(x, size.height - 18),
+        Offset(x - 5, size.height - 12),
+        paint,
+      );
+    }
+  }
+
+  void _drawPendingIndicator(Canvas canvas, Size size, Paint paint) {
+    paint.color = Colors.white;
+    paint.style = PaintingStyle.fill;
+
+    final centerX = size.width / 2;
+    final dotSize = 2.0;
+    final spacing = 4.0;
+
+    for (var i = 0; i < 3; i++) {
+      final opacity = (1.0 - ((animationValue * 3 + i) % 1.0));
+      paint.color = Colors.white.withOpacity(opacity);
+      canvas.drawCircle(
+        Offset(centerX + (i - 1) * spacing, size.height - 30),
+        dotSize,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(CarPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+        oldDelegate.isPending != isPending ||
+        oldDelegate.speed != speed ||
+        oldDelegate.transactionType != transactionType;
   }
 }

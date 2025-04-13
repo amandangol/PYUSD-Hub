@@ -5,6 +5,7 @@ class CityBuilding extends StatelessWidget {
   final int height;
   final int width;
   final int transactionCount;
+  final int pyusdTransactionCount;
   final double utilization;
 
   const CityBuilding({
@@ -13,6 +14,7 @@ class CityBuilding extends StatelessWidget {
     required this.height,
     required this.width,
     required this.transactionCount,
+    this.pyusdTransactionCount = 0,
     required this.utilization,
   });
 
@@ -75,7 +77,7 @@ class CityBuilding extends StatelessWidget {
               ],
             ),
           ),
-          // Transaction count indicator
+          // Transaction count indicator with PYUSD count
           Container(
             width: width.toDouble(),
             padding: const EdgeInsets.symmetric(vertical: 2),
@@ -86,14 +88,34 @@ class CityBuilding extends StatelessWidget {
                 bottomRight: Radius.circular(4),
               ),
             ),
-            child: Center(
-              child: Text(
-                '$transactionCount tx',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
+            child: Column(
+              children: [
+                Text(
+                  '$transactionCount tx',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
                 ),
-              ),
+                if (pyusdTransactionCount > 0)
+                  Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Text(
+                      '$pyusdTransactionCount PYUSD',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -157,7 +179,9 @@ class CityBuilding extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Transactions: $transactionCount'),
+            Text('Total Transactions: $transactionCount'),
+            if (pyusdTransactionCount > 0)
+              Text('PYUSD Transactions: $pyusdTransactionCount'),
             Text('Gas Utilization: ${(utilization * 100).toStringAsFixed(1)}%'),
             Text('Building Height: $height units'),
           ],

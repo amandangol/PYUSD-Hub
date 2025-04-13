@@ -1126,7 +1126,7 @@ class EthereumRpcService {
 
       return allTransactions;
     } catch (e) {
-      print('Error fetching transactions from Etherscan: $e');
+      // print('Error fetching transactions : $e');
       rethrow;
     }
   }

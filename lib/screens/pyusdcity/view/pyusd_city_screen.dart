@@ -8,6 +8,7 @@ import '../widgets/city_building.dart';
 import '../widgets/cloud_widget.dart';
 import '../widgets/transaction_vehicle.dart';
 import '../../../utils/formatter_utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PyusdCityScreen extends StatefulWidget {
   const PyusdCityScreen({super.key});
@@ -271,7 +272,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
                     ],
                   ),
 
-                  // Network status indicators - now in a Stack
+                  // Network status indicators
                   Positioned(
                     top: 40,
                     left: 16,
@@ -356,6 +357,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
               height: height.toInt(),
               width: 60,
               transactionCount: 0,
+              pyusdTransactionCount: 0,
               utilization: 0.5,
             ),
           ),
@@ -406,6 +408,17 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           utilization = gasLimit > 0 ? gasUsed / gasLimit : 0.5;
         }
 
+        // Count PYUSD transactions in the block
+        int pyusdTxCount = 0;
+        if (block['transactions'] != null && block['transactions'] is List) {
+          for (var tx in block['transactions']) {
+            if (tx['to']?.toString().toLowerCase() ==
+                '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase()) {
+              pyusdTxCount++;
+            }
+          }
+        }
+
         // Calculate building height based on gas utilization and transaction count
         // Limit the maximum height to prevent layout issues
         final height = min(100 + (utilization * 200) + min(txCount, 50), 400);
@@ -414,12 +427,13 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: GestureDetector(
-              onTap: () => _showBlockDetails(block),
+              onTap: () => _showBlockDetails(block, blockNumber),
               child: CityBuilding(
                 blockNumber: blockNumber,
                 height: height.toInt(),
                 width: 60 + min(txCount, 20),
                 transactionCount: txCount,
+                pyusdTransactionCount: pyusdTxCount,
                 utilization: utilization,
               ),
             ),
@@ -449,10 +463,23 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
       final laneOffset = isFastLane ? 10.0 : 60.0;
       final transaction = pyusdTransactions[i];
 
-      // Correctly check transaction status
-      final isPending = transaction['status'] == null ||
-          transaction['status'] == 'pending' ||
-          (transaction['status'] is String && transaction['status'] == '0x0');
+      final status = transaction['status']?.toString().toLowerCase() ?? '';
+      final blockNumber = transaction['blockNumber']?.toString() ?? '';
+      final receipt = transaction['receipt'] as Map<String, dynamic>?;
+
+      // A transaction is confirmed if it has a block number and either:
+      // 1. A receipt with status 0x1/1
+      // 2. A transaction status of 0x1/1
+      bool isPending = true;
+      if (blockNumber.isNotEmpty) {
+        if (receipt != null) {
+          final receiptStatus =
+              receipt['status']?.toString().toLowerCase() ?? '';
+          isPending = !(receiptStatus == '0x1' || receiptStatus == '1');
+        } else {
+          isPending = !(status == '0x1' || status == '1');
+        }
+      }
 
       vehicles.add(
         Positioned(
@@ -472,20 +499,21 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
       );
     }
 
-    // Add other transactions with improved animation
     final otherTxCount = min(data.pendingTransactions ~/ 50, 20);
     for (int i = 0; i < otherTxCount; i++) {
       final position = (_animationController.value + 0.5 + (i * 0.05)) % 1.0;
       final isFastLane = i % 2 == 0;
       final laneOffset = isFastLane ? 10.0 : 60.0;
 
-      // Create a mock transaction with proper status
+      // Create a mock transaction for confirmed transactions
       final Map<String, dynamic> otherTx = {
         'hash': '0x${_generateRandomHash()}',
         'from': '0x${_generateRandomHash().substring(0, 40)}',
         'to': '0x${_generateRandomHash().substring(0, 40)}',
         'gasPrice': '0x${_random.nextInt(100000000).toRadixString(16)}',
-        'status': '0x1', // Set as confirmed by default
+        'status': '0x1',
+        'blockNumber': '0x${_random.nextInt(1000000).toRadixString(16)}',
+        'receipt': {'status': '0x1'}
       };
 
       vehicles.add(
@@ -496,8 +524,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
             onTap: () => _showTransactionDetails(otherTx),
             child: TransactionVehicle(
               transaction: otherTx,
-              isPending:
-                  false, // Other transactions are always shown as confirmed
+              isPending: false,
               speed: _getTransactionSpeed(otherTx),
               transactionType: 'other',
               animationValue: _animationController.value,
@@ -1045,6 +1072,7 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   }
 
   void _showTransactionDetails(Map<String, dynamic> transaction) {
+    // Parse gas price to Gwei
     final gasPrice = int.tryParse(
           transaction['gasPrice'].toString().startsWith('0x')
               ? transaction['gasPrice'].toString().substring(2)
@@ -1055,14 +1083,44 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
 
     final gasPriceGwei = gasPrice / 1e9;
 
+    final status = transaction['status']?.toString().toLowerCase() ?? '';
+    final blockNumber = transaction['blockNumber']?.toString() ?? '';
+    final receipt = transaction['receipt'] as Map<String, dynamic>?;
+
+    // A transaction is confirmed if it has a block number and either:
+    // 1. A receipt with status 0x1/1
+    // 2. A transaction status of 0x1/1
+    bool isConfirmed = false;
+    if (blockNumber.isNotEmpty) {
+      if (receipt != null) {
+        final receiptStatus = receipt['status']?.toString().toLowerCase() ?? '';
+        isConfirmed = receiptStatus == '0x1' || receiptStatus == '1';
+      } else {
+        isConfirmed = status == '0x1' || status == '1';
+      }
+    }
+
+    final bool isPyusdTransaction =
+        transaction['to']?.toString().toLowerCase() ==
+            '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          transaction['to']?.toString().toLowerCase() ==
-                  '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'
-              ? 'PYUSD Transaction'
-              : 'Other Transaction',
+        title: Row(
+          children: [
+            Icon(
+              isPyusdTransaction ? Icons.currency_exchange : Icons.swap_horiz,
+              color: isPyusdTransaction ? Colors.green : Colors.blue,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isPyusdTransaction ? 'PYUSD Transaction' : 'Other Transaction',
+              style: TextStyle(
+                color: isPyusdTransaction ? Colors.green : Colors.blue,
+              ),
+            ),
+          ],
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -1080,8 +1138,111 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
               if (transaction['tokenValue'] != null)
                 _buildDetailRow(
                     'Amount:', '${transaction['tokenValue']} PYUSD'),
-              _buildDetailRow('Status:',
-                  transaction['status'] == '0x1' ? 'Confirmed' : 'Pending'),
+              _buildStatusRow('Status:', isConfirmed),
+              if (isConfirmed && blockNumber.isNotEmpty)
+                _buildDetailRow(
+                    'Block:', '#${FormatterUtils.parseHexSafely(blockNumber)}'),
+              if (receipt != null)
+                _buildDetailRow('Receipt Status:',
+                    receipt['status']?.toString() ?? 'Unknown'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          if (transaction['hash'] != null)
+            TextButton(
+              onPressed: () async {
+                final url = 'https://etherscan.io/tx/${transaction['hash']}';
+                if (await canLaunchUrl(Uri.parse(url))) {
+                  await launchUrl(Uri.parse(url));
+                }
+              },
+              child: const Text('View on Etherscan'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusRow(String label, bool isConfirmed) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Icon(
+                  isConfirmed ? Icons.check_circle : Icons.pending,
+                  size: 16,
+                  color: isConfirmed ? Colors.green : Colors.orange,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  isConfirmed ? 'Confirmed' : 'Pending',
+                  style: TextStyle(
+                    color: isConfirmed ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBlockDetails(Map<String, dynamic> block, int blockNumber) {
+    final timestamp = FormatterUtils.parseHexSafely(block['timestamp']) ?? 0;
+    final gasUsed = FormatterUtils.parseHexSafely(block['gasUsed']) ?? 0;
+    final gasLimit = FormatterUtils.parseHexSafely(block['gasLimit']) ?? 0;
+    final txCount = (block['transactions'] as List?)?.length ?? 0;
+    final miner = block['miner']?.toString() ?? 'Unknown';
+
+    // Count PYUSD transactions
+    int pyusdTxCount = 0;
+    if (block['transactions'] != null && block['transactions'] is List) {
+      for (var tx in block['transactions']) {
+        if (tx['to']?.toString().toLowerCase() ==
+            '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase()) {
+          pyusdTxCount++;
+        }
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Block #$blockNumber'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow(
+                  'Timestamp:',
+                  DateTime.fromMillisecondsSinceEpoch(timestamp * 1000)
+                      .toString()),
+              _buildDetailRow('Total Transactions:', txCount.toString()),
+              _buildDetailRow('PYUSD Transactions:', pyusdTxCount.toString()),
+              _buildDetailRow('Gas Used:', '${gasUsed / 1e6}M'),
+              _buildDetailRow('Gas Limit:', '${gasLimit / 1e6}M'),
+              _buildDetailRow('Utilization:',
+                  '${((gasUsed / gasLimit) * 100).toStringAsFixed(1)}%'),
+              _buildDetailRow('Miner:', FormatterUtils.formatAddress(miner)),
             ],
           ),
         ),
@@ -1113,46 +1274,6 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
               value,
               style: const TextStyle(fontFamily: 'monospace'),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showBlockDetails(Map<String, dynamic> block) {
-    final blockNumber = FormatterUtils.parseHexSafely(block['number']);
-    final timestamp = FormatterUtils.parseHexSafely(block['timestamp']);
-    final gasUsed = FormatterUtils.parseHexSafely(block['gasUsed']);
-    final gasLimit = FormatterUtils.parseHexSafely(block['gasLimit']);
-    final txCount = (block['transactions'] as List?)?.length ?? 0;
-    final miner = block['miner']?.toString() ?? 'Unknown';
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Block #$blockNumber'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow(
-                  'Timestamp:',
-                  DateTime.fromMillisecondsSinceEpoch(timestamp! * 1000)
-                      .toString()),
-              _buildDetailRow('Transactions:', txCount.toString()),
-              _buildDetailRow('Gas Used:', '${gasUsed! / 1e6}M'),
-              _buildDetailRow('Gas Limit:', '${gasLimit! / 1e6}M'),
-              _buildDetailRow('Utilization:',
-                  '${((gasUsed / gasLimit) * 100).toStringAsFixed(1)}%'),
-              _buildDetailRow('Miner:', FormatterUtils.formatAddress(miner)),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
           ),
         ],
       ),
