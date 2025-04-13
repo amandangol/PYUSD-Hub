@@ -102,47 +102,50 @@ class TransactionModel {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'hash': hash,
-      'timestamp': timestamp.millisecondsSinceEpoch,
-      'from': from,
-      'to': to,
-      'amount': amount,
-      'gasUsed': gasUsed,
-      'gasLimit': gasLimit,
-      'gasPrice': gasPrice,
-      'status': status.index,
-      'direction': direction.index,
-      'confirmations': confirmations,
-      'tokenSymbol': tokenSymbol,
-      'tokenName': tokenName,
-      'tokenDecimals': tokenDecimals,
-      'tokenContractAddress': tokenContractAddress,
-      'network': network.index,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'hash': hash,
+        'timestamp': timestamp.toIso8601String(),
+        'from': from,
+        'to': to,
+        'amount': amount,
+        'gasUsed': gasUsed,
+        'gasLimit': gasLimit,
+        'gasPrice': gasPrice,
+        'status': status.toString(),
+        'direction': direction.toString(),
+        'confirmations': confirmations,
+        'network': network.toString(),
+        'tokenSymbol': tokenSymbol,
+        'tokenName': tokenName,
+        'tokenDecimals': tokenDecimals,
+        'tokenContractAddress': tokenContractAddress,
+      };
 
-  factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    return TransactionModel(
-      hash: json['hash'],
-      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
-      from: json['from'],
-      to: json['to'],
-      amount: json['amount'],
-      gasUsed: json['gasUsed'],
-      gasLimit: json['gasLimit'],
-      gasPrice: json['gasPrice'],
-      status: TransactionStatus.values[json['status']],
-      direction: TransactionDirection.values[json['direction']],
-      confirmations: json['confirmations'],
-      tokenSymbol: json['tokenSymbol'],
-      tokenName: json['tokenName'],
-      tokenDecimals: json['tokenDecimals'],
-      tokenContractAddress: json['tokenContractAddress'],
-      network: NetworkType.values[json['network']],
-    );
-  }
+  factory TransactionModel.fromJson(Map<String, dynamic> json) =>
+      TransactionModel(
+        hash: json['hash'] as String,
+        timestamp: DateTime.parse(json['timestamp']),
+        from: json['from'] as String,
+        to: json['to'] as String,
+        amount: json['amount'] as double,
+        gasUsed: json['gasUsed'] as double,
+        gasLimit: json['gasLimit'] as double,
+        gasPrice: json['gasPrice'] as double,
+        status: TransactionStatus.values.firstWhere(
+          (e) => e.toString() == json['status'],
+        ),
+        direction: TransactionDirection.values.firstWhere(
+          (e) => e.toString() == json['direction'],
+        ),
+        confirmations: json['confirmations'] as int,
+        network: NetworkType.values.firstWhere(
+          (e) => e.toString() == json['network'],
+        ),
+        tokenSymbol: json['tokenSymbol'] as String?,
+        tokenName: json['tokenName'] as String?,
+        tokenDecimals: json['tokenDecimals'] as int?,
+        tokenContractAddress: json['tokenContractAddress'] as String?,
+      );
 }
 
 @immutable

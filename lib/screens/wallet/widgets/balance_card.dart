@@ -18,7 +18,6 @@ class BalanceCard extends StatelessWidget {
   // Cache common styles and colors
   static const _paypalBlue = Color(0xFF142C8E);
   static const _paypalLightBlue = Color(0xFF253B80);
-  static const _animationDuration = Duration(milliseconds: 300);
 
   // Use const constructor
   const BalanceCard({

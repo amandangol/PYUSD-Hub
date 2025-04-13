@@ -28,7 +28,6 @@ class ThemeProvider with ChangeNotifier {
     }
   }
 
-  // Save the theme mode to shared preferences
   Future<void> _saveToPrefs() async {
     if (_prefs != null) {
       await _prefs!.setBool(key, _isDarkMode);

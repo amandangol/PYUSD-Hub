@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:pyusd_hub/screens/insights/provider/insights_provider.dart';
 import 'package:pyusd_hub/screens/onboarding/provider/onboarding_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,7 +32,6 @@ import 'services/notification_service.dart';
 import 'screens/wallet/view/wallet_screen.dart';
 import 'screens/networkcongestion/view/network_congestion_screen.dart';
 import 'screens/news/provider/news_provider.dart';
-import 'services/bigquery_service.dart';
 import 'providers/navigation_provider.dart';
 import 'widgets/bottom_navigation.dart';
 import 'routes/app_routes.dart';
@@ -46,9 +43,9 @@ import 'providers/pyusd_analytics_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
 
   await dotenv.load(fileName: ".env");
 
@@ -157,10 +154,10 @@ class MyApp extends StatelessWidget {
             newsService: NewsService(),
           ),
         ),
-        Provider<BigQueryService>(create: (_) => BigQueryService()),
+        // Provider<BigQueryService>(create: (_) => BigQueryService()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
-        ChangeNotifierProvider(create: (_) => PyusdAnalyticsProvider()),
+        // ChangeNotifierProvider(create: (_) => PyusdAnalyticsProvider()),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(
         builder: (context, themeProvider, sessionProvider, child) {

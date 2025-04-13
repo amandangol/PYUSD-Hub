@@ -167,13 +167,12 @@ class WalletStateProvider extends ChangeNotifier {
     }
   }
 
-  // Add helper method for token balance
   Future<double> _getTokenBalance(
       String rpcUrl, String address, NetworkType network) async {
     final tokenContractAddress = _tokenContractAddresses[network];
     if (tokenContractAddress == null || tokenContractAddress.isEmpty) {
       print('Debug: No token contract address for network $network');
-      return tokenBalance; // Return existing balance instead of 0
+      return tokenBalance;
     }
 
     try {
@@ -185,7 +184,7 @@ class WalletStateProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('Debug: Error fetching token balance: $e');
-      return tokenBalance; // Return existing balance on error
+      return tokenBalance;
     }
   }
 

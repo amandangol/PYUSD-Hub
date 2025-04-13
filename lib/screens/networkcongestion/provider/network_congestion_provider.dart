@@ -86,7 +86,7 @@ class NetworkCongestionProvider with ChangeNotifier {
   final Map<String, Map<String, dynamic>> _transactionReceiptCache = {};
 
   // Gas price notification settings
-  double _gasPriceThreshold = 10.0;
+  double _gasPriceThreshold = 5.0;
   bool _gasPriceNotificationsEnabled = true;
   final NotificationService _notificationService = NotificationService();
 

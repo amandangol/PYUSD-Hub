@@ -23,6 +23,20 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _pinMatch = true;
+  bool _isBiometricsAvailable = false;
+  bool _enableBiometrics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _isBiometricsAvailable = await authProvider.checkBiometrics();
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
@@ -82,15 +96,16 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
 
       await authProvider.importWalletFromMnemonic(mnemonic, pin);
 
-      // Complete onboarding
+      if (_isBiometricsAvailable && _enableBiometrics) {
+        await authProvider.enableBiometrics(pin);
+      }
+
       final onboardingProvider =
           Provider.of<OnboardingProvider>(context, listen: false);
       await onboardingProvider.completeOnboarding();
 
       if (mounted) {
-        // Set the wallet screen before navigation
         context.read<NavigationProvider>().setWalletScreen();
-        // Navigate to main app and clear the navigation stack
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/main',
           (route) => false,
@@ -104,10 +119,8 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
     }
   }
 
-  // Add this new method to validate the mnemonic
   Future<bool> _validateMnemonic(String mnemonic) async {
     try {
-      // First check if the mnemonic is valid using the bip39 package
       final walletService = WalletService();
       return await walletService.validateMnemonic(mnemonic);
     } catch (e) {
@@ -207,6 +220,74 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBiometricsSection(ThemeData theme, bool isDarkMode) {
+    if (!_isBiometricsAvailable) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.dividerColor,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDarkMode
+                    ? Colors.black.withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Biometric Authentication',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? Colors.white : const Color(0xFF1A1A2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Enable fingerprint for quick and secure access',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Enable Biometrics'),
+                value: _enableBiometrics,
+                onChanged: (bool value) {
+                  setState(() {
+                    _enableBiometrics = value;
+                  });
+                },
+                secondary: Icon(
+                  Icons.fingerprint,
+                  color: _enableBiometrics
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withOpacity(0.5),
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -398,6 +479,8 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
                             ),
                           ),
                         ],
+
+                        _buildBiometricsSection(theme, isDarkMode),
 
                         if (_errorMessage != null) ...[
                           const SizedBox(height: 16),

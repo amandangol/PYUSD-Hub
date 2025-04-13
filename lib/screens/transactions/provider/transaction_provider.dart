@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../services/notification_service.dart';
 import '../../authentication/provider/auth_provider.dart';
 import '../../../services/ethereum_rpc_service.dart';
-import '../../../services/firebase_transaction_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../../utils/provider_utils.dart';
 import '../model/transaction_model.dart';
 import 'transactiondetail_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class TransactionProvider extends ChangeNotifier
     with ProviderUtils, CacheUtils<List<TransactionModel>> {
@@ -17,7 +18,6 @@ class TransactionProvider extends ChangeNotifier
   final WalletStateProvider _walletProvider;
   final TransactionDetailProvider _detailProvider;
   final EthereumRpcService _rpcService = EthereumRpcService();
-  final FirebaseTransactionService _firebaseService;
   final NotificationService _notificationService;
 
   final Map<NetworkType, List<TransactionModel>> _transactionsByNetwork = {};
@@ -83,8 +83,7 @@ class TransactionProvider extends ChangeNotifier
         _networkProvider = networkProvider,
         _walletProvider = walletProvider,
         _detailProvider = detailProvider,
-        _notificationService = notificationService,
-        _firebaseService = FirebaseTransactionService(networkProvider) {
+        _notificationService = notificationService {
     _instance = this;
     _initializeTransactionMaps();
     _networkProvider.addListener(_onNetworkChanged);
@@ -281,9 +280,6 @@ class TransactionProvider extends ChangeNotifier
   Future<List<TransactionModel>> _fetchAllTransactions(
       String address, NetworkType network) async {
     try {
-      // Get transactions from Firebase first
-      final firebaseTransactions = await _firebaseService.getTransactions();
-
       // Get transactions from local storage
       final cachedTransactions =
           await _loadCachedTransactions(address, network);
@@ -292,7 +288,7 @@ class TransactionProvider extends ChangeNotifier
       if (cachedTransactions.isEmpty ||
           DateTime.now().difference(_lastSuccessfulRefresh ?? DateTime(2000)) >
               const Duration(minutes: 5)) {
-        // Use the new Etherscan method to fetch transactions
+        // Use Etherscan method to fetch transactions
         final transactions = await _rpcService.getTransactionsFromEtherscan(
           _networkProvider.currentRpcEndpoint,
           address,
@@ -305,26 +301,13 @@ class TransactionProvider extends ChangeNotifier
           network,
         );
 
-        // Save confirmed and failed transactions to Firebase
-        for (final tx in processedTransactions) {
-          if (tx.status == TransactionStatus.confirmed ||
-              tx.status == TransactionStatus.failed) {
-            await _firebaseService.saveTransaction(tx);
-          }
-        }
-
-        // Cache the results
+        // Cache the results locally
         await _cacheTransactions(processedTransactions, address, network);
 
-        // Combine Firebase and new transactions
-        final allTransactions = [
-          ...firebaseTransactions,
-          ...processedTransactions
-        ];
-        return allTransactions;
+        return processedTransactions;
       }
 
-      return [...firebaseTransactions, ...cachedTransactions];
+      return cachedTransactions;
     } catch (e) {
       // print('Error fetching all transactions: $e');
       // Return cached transactions if available, otherwise empty list
@@ -334,15 +317,39 @@ class TransactionProvider extends ChangeNotifier
 
   Future<void> _cacheTransactions(List<TransactionModel> transactions,
       String address, NetworkType network) async {
-    // Implementation depends on your caching strategy (shared_preferences, hive, etc.)
-    // This is a placeholder
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'transactions_${address}_${network.toString()}';
+
+      // Convert transactions to JSON
+      final jsonList = transactions.map((tx) => tx.toJson()).toList();
+
+      // Store in shared preferences
+      await prefs.setString(key, jsonEncode(jsonList));
+
+      // Store cache timestamp
+      await prefs.setInt(
+          '${key}_timestamp', DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      print('Error caching transactions: $e');
+    }
   }
 
   Future<List<TransactionModel>> _loadCachedTransactions(
       String address, NetworkType network) async {
-    // Implementation depends on your caching strategy
-    // This is a placeholder
-    return [];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'transactions_${address}_${network.toString()}';
+
+      final jsonString = prefs.getString(key);
+      if (jsonString == null) return [];
+
+      final jsonList = jsonDecode(jsonString) as List;
+      return jsonList.map((json) => TransactionModel.fromJson(json)).toList();
+    } catch (e) {
+      print('Error loading cached transactions: $e');
+      return [];
+    }
   }
 
   void _updateTransactionState(List<TransactionModel> newTransactions,

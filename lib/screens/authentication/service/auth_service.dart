@@ -90,7 +90,7 @@ class AuthService {
 
       // Authenticate user with biometrics
       bool authenticated = await _localAuth.authenticate(
-        localizedReason: 'Scan your fingerprint/face to enable biometric login',
+        localizedReason: 'Scan your fingerprint to enable biometric login',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
@@ -152,7 +152,7 @@ class AuthService {
   Future<bool> authenticateWithBiometrics() async {
     try {
       return await _localAuth.authenticate(
-        localizedReason: 'Scan your fingerprint/face to access your wallet',
+        localizedReason: 'Scan your fingerprint to access your wallet',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,

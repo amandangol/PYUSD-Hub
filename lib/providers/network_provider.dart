@@ -127,13 +127,12 @@ class NetworkProvider extends ChangeNotifier {
         // Notify listeners about the network change
         notifyListeners();
 
-        // Add a small delay to ensure UI updates before clearing data
         await Future.delayed(const Duration(milliseconds: 100));
 
         // Clear transactions for the previous network
         final transactionProvider = TransactionProvider.instance;
         transactionProvider.clearNetworkData(network);
-      
+
         // Add another small delay before completing the switch
         await Future.delayed(const Duration(milliseconds: 100));
       } catch (e) {
@@ -152,7 +151,6 @@ class NetworkProvider extends ChangeNotifier {
   // Helper method to validate RPC endpoint
   Future<bool> validateRpcConnection() async {
     try {
-      // Implement RPC connection test
       return true;
     } catch (e) {
       print('RPC connection error: $e');
