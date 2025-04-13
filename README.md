@@ -69,19 +69,21 @@ flutter run
 
 ### Configuration
 
-1. Create a `.env` file in the project root:
-```env
-ETHERSCAN_API_KEY=your_api_key
-INFURA_PROJECT_ID=your_project_id
+1. Create a `.env` file in the project root by copying `.env.example`:
+```bash
+cp .env.example .env
 ```
 
-2. Update the configuration in `lib/config/app_config.dart`:
-```dart
-class AppConfig {
-  static const String apiUrl = 'your_api_url';
-  // ... other configurations
-}
-```
+2. Fill in your environment variables in the `.env` file with your actual values:
+- GCP RPC endpoints for Mainnet and Sepolia
+- PYUSD contract address
+- API keys (Etherscan, Gemini)
+- GCP configuration details
+- Network chain ID
+
+The `.env` file contains sensitive information and is git-ignored. Never commit your actual `.env` file to version control.
+
+
 
 ## Architecture
 
