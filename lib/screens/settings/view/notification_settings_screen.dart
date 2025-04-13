@@ -83,13 +83,14 @@ class NotificationSettingsScreen extends StatelessWidget {
                                     Expanded(
                                       child: Slider(
                                         value: provider.gasPriceThreshold,
-                                        min: 10,
-                                        max: 200,
-                                        divisions: 38,
+                                        min: 2,
+                                        max: 100,
+                                        divisions: (100 - 2) ~/ 2,
                                         label:
                                             '${provider.gasPriceThreshold.round()} Gwei',
                                         onChanged: (value) {
-                                          provider.setGasPriceThreshold(value);
+                                          provider.setGasPriceThreshold(
+                                              value.roundToDouble());
                                         },
                                       ),
                                     ),
@@ -137,48 +138,52 @@ class NotificationSettingsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 margin: const EdgeInsets.only(bottom: 16),
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('Transaction Status'),
-                      subtitle: Text(
-                        'Get notified about transaction confirmations and failures',
-                        style: TextStyle(color: textColor.withOpacity(0.7)),
-                      ),
-                      secondary: Icon(
-                        Icons.receipt_long,
-                        color: primaryColor,
-                      ),
-                      value: true, // TODO: Implement transaction notifications
-                      onChanged: (bool value) {
-                        // TODO: Implement transaction notifications
-                      },
-                      activeColor: primaryColor,
-                      inactiveTrackColor: Colors.grey.withOpacity(0.3),
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      title: const Text('Network Congestion'),
-                      subtitle: Text(
-                        'Get notified about high network congestion',
-                        style: TextStyle(color: textColor.withOpacity(0.7)),
-                      ),
-                      secondary: Icon(
-                        Icons.traffic,
-                        color: primaryColor,
-                      ),
-                      value:
-                          true, // TODO: Implement network congestion notifications
-                      onChanged: (bool value) {
-                        // TODO: Implement network congestion notifications
-                      },
-                      activeColor: primaryColor,
-                      inactiveTrackColor: Colors.grey.withOpacity(0.3),
-                    ),
-                  ],
+                child: Consumer<NetworkCongestionProvider>(
+                  builder: (context, provider, child) {
+                    return Column(
+                      children: [
+                        SwitchListTile(
+                          title: const Text('Transaction Status'),
+                          subtitle: Text(
+                            'Get notified about transaction confirmations and failures',
+                            style: TextStyle(color: textColor.withOpacity(0.7)),
+                          ),
+                          secondary: Icon(
+                            Icons.receipt_long,
+                            color: primaryColor,
+                          ),
+                          value:
+                              true, // TODO: Implement transaction notifications
+                          onChanged: (bool value) {
+                            // TODO: Implement transaction notifications
+                          },
+                          activeColor: primaryColor,
+                          inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                        ),
+                        const Divider(height: 1),
+                        SwitchListTile(
+                          title: const Text('Network Congestion'),
+                          subtitle: Text(
+                            'Get notified about high network congestion',
+                            style: TextStyle(color: textColor.withOpacity(0.7)),
+                          ),
+                          secondary: Icon(
+                            Icons.traffic,
+                            color: primaryColor,
+                          ),
+                          value: provider.networkCongestionNotificationsEnabled,
+                          onChanged: (bool value) {
+                            provider
+                                .toggleNetworkCongestionNotifications(value);
+                          },
+                          activeColor: primaryColor,
+                          inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-
               // Notification Preferences section
               Text(
                 'NOTIFICATION PREFERENCES',

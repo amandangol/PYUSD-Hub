@@ -9,6 +9,7 @@ import '../../../config/rpc_endpoints.dart';
 import '../../../services/notification_service.dart';
 import '../model/networkcongestion_model.dart';
 import '../../../services/rpc_call_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NetworkCongestionProvider with ChangeNotifier {
   static const int MAX_RECENT_BLOCKS = 10;
@@ -100,8 +101,8 @@ class NetworkCongestionProvider with ChangeNotifier {
 
   // Gas price notification settings
   double _gasPriceThreshold = 5.0;
-  bool _gasPriceNotificationsEnabled = true;
-  final NotificationService _notificationService = NotificationService();
+  bool _gasPriceNotificationsEnabled = false;
+  final NotificationService _notificationService;
 
   double get gasPriceThreshold => _gasPriceThreshold;
   bool get gasPriceNotificationsEnabled => _gasPriceNotificationsEnabled;
@@ -113,16 +114,53 @@ class NetworkCongestionProvider with ChangeNotifier {
   Timer? _reconnectTimer;
   bool hasError = false;
 
-  void setGasPriceThreshold(double threshold) {
-    if (_isDisposed) return;
-    _gasPriceThreshold = threshold;
-    _safeNotifyListeners();
+  // Add these fields
+  static const String _gasPriceThresholdKey = 'gas_price_threshold';
+  static const String _gasPriceNotificationsKey =
+      'gas_price_notifications_enabled';
+  static const String _networkCongestionNotificationsKey =
+      'network_congestion_notifications_enabled';
+
+  final SharedPreferences _prefs;
+
+  bool _networkCongestionNotificationsEnabled = false;
+
+  NetworkCongestionProvider(this._prefs, this._notificationService) {
+    _loadPreferences();
   }
 
-  void toggleGasPriceNotifications(bool enabled) {
-    if (_isDisposed) return;
+  // Load saved preferences
+  Future<void> _loadPreferences() async {
+    _gasPriceThreshold = _prefs.getDouble(_gasPriceThresholdKey) ?? 30.0;
+    _gasPriceNotificationsEnabled =
+        _prefs.getBool(_gasPriceNotificationsKey) ?? false;
+    _networkCongestionNotificationsEnabled =
+        _prefs.getBool(_networkCongestionNotificationsKey) ?? false;
+    notifyListeners();
+  }
+
+  // Getters
+  bool get networkCongestionNotificationsEnabled =>
+      _networkCongestionNotificationsEnabled;
+
+  // Setters with persistence
+  Future<void> setGasPriceThreshold(double value) async {
+    _gasPriceThreshold = value;
+    await _prefs.setDouble(_gasPriceThresholdKey, value);
+    notifyListeners();
+  }
+
+  Future<void> toggleGasPriceNotifications(bool enabled) async {
     _gasPriceNotificationsEnabled = enabled;
-    _safeNotifyListeners();
+    await _prefs.setBool(_gasPriceNotificationsKey, enabled);
+    notifyListeners();
+  }
+
+  Future<void> toggleNetworkCongestionNotifications(bool enabled) async {
+    _networkCongestionNotificationsEnabled = enabled;
+    await _prefs.setBool(_networkCongestionNotificationsKey, enabled);
+    _notificationService.setNetworkCongestionNotifications(enabled);
+    notifyListeners();
   }
 
   Future<dynamic> _makeRpcCall(String method, List<dynamic> params) async {

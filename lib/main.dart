@@ -43,59 +43,45 @@ import 'providers/pyusd_analytics_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-
+  // Load environment variables
   await dotenv.load(fileName: ".env");
 
+  // Initialize shared preferences
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool("theme") ?? false;
 
+  // Initialize providers that need early setup
   final themeProvider = ThemeProvider();
   await themeProvider.initialize();
 
   final onboardingProvider = OnboardingProvider();
   await onboardingProvider.initialize();
 
-  runApp(MyApp(
-    initialThemeIsDark: isDarkMode,
-    themeProvider: themeProvider,
-    onboardingProvider: onboardingProvider,
-  ));
-}
+  // Initialize notification service
+  final notificationService = NotificationService();
 
-class MyApp extends StatelessWidget {
-  final bool initialThemeIsDark;
-  final ThemeProvider themeProvider;
-  final OnboardingProvider onboardingProvider;
-
-  const MyApp({
-    super.key,
-    required this.initialThemeIsDark,
-    required this.themeProvider,
-    required this.onboardingProvider,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  runApp(
+    MultiProvider(
       providers: [
+        // Theme providers
         ChangeNotifierProvider.value(
-          value: themeProvider..setDarkMode(initialThemeIsDark),
+          value: themeProvider..setDarkMode(isDarkMode),
         ),
         ChangeNotifierProvider.value(value: onboardingProvider),
+
+        // Core providers
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(
           create: (context) => SessionProvider(context.read<AuthProvider>()),
         ),
+        ChangeNotifierProvider(create: (_) => NetworkProvider()),
+
+        // Wallet providers
         ChangeNotifierProvider(create: (_) => WaletScreenProvider()),
         ChangeNotifierProvider(
           create: (context) =>
               SecuritySettingsProvider(context.read<AuthProvider>()),
         ),
-        ChangeNotifierProvider(create: (_) => TraceProvider()),
-        ChangeNotifierProvider(create: (_) => NetworkProvider()),
         ChangeNotifierProxyProvider2<AuthProvider, NetworkProvider,
             WalletStateProvider>(
           create: (context) => WalletStateProvider(
@@ -108,21 +94,21 @@ class MyApp extends StatelessWidget {
             networkProvider: networkProvider,
           ),
         ),
-        ChangeNotifierProvider(
-            create: (context) => TransactionDetailProvider()),
+
+        // Transaction providers
+        ChangeNotifierProvider(create: (_) => TransactionDetailProvider()),
         ChangeNotifierProxyProvider4<
             AuthProvider,
             NetworkProvider,
             WalletStateProvider,
             TransactionDetailProvider,
             TransactionProvider>(
-          lazy: false,
           create: (context) => TransactionProvider(
             authProvider: context.read<AuthProvider>(),
             networkProvider: context.read<NetworkProvider>(),
             walletProvider: context.read<WalletStateProvider>(),
             detailProvider: context.read<TransactionDetailProvider>(),
-            notificationService: NotificationService(),
+            notificationService: notificationService,
           ),
           update: (context, authProvider, networkProvider, walletProvider,
                   detailProvider, previous) =>
@@ -131,33 +117,36 @@ class MyApp extends StatelessWidget {
             networkProvider: networkProvider,
             walletProvider: walletProvider,
             detailProvider: detailProvider,
-            notificationService: NotificationService(),
+            notificationService: notificationService,
           ),
         ),
-        Provider<MarketService>(
-          create: (_) => MarketService(),
-        ),
+
+        // Network and market providers
+        Provider<MarketService>(create: (_) => MarketService()),
         ChangeNotifierProvider<NetworkCongestionProvider>(
-          create: (context) => NetworkCongestionProvider(),
-        ),
-        ChangeNotifierProxyProvider<MarketService, InsightsProvider>(
-          create: (context) => InsightsProvider(
-            context.read<MarketService>(),
+          create: (_) => NetworkCongestionProvider(
+            prefs,
+            notificationService,
           ),
-          update: (context, marketService, previous) {
-            return previous ?? InsightsProvider(marketService);
-          },
         ),
+
+        // Insights provider
+        ChangeNotifierProxyProvider<MarketService, InsightsProvider>(
+          create: (context) => InsightsProvider(context.read<MarketService>()),
+          update: (context, marketService, previous) =>
+              previous ?? InsightsProvider(marketService),
+        ),
+
+        // Service providers
         Provider<WalletService>(create: (_) => WalletService()),
         ChangeNotifierProvider<NewsProvider>(
-          create: (context) => NewsProvider(
-            newsService: NewsService(),
-          ),
+          create: (_) => NewsProvider(newsService: NewsService()),
         ),
-        // Provider<BigQueryService>(create: (_) => BigQueryService()),
+
+        // Navigation and other providers
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => GeminiProvider()),
-        // ChangeNotifierProvider(create: (_) => PyusdAnalyticsProvider()),
+        ChangeNotifierProvider(create: (_) => TraceProvider()),
       ],
       child: Consumer2<ThemeProvider, SessionProvider>(
         builder: (context, themeProvider, sessionProvider, child) {
@@ -176,8 +165,8 @@ class MyApp extends StatelessWidget {
           );
         },
       ),
-    );
-  }
+    ),
+  );
 }
 
 class MainApp extends StatefulWidget {

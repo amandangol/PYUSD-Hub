@@ -14,6 +14,9 @@ class NotificationService {
   double? _lastNotifiedGasPrice;
   DateTime? _lastGasPriceNotificationTime;
   static const _gasPriceNotificationCooldown = Duration(minutes: 15);
+  bool _networkCongestionNotificationsEnabled = false;
+  DateTime? _lastCongestionNotificationTime;
+  static const _congestionNotificationCooldown = Duration(minutes: 30);
 
   NotificationService._internal() {
     _initializeNotifications();
@@ -236,6 +239,77 @@ class NotificationService {
     } catch (e) {
       print('Error showing gas price notification: $e');
     }
+  }
+
+  // Notify about network congestion
+  Future<void> showNetworkCongestionNotification({
+    required double congestionLevel,
+    required double baseGasPrice,
+  }) async {
+    if (!_networkCongestionNotificationsEnabled) return;
+
+    // Check cooldown period
+    if (_lastCongestionNotificationTime != null &&
+        DateTime.now().difference(_lastCongestionNotificationTime!) <
+            _congestionNotificationCooldown) {
+      return;
+    }
+
+    if (!_isInitialized) {
+      await _initializeNotifications();
+    }
+
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'network_congestion_channel',
+        'Network Congestion Alerts',
+        channelDescription: 'Notifications for high network congestion',
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: 'Network Congestion Alert',
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
+        color: Colors.red,
+        enableLights: true,
+        ledColor: Colors.red,
+        ledOnMs: 1000,
+        ledOffMs: 500,
+      );
+
+      const iOSDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'default',
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iOSDetails,
+      );
+
+      await _flutterLocalNotificationsPlugin.show(
+        'network_congestion_alert'.hashCode,
+        '⚠️ High Network Congestion',
+        'Network is experiencing high congestion.\nCurrent Gas Price: ${baseGasPrice.toStringAsFixed(2)} Gwei\nCongestion Level: ${(congestionLevel * 100).toStringAsFixed(0)}%',
+        details,
+        payload: 'network_congestion_alert',
+      );
+
+      _lastCongestionNotificationTime = DateTime.now();
+    } catch (e) {
+      print('Error showing network congestion notification: $e');
+    }
+  }
+
+  // Add getters and setters for notification states
+  bool get networkCongestionNotificationsEnabled =>
+      _networkCongestionNotificationsEnabled;
+
+  void setNetworkCongestionNotifications(bool enabled) {
+    _networkCongestionNotificationsEnabled = enabled;
   }
 
   // //  test method
