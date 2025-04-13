@@ -1,6 +1,6 @@
 # PYUSD Hub
 
-![PYUSD Hub Logo](assets/images/pyusdlogo.png)
+<img src="assets/images/pyusdlogo.png" alt="PYUSD Hub Logo" width="200" height="200">
 
 PYUSD Hub is a comprehensive mobile wallet application for managing PYUSD (PayPal USD) and ETH on the Ethereum network. It combines secure wallet functionality with advanced analytics and network monitoring tools.
 
