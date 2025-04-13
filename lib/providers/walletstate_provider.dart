@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../screens/authentication/provider/auth_provider.dart';
-import '../services/ethereum_rpc_service.dart';
+import '../services/gcp_rpc_service.dart';
 import 'network_provider.dart';
 
 class WalletStateProvider extends ChangeNotifier {
   final AuthProvider _authProvider;
   final NetworkProvider _networkProvider;
-  final EthereumRpcService _rpcService = EthereumRpcService();
+  final GcpRpcService _rpcService = GcpRpcService();
   final Map<NetworkType, DateTime> _lastRefreshTimes = {};
   final Duration _cacheDuration = const Duration(minutes: 3);
 

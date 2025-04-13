@@ -79,8 +79,21 @@ class NetworkCongestionProvider with ChangeNotifier {
   List<Map<String, dynamic>> get recentBlocks => _recentBlocks;
 
   late List<Map<String, dynamic>> _recentPyusdTransactions = [];
-  List<Map<String, dynamic>> get recentPyusdTransactions =>
-      _recentPyusdTransactions;
+  List<Map<String, dynamic>> get recentPyusdTransactions {
+    // Debug print to verify data
+    print('Getting PYUSD transactions...');
+
+    final pyusdAddress = _pyusdContractAddress.toLowerCase();
+    final pyusdTxs = _recentPyusdTransactions.where((tx) {
+      final to = (tx['to'] as String?)?.toLowerCase() ?? '';
+      return to == pyusdAddress;
+    }).toList();
+
+    // Debug print transaction count
+    print('Found ${pyusdTxs.length} PYUSD transactions');
+
+    return pyusdTxs;
+  }
 
   // Cache for transaction receipts to reduce RPC calls
   final Map<String, Map<String, dynamic>> _transactionReceiptCache = {};
@@ -1524,7 +1537,7 @@ class NetworkCongestionProvider with ChangeNotifier {
     return {
       'gasPrice': _congestionData.historicalGasPrices.length / 20,
       'networkHealth': _recentBlocks.length / 30,
-      'blockTime': _congestionData.averageBlockTime > 0 ? 1.0 : 0.0,
+      // 'blockTime': _congestionData.averageBlockTime > 0 ? 1.0 : 0.0,
       'peerNetwork': _congestionData.isNetworkListening ? 1.0 : 0.0,
     };
   }

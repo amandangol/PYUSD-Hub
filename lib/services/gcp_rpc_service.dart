@@ -9,10 +9,10 @@ import '../screens/transactions/model/transaction_model.dart';
 import 'dart:math' as Math;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class EthereumRpcService {
-  static final EthereumRpcService _instance = EthereumRpcService._internal();
-  factory EthereumRpcService() => _instance;
-  EthereumRpcService._internal();
+class GcpRpcService {
+  static final GcpRpcService _instance = GcpRpcService._internal();
+  factory GcpRpcService() => _instance;
+  GcpRpcService._internal();
 
   static const String erc20TransferAbi =
       '[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]';

@@ -32,7 +32,7 @@ class _BlocksTabState extends State<BlocksTab> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -50,7 +50,6 @@ class _BlocksTabState extends State<BlocksTab> {
 
   // Block Information Overview Card
   Widget _buildBlockInfoOverview(BuildContext context) {
-    // Get the latest block if available
     final latestBlock = widget.provider.recentBlocks.isNotEmpty
         ? widget.provider.recentBlocks[0]
         : null;
@@ -79,66 +78,36 @@ class _BlocksTabState extends State<BlocksTab> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        title: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Block Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.info_outline),
-                      onPressed: () => InfoDialog.show(
-                        context,
-                        title: 'Block Information',
-                        message:
-                            'Overview of the latest block on the Ethereum network, including block number, time, size, and gas usage statistics.',
-                      ),
-                    ),
-                  ],
-                ),
-                if (blockNumber > 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Latest: #$blockNumber',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-              ],
+            const Text(
+              'Block Information',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // Block statistics in a grid
-            Column(
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: () => InfoDialog.show(
+                context,
+                title: 'Block Information',
+                message:
+                    'Overview of the latest block on the Ethereum network, including block number, time, size, and gas usage statistics.',
+              ),
+            ),
+          ],
+        ),
+        subtitle: blockNumber > 0
+            ? Text('Latest Block: #$blockNumber')
+            : const Text('Loading latest block...'),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
               children: [
-                // StatsCard(
-                //   title: 'Block Time',
-                //   value: '${data.blockTime.toStringAsFixed(1)}s',
-                //   icon: Icons.access_time,
-                //   color: Colors.blue,
-                //   description: 'Average',
-                //   isListView: true,
-                // ),
-                // const SizedBox(height: 12),
                 StatsCard(
                   title: 'Gas Usage',
                   value: '$gasUsagePercentage%',
@@ -156,19 +125,10 @@ class _BlocksTabState extends State<BlocksTab> {
                   description: 'Current',
                   isListView: true,
                 ),
-                const SizedBox(height: 12),
-                // StatsCard(
-                //   title: 'Blocks/Hour',
-                //   value: '${data.blocksPerHour}',
-                //   icon: Icons.speed,
-                //   color: Colors.purple,
-                //   description: 'Production rate',
-                //   isListView: true,
-                // ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -229,7 +189,7 @@ class _BlocksTabState extends State<BlocksTab> {
               )
             else
               SizedBox(
-                height: 400,
+                height: 450,
                 child: ListView.builder(
                   itemCount: blocks.length,
                   itemBuilder: (context, index) {

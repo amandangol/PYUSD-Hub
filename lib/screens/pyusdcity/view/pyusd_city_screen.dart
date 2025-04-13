@@ -456,41 +456,69 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
 
     final List<Widget> vehicles = [];
 
+    // Debug print to check transactions
+    print('PYUSD Transactions count: ${pyusdTransactions.length}');
+
     // Add PYUSD transactions with improved animation
     for (int i = 0; i < min(pyusdTransactions.length, 12); i++) {
+      final transaction = pyusdTransactions[i];
+
+      // Debug print for transaction details
+      print(
+          'Transaction $i: ${transaction['hash']} - Block: ${transaction['blockNumber']}');
+
       final position = (_animationController.value + (i * 0.08)) % 1.0;
       final isFastLane = i % 2 == 0;
       final laneOffset = isFastLane ? 10.0 : 60.0;
-      final transaction = pyusdTransactions[i];
 
-      final status = transaction['status']?.toString().toLowerCase() ?? '';
-      final blockNumber = transaction['blockNumber']?.toString() ?? '';
-      final receipt = transaction['receipt'] as Map<String, dynamic>?;
+      // Determine transaction status
+      bool isPending = true; // Start with pending assumption
 
-      // A transaction is confirmed if it has a block number and either:
-      // 1. A receipt with status 0x1/1
-      // 2. A transaction status of 0x1/1
-      bool isPending = true;
-      if (blockNumber.isNotEmpty) {
+      if (transaction['blockNumber'] != null) {
+        // If we have a block number, check receipt status
+        final receipt = transaction['receipt'] as Map<String, dynamic>?;
         if (receipt != null) {
-          final receiptStatus =
-              receipt['status']?.toString().toLowerCase() ?? '';
-          isPending = !(receiptStatus == '0x1' || receiptStatus == '1');
+          // Convert hex or decimal status to boolean
+          final receiptStatus = receipt['status'];
+          if (receiptStatus != null) {
+            if (receiptStatus is String) {
+              // Handle hex string status
+              isPending = !(receiptStatus == '0x1' || receiptStatus == '1');
+            } else if (receiptStatus is int) {
+              // Handle integer status
+              isPending = receiptStatus != 1;
+            } else if (receiptStatus is bool) {
+              // Handle boolean status
+              isPending = !receiptStatus;
+            }
+          }
         } else {
-          isPending = !(status == '0x1' || status == '1');
+          // If no receipt but has block number, consider confirmed
+          isPending = false;
         }
       }
+
+      // Debug print for status check
+      print(
+          'Transaction ${transaction['hash']} - Block: ${transaction['blockNumber']}, Receipt: ${transaction['receipt']}, isPending: $isPending');
+
+      // Determine speed based on gas price
+      final speed = _getTransactionSpeed(transaction);
+
+      // Debug print for vehicle creation
+      print(
+          'Creating vehicle for tx ${transaction['hash']} - isPending: $isPending, speed: $speed');
 
       vehicles.add(
         Positioned(
           left: position * (screenWidth + 100) - 50,
           top: laneOffset + (_random.nextDouble() * 20),
           child: GestureDetector(
-            onTap: () => _showTransactionDetails(pyusdTransactions[i]),
+            onTap: () => _showTransactionDetails(transaction),
             child: TransactionVehicle(
-              transaction: pyusdTransactions[i],
+              transaction: transaction,
               isPending: isPending,
-              speed: _getTransactionSpeed(pyusdTransactions[i]),
+              speed: speed,
               transactionType: 'pyusd',
               animationValue: _animationController.value,
             ),
@@ -499,13 +527,14 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
       );
     }
 
+    // Add other transactions (if any)
     final otherTxCount = min(data.pendingTransactions ~/ 50, 20);
     for (int i = 0; i < otherTxCount; i++) {
       final position = (_animationController.value + 0.5 + (i * 0.05)) % 1.0;
       final isFastLane = i % 2 == 0;
       final laneOffset = isFastLane ? 10.0 : 60.0;
 
-      // Create a mock transaction for confirmed transactions
+      // Create mock transaction for visualization
       final Map<String, dynamic> otherTx = {
         'hash': '0x${_generateRandomHash()}',
         'from': '0x${_generateRandomHash().substring(0, 40)}',
@@ -549,29 +578,28 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   }
 
   String _getTransactionSpeed(Map<String, dynamic> transaction) {
-    // Determine transaction speed based on gas price
-    if (transaction['gasPrice'] != null) {
-      final gasPrice = int.tryParse(
-              transaction['gasPrice'].toString().startsWith('0x')
-                  ? transaction['gasPrice'].toString().substring(2)
-                  : transaction['gasPrice'].toString(),
-              radix: transaction['gasPrice'].toString().startsWith('0x')
-                  ? 16
-                  : 10) ??
-          0;
+    try {
+      final gasPriceStr = transaction['gasPrice']?.toString() ?? '0';
+      int gasPrice;
+
+      if (gasPriceStr.startsWith('0x')) {
+        gasPrice = int.parse(gasPriceStr.substring(2), radix: 16);
+      } else {
+        gasPrice = int.parse(gasPriceStr);
+      }
 
       final gasPriceGwei = gasPrice / 1e9;
 
-      if (gasPriceGwei > 50) {
-        return 'fast';
-      } else if (gasPriceGwei > 30) {
-        return 'medium';
-      } else {
-        return 'slow';
-      }
-    }
+      // Debug print for gas price
+      print('Gas price for tx ${transaction['hash']}: $gasPriceGwei Gwei');
 
-    return 'medium';
+      if (gasPriceGwei > 50) return 'fast';
+      if (gasPriceGwei > 30) return 'medium';
+      return 'slow';
+    } catch (e) {
+      print('Error calculating transaction speed: $e');
+      return 'medium';
+    }
   }
 
   List<Widget> _buildWeatherEffects(int congestionLevel) {
@@ -1072,137 +1100,240 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
   }
 
   void _showTransactionDetails(Map<String, dynamic> transaction) {
-    // Parse gas price to Gwei
-    final gasPrice = int.tryParse(
-          transaction['gasPrice'].toString().startsWith('0x')
-              ? transaction['gasPrice'].toString().substring(2)
-              : transaction['gasPrice'].toString(),
-          radix: transaction['gasPrice'].toString().startsWith('0x') ? 16 : 10,
-        ) ??
-        0;
-
-    final gasPriceGwei = gasPrice / 1e9;
-
-    final status = transaction['status']?.toString().toLowerCase() ?? '';
-    final blockNumber = transaction['blockNumber']?.toString() ?? '';
+    final blockNumber = transaction['blockNumber'];
     final receipt = transaction['receipt'] as Map<String, dynamic>?;
 
-    // A transaction is confirmed if it has a block number and either:
-    // 1. A receipt with status 0x1/1
-    // 2. A transaction status of 0x1/1
-    bool isConfirmed = false;
-    if (blockNumber.isNotEmpty) {
+    // Determine status using the same logic as vehicle display
+    bool isPending = true;
+    String statusText = 'Pending';
+    Color statusColor = Colors.orange;
+
+    if (blockNumber != null) {
       if (receipt != null) {
-        final receiptStatus = receipt['status']?.toString().toLowerCase() ?? '';
-        isConfirmed = receiptStatus == '0x1' || receiptStatus == '1';
+        final receiptStatus = receipt['status'];
+        if (receiptStatus != null) {
+          if (receiptStatus is String) {
+            isPending = !(receiptStatus == '0x1' || receiptStatus == '1');
+          } else if (receiptStatus is int) {
+            isPending = receiptStatus != 1;
+          } else if (receiptStatus is bool) {
+            isPending = !receiptStatus;
+          }
+        }
       } else {
-        isConfirmed = status == '0x1' || status == '1';
+        isPending = false;
+      }
+
+      if (!isPending) {
+        statusText = 'Confirmed';
+        statusColor = Colors.green;
       }
     }
 
-    final bool isPyusdTransaction =
-        transaction['to']?.toString().toLowerCase() ==
-            '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase();
+    // Determine transaction type
+    final isPyusdTx = _isPyusdTransaction(transaction);
+    final txType = isPyusdTx ? 'PYUSD Transfer' : 'Other Transaction';
+    final txTypeColor = isPyusdTx ? Colors.blue : Colors.grey;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
+        title: const Text('Transaction Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isPyusdTransaction ? Icons.currency_exchange : Icons.swap_horiz,
-              color: isPyusdTransaction ? Colors.green : Colors.blue,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isPyusdTransaction ? 'PYUSD Transaction' : 'Other Transaction',
-              style: TextStyle(
-                color: isPyusdTransaction ? Colors.green : Colors.blue,
+            _buildDetailRow(
+              labelText: 'Type:',
+              value: Text(
+                txType,
+                style: TextStyle(
+                  color: txTypeColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+            _buildDetailRow(
+              labelText: 'Status:',
+              value: Text(
+                statusText,
+                style:
+                    TextStyle(color: statusColor, fontWeight: FontWeight.bold),
+              ),
+            ),
+            _buildDetailRow(
+              labelText: 'Amount:',
+              value: Text(
+                _formatAmount(transaction),
+                style: TextStyle(
+                  fontFamily: 'Monospace',
+                  fontWeight: FontWeight.bold,
+                  color: isPyusdTx ? Colors.blue : Colors.black,
+                ),
+              ),
+            ),
+            _buildDetailRow(
+              labelText: 'Hash:',
+              value: Text(
+                FormatterUtils.formatAddress(transaction['hash'] ?? ''),
+                style: const TextStyle(fontFamily: 'Monospace'),
+              ),
+            ),
+            _buildDetailRow(
+              labelText: 'From:',
+              value: Text(
+                FormatterUtils.formatAddress(transaction['from'] ?? ''),
+                style: const TextStyle(fontFamily: 'Monospace'),
+              ),
+            ),
+            _buildDetailRow(
+              labelText: 'To:',
+              value: Text(
+                FormatterUtils.formatAddress(transaction['to'] ?? ''),
+                style: const TextStyle(fontFamily: 'Monospace'),
+              ),
+            ),
+            if (blockNumber != null)
+              _buildDetailRow(
+                labelText: 'Block:',
+                value: Text(
+                  '${int.parse(blockNumber.toString().replaceAll('0x', ''), radix: 16)}',
+                  style: const TextStyle(fontFamily: 'Monospace'),
+                ),
+              ),
+            _buildDetailRow(
+              labelText: 'Gas Price:',
+              value: Text(
+                '${_formatGasPrice(transaction['gasPrice'])} Gwei',
+                style: const TextStyle(fontFamily: 'Monospace'),
+              ),
+            ),
+            if (transaction['timestamp'] != null)
+              _buildDetailRow(
+                labelText: 'Time:',
+                value: Text(
+                  _formatTimestamp(transaction['timestamp']),
+                  style: const TextStyle(fontFamily: 'Monospace'),
+                ),
+              ),
           ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow('Hash:',
-                  FormatterUtils.formatHash(transaction['hash'] ?? '')),
-              _buildDetailRow('From:',
-                  FormatterUtils.formatAddress(transaction['from'] ?? '')),
-              _buildDetailRow(
-                  'To:', FormatterUtils.formatAddress(transaction['to'] ?? '')),
-              _buildDetailRow(
-                  'Gas Price:', '${gasPriceGwei.toStringAsFixed(2)} Gwei'),
-              if (transaction['tokenValue'] != null)
-                _buildDetailRow(
-                    'Amount:', '${transaction['tokenValue']} PYUSD'),
-              _buildStatusRow('Status:', isConfirmed),
-              if (isConfirmed && blockNumber.isNotEmpty)
-                _buildDetailRow(
-                    'Block:', '#${FormatterUtils.parseHexSafely(blockNumber)}'),
-              if (receipt != null)
-                _buildDetailRow('Receipt Status:',
-                    receipt['status']?.toString() ?? 'Unknown'),
-            ],
-          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
-          if (transaction['hash'] != null)
-            TextButton(
-              onPressed: () async {
-                final url = 'https://etherscan.io/tx/${transaction['hash']}';
-                if (await canLaunchUrl(Uri.parse(url))) {
-                  await launchUrl(Uri.parse(url));
-                }
-              },
-              child: const Text('View on Etherscan'),
-            ),
+          TextButton(
+            onPressed: () {
+              final hash = transaction['hash'];
+              if (hash != null) {
+                launchUrl(Uri.parse('https://etherscan.io/tx/$hash'));
+              }
+            },
+            child: const Text('View on Etherscan'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatusRow(String label, bool isConfirmed) {
+  bool _isPyusdTransaction(Map<String, dynamic> transaction) {
+    final pyusdAddress =
+        '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8'.toLowerCase();
+    final to = (transaction['to'] as String?)?.toLowerCase() ?? '';
+    return to == pyusdAddress;
+  }
+
+  String _formatAmount(Map<String, dynamic> transaction) {
+    try {
+      if (_isPyusdTransaction(transaction)) {
+        // For PYUSD transactions, decode the input data to get the amount
+        final input = transaction['input'] as String? ?? '';
+        if (input.length >= 138) {
+          // Standard ERC20 transfer length
+          // Extract amount from input data (skip method signature and padding)
+          final amountHex = input.substring(74, 138);
+          final amount = BigInt.parse(amountHex, radix: 16);
+          return '${(amount / BigInt.from(10).pow(6)).toStringAsFixed(2)} PYUSD';
+        }
+        return '0 PYUSD';
+      } else {
+        // For ETH transactions
+        final value = transaction['value'];
+        if (value != null) {
+          BigInt amount;
+          if (value is String && value.startsWith('0x')) {
+            amount = BigInt.parse(value.substring(2), radix: 16);
+          } else {
+            amount = BigInt.parse(value.toString());
+          }
+          return '${(amount / BigInt.from(10).pow(18)).toStringAsFixed(6)} ETH';
+        }
+        return '0 ETH';
+      }
+    } catch (e) {
+      print('Error formatting amount: $e');
+      return 'Amount not available';
+    }
+  }
+
+  Widget _buildDetailRow({
+    required String labelText,
+    required Widget value,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 80,
             child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              labelText,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  isConfirmed ? Icons.check_circle : Icons.pending,
-                  size: 16,
-                  color: isConfirmed ? Colors.green : Colors.orange,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isConfirmed ? 'Confirmed' : 'Pending',
-                  style: TextStyle(
-                    color: isConfirmed ? Colors.green : Colors.orange,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: value),
         ],
       ),
     );
+  }
+
+  String _formatGasPrice(dynamic gasPrice) {
+    try {
+      if (gasPrice == null) return '0';
+
+      int gasPriceValue;
+      if (gasPrice is String && gasPrice.startsWith('0x')) {
+        gasPriceValue = int.parse(gasPrice.substring(2), radix: 16);
+      } else {
+        gasPriceValue = int.parse(gasPrice.toString());
+      }
+
+      return (gasPriceValue / 1e9).toStringAsFixed(9);
+    } catch (e) {
+      print('Error formatting gas price: $e');
+      return '0';
+    }
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    try {
+      int timestampValue;
+      if (timestamp is String && timestamp.startsWith('0x')) {
+        timestampValue = int.parse(timestamp.substring(2), radix: 16);
+      } else {
+        timestampValue = int.parse(timestamp.toString());
+      }
+
+      final date = DateTime.fromMillisecondsSinceEpoch(timestampValue * 1000);
+      return '${date.toLocal()}';
+    } catch (e) {
+      print('Error formatting timestamp: $e');
+      return 'N/A';
+    }
   }
 
   void _showBlockDetails(Map<String, dynamic> block, int blockNumber) {
@@ -1233,16 +1364,37 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildDetailRow(
-                  'Timestamp:',
+                labelText: 'Timestamp:',
+                value: Text(
                   DateTime.fromMillisecondsSinceEpoch(timestamp * 1000)
-                      .toString()),
-              _buildDetailRow('Total Transactions:', txCount.toString()),
-              _buildDetailRow('PYUSD Transactions:', pyusdTxCount.toString()),
-              _buildDetailRow('Gas Used:', '${gasUsed / 1e6}M'),
-              _buildDetailRow('Gas Limit:', '${gasLimit / 1e6}M'),
-              _buildDetailRow('Utilization:',
-                  '${((gasUsed / gasLimit) * 100).toStringAsFixed(1)}%'),
-              _buildDetailRow('Miner:', FormatterUtils.formatAddress(miner)),
+                      .toString(),
+                ),
+              ),
+              _buildDetailRow(
+                labelText: 'Total Transactions:',
+                value: Text(txCount.toString()),
+              ),
+              _buildDetailRow(
+                labelText: 'PYUSD Transactions:',
+                value: Text(pyusdTxCount.toString()),
+              ),
+              _buildDetailRow(
+                labelText: 'Gas Used:',
+                value: Text('${gasUsed / 1e6}M'),
+              ),
+              _buildDetailRow(
+                labelText: 'Gas Limit:',
+                value: Text('${gasLimit / 1e6}M'),
+              ),
+              _buildDetailRow(
+                labelText: 'Utilization:',
+                value:
+                    Text('${((gasUsed / gasLimit) * 100).toStringAsFixed(1)}%'),
+              ),
+              _buildDetailRow(
+                labelText: 'Miner:',
+                value: Text(FormatterUtils.formatAddress(miner)),
+              ),
             ],
           ),
         ),
@@ -1250,30 +1402,6 @@ class _PyusdCityScreenState extends State<PyusdCityScreen>
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontFamily: 'monospace'),
-            ),
           ),
         ],
       ),

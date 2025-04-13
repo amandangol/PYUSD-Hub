@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../services/notification_service.dart';
 import '../../authentication/provider/auth_provider.dart';
-import '../../../services/ethereum_rpc_service.dart';
+import '../../../services/gcp_rpc_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../providers/walletstate_provider.dart';
 import '../../../utils/provider_utils.dart';
@@ -17,7 +17,7 @@ class TransactionProvider extends ChangeNotifier
   final NetworkProvider _networkProvider;
   final WalletStateProvider _walletProvider;
   final TransactionDetailProvider _detailProvider;
-  final EthereumRpcService _rpcService = EthereumRpcService();
+  final GcpRpcService _rpcService = GcpRpcService();
   final NotificationService _notificationService;
 
   final Map<NetworkType, List<TransactionModel>> _transactionsByNetwork = {};

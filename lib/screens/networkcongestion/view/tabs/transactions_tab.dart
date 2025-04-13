@@ -31,7 +31,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
     final colorScheme = theme.colorScheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -52,19 +52,14 @@ class _TransactionsTabState extends State<TransactionsTab> {
     final data = widget.provider.congestionData;
     final transactions = widget.provider.recentPyusdTransactions;
 
-    // Only calculate metrics if we have transactions
     if (transactions.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Calculate total volume and format with appropriate suffix
     double totalVolume = _calculateTotalVolume(transactions);
     String formattedVolume =
         FormatterUtils.formatCurrencyWithSuffix(totalVolume);
-
-    // Calculate unique addresses
     int uniqueAddresses = _calculateUniqueAddresses(transactions);
-
     final recentTxCount = transactions.length;
 
     return Card(
@@ -73,118 +68,72 @@ class _TransactionsTabState extends State<TransactionsTab> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.surface,
-              colorScheme.surface.withOpacity(0.95),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        title: Row(
+          children: [
+            Text(
+              'PYUSD Transaction Overview',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.info_outline,
+                color: colorScheme.onSurface.withOpacity(0.7),
+                size: 20,
+              ),
+              onPressed: () => InfoDialog.show(
+                context,
+                title: 'PYUSD Transaction Overview',
+                message:
+                    'Overview of PYUSD transactions on the Ethereum network, including transaction count, volume, confirmation time, and active users.',
+              ),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'PYUSD Transaction Overview',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.info_outline,
-                          color: colorScheme.onSurface.withOpacity(0.7),
-                          size: 20,
-                        ),
-                        onPressed: () => InfoDialog.show(
-                          context,
-                          title: 'PYUSD Transaction Overview',
-                          message:
-                              'Overview of PYUSD transactions on the Ethereum network, including transaction count, volume, confirmation time, and active users.',
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                  if (recentTxCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.green.withOpacity(0.1),
-                            Colors.green.withOpacity(0.05),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$recentTxCount txs',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Column(
-                children: [
-                  StatsCard(
-                    title: 'Transactions',
-                    value: FormatterUtils.formatLargeNumber(recentTxCount),
-                    icon: Icons.swap_horiz,
-                    color: Colors.blue,
-                    description: 'Recent PYUSD txs',
-                    isListView: true,
-                  ),
-                  const SizedBox(height: 12),
-                  StatsCard(
-                    title: 'Volume',
-                    value: formattedVolume,
-                    icon: Icons.attach_money,
-                    color: Colors.green,
-                    description: 'PYUSD transferred',
-                    isListView: true,
-                  ),
-                  const SizedBox(height: 12),
-                  // StatsCard(
-                  //   title: 'Active Users',
-                  //   value: FormatterUtils.formatLargeNumber(uniqueAddresses),
-                  //   icon: Icons.people,
-                  //   color: Colors.purple,
-                  //   description: 'Unique wallets',
-                  //   isListView: true,
-                  // ),
-                ],
-              ),
-            ],
-          ),
+        subtitle: Text(
+          '$recentTxCount transactions, $formattedVolume volume',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                StatsCard(
+                  title: 'Transactions',
+                  value: FormatterUtils.formatLargeNumber(recentTxCount),
+                  icon: Icons.swap_horiz,
+                  color: Colors.blue,
+                  description: 'Recent PYUSD txs',
+                  isListView: true,
+                ),
+                const SizedBox(height: 12),
+                StatsCard(
+                  title: 'Volume',
+                  value: formattedVolume,
+                  icon: Icons.attach_money,
+                  color: Colors.green,
+                  description: 'PYUSD transferred',
+                  isListView: true,
+                ),
+                // const SizedBox(height: 12),
+                // StatsCard(
+                //   title: 'Active Users',
+                //   value: FormatterUtils.formatLargeNumber(uniqueAddresses),
+                //   icon: Icons.people,
+                //   color: Colors.purple,
+                //   description: 'Unique wallets',
+                //   isListView: true,
+                // ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -392,7 +341,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
                 )
               else
                 SizedBox(
-                  height: 400,
+                  height: 450,
                   child: ListView.builder(
                     itemCount: transactions.length,
                     itemBuilder: (context, index) {

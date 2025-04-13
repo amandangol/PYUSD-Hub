@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../services/ethereum_rpc_service.dart';
+import '../../../services/gcp_rpc_service.dart';
 import '../../../services/market_service.dart';
 import '../../../providers/network_provider.dart';
 import '../../../utils/provider_utils.dart';
@@ -11,7 +11,7 @@ class TransactionDetailProvider
         ProviderUtils,
         CacheUtils<TransactionDetailModel>,
         OngoingOperationUtils<TransactionDetailModel?> {
-  final EthereumRpcService _rpcService = EthereumRpcService();
+  final GcpRpcService _rpcService = GcpRpcService();
   final MarketService _marketService = MarketService();
 
   // Cache expiration time (5 minutes)
