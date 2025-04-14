@@ -121,6 +121,27 @@ Our application leverages Google Cloud Platform's RPC endpoints for:
    - Interactive exploration
    - Optimized performance
 
+### Google Gemini AI Integration
+Our application leverages Google's Gemini AI for advanced blockchain analysis:
+
+1. **Real-time Analysis Pipeline**
+   - Transaction trace interpretation
+   - Smart contract interaction analysis
+   - Risk assessment and security scanning
+   - Natural language processing of blockchain data
+
+2. **AI-Enhanced Features**
+   - Intelligent pattern recognition
+   - Predictive analytics
+   - User behavior analysis
+   - Security threat detection
+
+3. **Integration Architecture**
+   - Direct Gemini API integration
+   - Optimized response caching
+   - Parallel processing for multiple analyses
+   - Efficient state management
+
 ## 🔍 Advanced Features
 
 ### Blockchain Tracing & MEV Protection
@@ -163,6 +184,28 @@ Our application leverages Google Cloud Platform's RPC endpoints for:
 <img src="https://github.com/user-attachments/assets/cb6d8218-87f2-43e0-8749-3f6b3282af51" alt="pyusd_city3" height="400">
 <img src="https://github.com/user-attachments/assets/c35f5bd6-8c10-441f-a299-aefc4b981618" alt="pyusd_city4" height="400">
 
+### 🤖 AI-Powered Analysis with Google Gemini
+- **Smart Transaction Analysis**: Real-time transaction pattern recognition and risk assessment using Google's Gemini AI
+- **Intelligent Trace Interpretation**: 
+  - Natural language explanations of complex transaction traces
+  - Smart contract interaction analysis
+  - Gas usage optimization recommendations
+  - Risk level assessment and security insights
+- **MEV Protection Insights**:
+  - AI-driven frontrunning detection
+  - Sandwich attack pattern recognition
+  - Predictive MEV exposure analysis
+- **Market Intelligence**:
+  - Smart market trend analysis
+  - Price impact predictions
+  - Trading pattern recognition
+- **User-Friendly Explanations**:
+  - Technical details translated into plain English
+  - Visual representation of complex blockchain operations
+  - Actionable recommendations for users
+
+<img src="path_to_ai_analysis_screenshot1" alt="ai_analysis" height="400">
+<img src="path_to_ai_analysis_screenshot2" alt="ai_insights" height="400">
 
 ## 📱 User Interface
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/gemini_service.dart';
+import 'package:pyusd_hub/screens/geminiai/service/gemini_service.dart';
 
 class GeminiProvider with ChangeNotifier {
   final GeminiService _service = GeminiService();
@@ -15,14 +15,12 @@ class GeminiProvider with ChangeNotifier {
       Map<String, dynamic> tokenDetails) async {
     try {
       _isLoading = true;
-      notifyListeners();
 
       final analysis = await _service.analyzeTransactionTraceStructured(
           traceData, transactionData, tokenDetails);
       _lastAnalysis = analysis;
 
       _isLoading = false;
-      notifyListeners();
       return analysis;
     } catch (e) {
       _isLoading = false;
@@ -31,7 +29,6 @@ class GeminiProvider with ChangeNotifier {
         "error": true,
         "errorMessage": e.toString()
       };
-      notifyListeners();
       return _lastAnalysis;
     }
   }

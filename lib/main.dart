@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/screens/authentication/services/wallet_service.dart';
+import 'package:pyusd_hub/screens/geminiai/provider/gemini_provider.dart';
 import 'package:pyusd_hub/screens/insights/provider/insights_provider.dart';
 import 'package:pyusd_hub/screens/onboarding/provider/onboarding_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/network_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/walletstate_provider.dart';
-import 'providers/gemini_provider.dart';
 import 'screens/authentication/provider/auth_provider.dart';
 import 'screens/authentication/provider/session_provider.dart';
 import 'screens/authentication/provider/security_setting_provider.dart';
@@ -24,7 +25,6 @@ import 'screens/transactions/provider/transaction_provider.dart';
 import 'screens/transactions/provider/transactiondetail_provider.dart';
 
 // Services
-import 'screens/authentication/service/wallet_service.dart';
 import 'services/market_service.dart';
 import 'services/notification_service.dart';
 
@@ -38,7 +38,6 @@ import 'routes/app_routes.dart';
 
 // Theme
 import 'theme/app_theme.dart';
-import 'providers/pyusd_analytics_provider.dart';
 import 'package:pyusd_hub/screens/trace/provider/mev_analysis_provider.dart';
 
 void main() async {
@@ -146,7 +145,10 @@ void main() async {
 
         // Navigation and other providers
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
-        ChangeNotifierProvider(create: (_) => GeminiProvider()),
+        ChangeNotifierProvider(
+          create: (_) => GeminiProvider(),
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => TraceProvider()),
         ChangeNotifierProvider(create: (_) => MevAnalysisProvider()),
       ],

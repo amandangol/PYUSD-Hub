@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/screens/geminiai/provider/gemini_provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +10,6 @@ import '../provider/mev_analysis_provider.dart';
 import '../provider/trace_provider.dart';
 import '../widgets/trace_widgets.dart';
 import 'transaction_trace_screen.dart';
-import '../../../providers/gemini_provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../widgets/loading_overlay.dart';
 
@@ -158,17 +158,21 @@ class _BlockTraceScreenState extends State<BlockTraceScreen> {
       loadingText: 'Loading block trace data...',
       body: Scaffold(
         appBar: CustomAppBar(
-          title: 'Block Number: ${widget.blockNumber}',
+          title: 'Block Trace Analysis: ${widget.blockNumber}',
           isDarkMode: isDarkMode,
           onBackPressed: () => Navigator.pop(context),
           onRefreshPressed: _loadBlockData,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.psychology),
-              tooltip: 'AI Analysis',
-              onPressed: _isLoading ? null : _getAiAnalysis,
-            ),
-          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _getAiAnalysis,
+          label: const Text('AI Insights'),
+          icon: Image.asset(
+            'assets/images/geminilogo.png',
+            height: 32,
+            width: 32,
+          ),
+          backgroundColor:
+              Theme.of(context).colorScheme.primary.withOpacity(0.5),
         ),
         body: _hasError
             ? Center(

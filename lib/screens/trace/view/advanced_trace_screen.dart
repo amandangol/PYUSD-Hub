@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
+import 'package:pyusd_hub/screens/geminiai/provider/gemini_provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
 import '../../../../widgets/loading_overlay.dart';
 
 import '../../../widgets/pyusd_components.dart';
 import '../provider/trace_provider.dart';
-import '../../../providers/gemini_provider.dart';
 import '../widgets/trace_widgets.dart';
 
 class AdvancedTraceScreen extends StatefulWidget {
@@ -143,13 +143,16 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
         isDarkMode: isDarkMode,
         onBackPressed: () => Navigator.pop(context),
         onRefreshPressed: _loadTraceData,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.psychology),
-            tooltip: 'AI Analysis',
-            onPressed: _isLoading ? null : _getAiAnalysis,
-          ),
-        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _getAiAnalysis,
+        label: const Text('AI Insights'),
+        icon: Image.asset(
+          'assets/images/geminilogo.png',
+          height: 32,
+          width: 32,
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.5),
       ),
       body: LoadingOverlay(
         isLoading: _isLoading,

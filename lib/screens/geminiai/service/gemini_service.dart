@@ -13,7 +13,7 @@ class GeminiService {
         throw Exception('GEMINI_API_KEY not found in environment variables');
       }
       _model = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         apiKey: apiKey,
         generationConfig: GenerationConfig(
           temperature: 0.2,

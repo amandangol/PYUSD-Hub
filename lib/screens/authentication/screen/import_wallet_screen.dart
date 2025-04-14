@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:pyusd_hub/screens/authentication/services/wallet_service.dart';
 import '../../../widgets/pyusd_components.dart';
 import '../../onboarding/provider/onboarding_provider.dart';
 import '../provider/auth_provider.dart';
-import '../service/wallet_service.dart';
 import '../widget/pin_input_widget.dart.dart';
 import '../../../providers/navigation_provider.dart';
 

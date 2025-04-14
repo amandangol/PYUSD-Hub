@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:pyusd_hub/screens/authentication/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/credentials.dart';
 import '../model/wallet.dart';
-import '../service/auth_service.dart';
-import '../service/wallet_service.dart';
+import '../services/wallet_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   static AuthProvider? _instance;
