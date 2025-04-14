@@ -25,7 +25,7 @@ Built with Flutter, PYUSD Hub offers a seamless experience for both casual users
 ### Installation
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/pyusd-wallet.git
+git clone https://github.com/yourusername/PYUSD-Hub.git
 ```
 
 2. Install dependencies
@@ -41,12 +41,11 @@ MAINNET_HTTP_RPC_URL=your_mainnet_http_rpc_url
 MAINNET_WSS_RPC_URL=your_mainnet_wss_rpc_url
 SEPOLIA_HTTP_RPC_URL=your_sepolia_http_rpc_url
 SEPOLIA_WSS_RPC_URL=your_sepolia_wss_rpc_url
+
 PYUSD_CONTRACT_ADDRESS=your_pyusd_contract_address
-ETHERSCAN_API_KEY=your_etherscan_api_key
 GEMINI_API_KEY=your_gemini_api_key
-GCP_SERVICE_ACCOUNT_FILE=path/to/service-account.json
-GCP_PROJECT_ID=your_gcp_project_id
-NETWORK_CHAIN_ID=your_network_chain_id
+
+ETHERSCAN_API_KEY=your_etherscan_api_key
 ```
 
 4. Run the application
@@ -230,19 +229,6 @@ Our application leverages Google's Gemini AI for advanced blockchain analysis:
 - Market updates
 - Custom alert thresholds
 
-## 🧪 Testing & Development
-
-### Testing Suite
-- Unit tests
-- Integration tests
-- Widget tests
-- Mock services
-
-### Developer Integration
-- Clean API access
-- Documentation
-- Example implementations
-- Integration guides
 
 ## 📞 Support & Legal
 
@@ -258,5 +244,7 @@ For support, please open an issue in the repository or contact the development t
 ### Acknowledgments
 - Flutter team
 - Ethereum community
+- PYUSD community
+- Google Blockchain (GCP) RPC
 - Web3Dart package contributors
 - Project contributors
