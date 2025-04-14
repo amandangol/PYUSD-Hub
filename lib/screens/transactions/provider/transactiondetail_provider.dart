@@ -32,6 +32,10 @@ class TransactionDetailProvider
   final Map<String, TransactionDetailModel> _cachedDetails = {};
   DateTime _lastFetchTime = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // Add AI analysis cache
+  final Map<String, Map<String, dynamic>> _aiAnalysisCache = {};
+  static const Duration _aiAnalysisCacheExpiration = Duration(minutes: 30);
+
   // Pre-fetch transaction details for recent transactions
   Future<void> preFetchTransactionDetails({
     required List<TransactionModel> transactions,
@@ -427,12 +431,35 @@ class TransactionDetailProvider
     }
   }
 
+  // Add method to cache AI analysis
+  void cacheAiAnalysis(String txHash, Map<String, dynamic> analysis) {
+    _aiAnalysisCache[txHash] = {
+      'data': analysis,
+      'timestamp': DateTime.now(),
+    };
+  }
+
+  // Add method to get cached AI analysis
+  Map<String, dynamic>? getCachedAiAnalysis(String txHash) {
+    final cacheEntry = _aiAnalysisCache[txHash];
+    if (cacheEntry == null) return null;
+
+    final cacheTime = cacheEntry['timestamp'] as DateTime;
+    if (DateTime.now().difference(cacheTime) > _aiAnalysisCacheExpiration) {
+      _aiAnalysisCache.remove(txHash);
+      return null;
+    }
+
+    return cacheEntry['data'] as Map<String, dynamic>;
+  }
+
   @override
   void clearCache({String? key, Duration? olderThan}) {
     if (key != null) {
       _cachedDetails.remove(key);
       _traceCache.remove(key);
       _marketCache.remove(key);
+      _aiAnalysisCache.remove(key);
     } else if (olderThan != null) {
       final cutoffTime = DateTime.now().subtract(olderThan);
       _cachedDetails
@@ -441,10 +468,13 @@ class TransactionDetailProvider
           (_, entry) => (entry['timestamp'] as DateTime).isBefore(cutoffTime));
       _marketCache.removeWhere(
           (_, entry) => (entry['timestamp'] as DateTime).isBefore(cutoffTime));
+      _aiAnalysisCache.removeWhere(
+          (_, entry) => (entry['timestamp'] as DateTime).isBefore(cutoffTime));
     } else {
       _cachedDetails.clear();
       _traceCache.clear();
       _marketCache.clear();
+      _aiAnalysisCache.clear();
     }
     notifyListeners();
   }
@@ -454,6 +484,7 @@ class TransactionDetailProvider
     _traceCache.clear();
     _marketCache.clear();
     _cachedDetails.clear();
+    _aiAnalysisCache.clear();
     markDisposed();
     clearOngoingOperations();
     super.dispose();

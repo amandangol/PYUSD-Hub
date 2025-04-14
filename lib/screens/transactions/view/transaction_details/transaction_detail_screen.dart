@@ -339,15 +339,28 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
     });
 
     try {
+      // First check cache
+      final cachedAnalysis = _transactionDetailProvider
+          .getCachedAiAnalysis(widget.transaction.hash);
+
+      if (cachedAnalysis != null) {
+        setState(() {
+          _aiAnalysis = cachedAnalysis;
+          _isLoadingAiAnalysis = false;
+        });
+        return;
+      }
+
       final geminiProvider =
           Provider.of<GeminiProvider>(context, listen: false);
       final transactionData =
           _detailedTransaction?.toJson() ?? widget.transaction.toJson();
       final tokenDetails = {
-        'symbol':
-            _detailedTransaction?.tokenSymbol ?? widget.transaction.tokenSymbol,
-        'decimals': _detailedTransaction?.tokenDecimals,
-        'contractAddress': _detailedTransaction?.tokenContractAddress,
+        'symbol': _detailedTransaction?.tokenSymbol ??
+            widget.transaction.tokenSymbol ??
+            'ETH',
+        'decimals': _detailedTransaction?.tokenDecimals ?? 18,
+        'contractAddress': _detailedTransaction?.tokenContractAddress ?? '',
       };
 
       final analysis = await geminiProvider.analyzeTransactionTraceStructured(
@@ -357,6 +370,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
       );
 
       if (!mounted) return;
+
+      // Cache the analysis
+      _transactionDetailProvider.cacheAiAnalysis(
+          widget.transaction.hash, analysis);
 
       setState(() {
         _aiAnalysis = analysis;
@@ -371,6 +388,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
           'error': true,
           'summary': 'Failed to generate AI analysis',
           'errorMessage': e.toString(),
+          'riskLevel': 'Unknown',
+          'type': 'Unknown',
         };
       });
     }
@@ -773,6 +792,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
   }
 
   Widget _buildQuickInsightsCard() {
+    // Ensure we have default values for required fields
+    final analysis = _aiAnalysis ??
+        {
+          'riskLevel': 'Unknown',
+          'type': 'Unknown',
+          'summary': 'Analysis not available',
+        };
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -789,20 +816,21 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen>
             _buildInsightRow(
               icon: Icons.security,
               title: 'Risk Level',
-              content: _aiAnalysis?['riskLevel'] ?? 'Unknown',
-              color: _getRiskColor(_aiAnalysis?['riskLevel']),
+              content: analysis['riskLevel'] as String? ?? 'Unknown',
+              color:
+                  _getRiskColor(analysis['riskLevel'] as String? ?? 'Unknown'),
             ),
             const Divider(),
             _buildInsightRow(
               icon: Icons.category,
               title: 'Transaction Type',
-              content: _aiAnalysis?['type'] ?? 'Unknown',
+              content: analysis['type'] as String? ?? 'Unknown',
             ),
             const Divider(),
             _buildInsightRow(
               icon: Icons.description,
               title: 'Summary',
-              content: _aiAnalysis?['summary'] ?? 'No summary available',
+              content: analysis['summary'] as String? ?? 'No summary available',
             ),
           ],
         ),
