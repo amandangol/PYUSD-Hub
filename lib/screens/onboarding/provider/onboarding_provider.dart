@@ -6,17 +6,22 @@ class OnboardingProvider extends ChangeNotifier {
   final int totalPages = 4;
   bool _isDemoMode = false;
   bool _hasCompletedOnboarding = false;
+  bool _isInitialized = false;
 
   int get currentPage => _currentPage;
   bool get isDemoMode => _isDemoMode;
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
+  bool get isInitialized => _isInitialized;
 
   // Initialize provider and check if onboarding was completed
   Future<void> initialize() async {
+    if (_isInitialized) return;
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _hasCompletedOnboarding =
         prefs.getBool('has_completed_onboarding') ?? false;
     _isDemoMode = prefs.getBool('is_demo_mode') ?? false;
+    _isInitialized = true;
     notifyListeners();
   }
 

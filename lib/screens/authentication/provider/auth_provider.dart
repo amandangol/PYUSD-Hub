@@ -22,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   String? _walletConnectAddress;
   bool _isAuthenticated = false;
   bool _isBiometricsAvailable = false;
+  bool _isInitialized = false;
 
   // Getters
   WalletModel? get wallet => _wallet;
@@ -34,6 +35,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isBiometricsAvailable => _isBiometricsAvailable;
   WalletService get walletService => _walletService;
   AuthService get authService => _authService;
+  bool get isInitialized => _isInitialized;
 
   AuthProvider() {
     _instance = this;
@@ -55,19 +57,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> initWallet() async {
-    if (_isLoading) return;
+    if (_isLoading || _isInitialized) return;
 
     _setLoading(true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final hasCompletedOnboarding =
-          prefs.getBool('has_completed_onboarding') ?? false;
-
-      if (!hasCompletedOnboarding) {
-        _wallet = null;
-        _isAuthenticated = false;
-        return;
-      }
 
       // Check if biometrics is available
       _isBiometricsAvailable = await _authService.checkBiometrics();
@@ -82,38 +76,27 @@ class AuthProvider extends ChangeNotifier {
         // Load wallet metadata - just address, not sensitive data
         _wallet = await _walletService.loadWalletMetadata();
 
-        // If we have a saved auth state and biometrics is enabled, attempt auto-authentication
-        if (savedAuthState) {
-          if (_isBiometricsAvailable &&
-              await _authService.isBiometricsEnabled()) {
-            try {
-              String? secretKey = await _authService.getBiometricSecret();
-              if (secretKey != null) {
-                // Load full wallet with the secret key
-                _wallet =
-                    await _walletService.decryptAndLoadWalletWithKey(secretKey);
-                if (_wallet?.privateKey.isNotEmpty == true) {
-                  _isAuthenticated = true;
-                  notifyListeners();
-                  return;
-                }
+        if (savedAuthState &&
+            _isBiometricsAvailable &&
+            await _authService.isBiometricsEnabled()) {
+          try {
+            String? secretKey = await _authService.getBiometricSecret();
+            if (secretKey != null) {
+              _wallet =
+                  await _walletService.decryptAndLoadWalletWithKey(secretKey);
+              if (_wallet?.privateKey.isNotEmpty == true) {
+                _isAuthenticated = true;
               }
-            } catch (e) {
-              print('Failed to auto-load wallet with biometrics: $e');
             }
+          } catch (e) {
+            print('Failed to auto-load wallet with biometrics: $e');
           }
-          // If biometric auth failed or isn't available, clear the saved state
-          await prefs.setBool('isAuthenticated', false);
         }
-
-        return;
       }
 
-      _wallet = null;
-      _isAuthenticated = false;
+      _isInitialized = true;
     } catch (e) {
       _setError('Failed to initialize wallet: $e');
-      // Clear saved auth state on error
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isAuthenticated', false);
     } finally {

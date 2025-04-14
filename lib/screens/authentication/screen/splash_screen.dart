@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/screens/authentication/screen/login_screen.dart';
+import '../../onboarding/provider/onboarding_provider.dart';
+import '../../onboarding/view/onboarding_screen.dart';
 import '../provider/auth_provider.dart';
 import 'wallet_selection_screen.dart';
 
@@ -97,10 +99,18 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initializeApp() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.initWallet();
+      final onboardingProvider =
+          Provider.of<OnboardingProvider>(context, listen: false);
+
+      // Initialize providers without notification setup
+      await Future.wait([
+        authProvider.initWallet(),
+        onboardingProvider.initialize(),
+      ]);
 
       if (!mounted) return;
 
+      // Ensure animations play for at least 2.5 seconds
       await Future.delayed(const Duration(milliseconds: 2500));
 
       if (!mounted) return;
@@ -109,20 +119,27 @@ class _SplashScreenState extends State<SplashScreen>
         _isInitialized = true;
       });
 
-      // Determine which screen to show
+      // Navigate based on onboarding status first
+      if (!onboardingProvider.hasCompletedOnboarding) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const FirstTimeOnboardingScreen()),
+        );
+        return;
+      }
+
+      // If onboarding is complete, check wallet status
       if (authProvider.hasWallet) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
       } else {
-        // If no wallet, go to onboarding
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const WalletSelectionScreen()),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      // Handle any initialization errors
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error initializing app: ${e.toString()}'),

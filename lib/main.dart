@@ -54,8 +54,8 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.initialize();
 
+  // Initialize onboarding provider but don't check status yet
   final onboardingProvider = OnboardingProvider();
-  await onboardingProvider.initialize();
 
   // Initialize notification service
   final notificationService = NotificationService();
@@ -161,9 +161,8 @@ void main() async {
             themeMode:
                 themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             navigatorKey: sessionProvider.navigatorKey,
-            initialRoute: onboardingProvider.hasCompletedOnboarding
-                ? AppRoutes.splash
-                : AppRoutes.onboarding,
+            // Always start with splash screen
+            initialRoute: AppRoutes.splash,
             onGenerateRoute: AppRoutes.generateRoute,
             debugShowCheckedModeBanner: false,
           );
