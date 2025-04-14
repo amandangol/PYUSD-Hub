@@ -25,7 +25,7 @@ Built with Flutter, PYUSD Hub offers a seamless experience for both casual users
 ### Installation
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/pyusd-wallet.git
+git clone https://github.com/yourusername/PYUSD-Hub.git
 ```
 
 2. Install dependencies
@@ -41,12 +41,11 @@ MAINNET_HTTP_RPC_URL=your_mainnet_http_rpc_url
 MAINNET_WSS_RPC_URL=your_mainnet_wss_rpc_url
 SEPOLIA_HTTP_RPC_URL=your_sepolia_http_rpc_url
 SEPOLIA_WSS_RPC_URL=your_sepolia_wss_rpc_url
+
 PYUSD_CONTRACT_ADDRESS=your_pyusd_contract_address
-ETHERSCAN_API_KEY=your_etherscan_api_key
 GEMINI_API_KEY=your_gemini_api_key
-GCP_SERVICE_ACCOUNT_FILE=path/to/service-account.json
-GCP_PROJECT_ID=your_gcp_project_id
-NETWORK_CHAIN_ID=your_network_chain_id
+
+ETHERSCAN_API_KEY=your_etherscan_api_key
 ```
 
 4. Run the application
@@ -150,11 +149,10 @@ Our application leverages Google's Gemini AI for advanced blockchain analysis:
 - Frontrunning analysis and protection
 - Transaction ordering optimization
 - MEV activity monitoring
-- 
+  
 <img src="https://github.com/user-attachments/assets/3c8ef654-0754-4113-90c6-0b0530c42f66" alt="trace_homescreen" height="400">
 <img src="https://github.com/user-attachments/assets/42aaacc6-b962-4879-aadd-8f0861c8b5ed" alt="mevanalysis_homescreen" height="400">
 <img src="https://github.com/user-attachments/assets/1737c1f4-7560-4c1d-91a0-bcde5104387b" alt="transaction_trace" height="400">
-<img src="https://github.com/user-attachments/assets/f5a30b9a-7384-4dda-b1e6-adb36c33703f" alt="transaction_trace3" height="400">
 <img src="https://github.com/user-attachments/assets/21480253-1c1f-47d4-af69-fb41d377ef12" alt="transaction_trace4" height="400">
 <img src="https://github.com/user-attachments/assets/c20eff8c-ef73-47ab-9beb-21dd0ba3fabc" alt="advanced_trace1" height="400">
 
@@ -164,7 +162,7 @@ Our application leverages Google's Gemini AI for advanced blockchain analysis:
 - Market price tracking
 - Network congestion monitoring
 - Interactive data visualization
-- 
+  
 <img src="https://github.com/user-attachments/assets/b47c4fab-cf71-4605-8e0f-311f6e30a7ba" alt="network_congestion" height="400">
 <img src="https://github.com/user-attachments/assets/099ba23d-d0f3-48d1-bc83-942cd72097c5" alt="gas_tab" height="400">
 <img src="https://github.com/user-attachments/assets/67acbbe8-61a5-4e15-abce-3be413eb1b83" alt="blocks_tab" height="400">
@@ -204,8 +202,8 @@ Our application leverages Google's Gemini AI for advanced blockchain analysis:
   - Visual representation of complex blockchain operations
   - Actionable recommendations for users
 
-<img src="path_to_ai_analysis_screenshot1" alt="ai_analysis" height="400">
-<img src="path_to_ai_analysis_screenshot2" alt="ai_insights" height="400">
+<img src="https://github.com/user-attachments/assets/072c3175-689f-4309-8c39-e0fa61b655b8" alt="ai_analysis" height="400">
+<img src="https://github.com/user-attachments/assets/f5a30b9a-7384-4dda-b1e6-adb36c33703f" alt="transaction_trace3" height="400">
 
 ## 📱 User Interface
 
@@ -231,19 +229,6 @@ Our application leverages Google's Gemini AI for advanced blockchain analysis:
 - Market updates
 - Custom alert thresholds
 
-## 🧪 Testing & Development
-
-### Testing Suite
-- Unit tests
-- Integration tests
-- Widget tests
-- Mock services
-
-### Developer Integration
-- Clean API access
-- Documentation
-- Example implementations
-- Integration guides
 
 ## 📞 Support & Legal
 
@@ -259,5 +244,7 @@ For support, please open an issue in the repository or contact the development t
 ### Acknowledgments
 - Flutter team
 - Ethereum community
+- PYUSD community
+- Google Blockchain (GCP) RPC
 - Web3Dart package contributors
 - Project contributors
