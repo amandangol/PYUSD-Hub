@@ -121,6 +121,27 @@ Our application leverages Google Cloud Platform's RPC endpoints for:
    - Interactive exploration
    - Optimized performance
 
+### Google Gemini AI Integration
+Our application leverages Google's Gemini AI for advanced blockchain analysis:
+
+1. **Real-time Analysis Pipeline**
+   - Transaction trace interpretation
+   - Smart contract interaction analysis
+   - Risk assessment and security scanning
+   - Natural language processing of blockchain data
+
+2. **AI-Enhanced Features**
+   - Intelligent pattern recognition
+   - Predictive analytics
+   - User behavior analysis
+   - Security threat detection
+
+3. **Integration Architecture**
+   - Direct Gemini API integration
+   - Optimized response caching
+   - Parallel processing for multiple analyses
+   - Efficient state management
+
 ## 🔍 Advanced Features
 
 ### Blockchain Tracing & MEV Protection
@@ -129,11 +150,10 @@ Our application leverages Google Cloud Platform's RPC endpoints for:
 - Frontrunning analysis and protection
 - Transaction ordering optimization
 - MEV activity monitoring
-- 
+  
 <img src="https://github.com/user-attachments/assets/3c8ef654-0754-4113-90c6-0b0530c42f66" alt="trace_homescreen" height="400">
 <img src="https://github.com/user-attachments/assets/42aaacc6-b962-4879-aadd-8f0861c8b5ed" alt="mevanalysis_homescreen" height="400">
 <img src="https://github.com/user-attachments/assets/1737c1f4-7560-4c1d-91a0-bcde5104387b" alt="transaction_trace" height="400">
-<img src="https://github.com/user-attachments/assets/f5a30b9a-7384-4dda-b1e6-adb36c33703f" alt="transaction_trace3" height="400">
 <img src="https://github.com/user-attachments/assets/21480253-1c1f-47d4-af69-fb41d377ef12" alt="transaction_trace4" height="400">
 <img src="https://github.com/user-attachments/assets/c20eff8c-ef73-47ab-9beb-21dd0ba3fabc" alt="advanced_trace1" height="400">
 
@@ -143,7 +163,7 @@ Our application leverages Google Cloud Platform's RPC endpoints for:
 - Market price tracking
 - Network congestion monitoring
 - Interactive data visualization
-- 
+  
 <img src="https://github.com/user-attachments/assets/b47c4fab-cf71-4605-8e0f-311f6e30a7ba" alt="network_congestion" height="400">
 <img src="https://github.com/user-attachments/assets/099ba23d-d0f3-48d1-bc83-942cd72097c5" alt="gas_tab" height="400">
 <img src="https://github.com/user-attachments/assets/67acbbe8-61a5-4e15-abce-3be413eb1b83" alt="blocks_tab" height="400">
@@ -163,6 +183,28 @@ Our application leverages Google Cloud Platform's RPC endpoints for:
 <img src="https://github.com/user-attachments/assets/cb6d8218-87f2-43e0-8749-3f6b3282af51" alt="pyusd_city3" height="400">
 <img src="https://github.com/user-attachments/assets/c35f5bd6-8c10-441f-a299-aefc4b981618" alt="pyusd_city4" height="400">
 
+### 🤖 AI-Powered Analysis with Google Gemini
+- **Smart Transaction Analysis**: Real-time transaction pattern recognition and risk assessment using Google's Gemini AI
+- **Intelligent Trace Interpretation**: 
+  - Natural language explanations of complex transaction traces
+  - Smart contract interaction analysis
+  - Gas usage optimization recommendations
+  - Risk level assessment and security insights
+- **MEV Protection Insights**:
+  - AI-driven frontrunning detection
+  - Sandwich attack pattern recognition
+  - Predictive MEV exposure analysis
+- **Market Intelligence**:
+  - Smart market trend analysis
+  - Price impact predictions
+  - Trading pattern recognition
+- **User-Friendly Explanations**:
+  - Technical details translated into plain English
+  - Visual representation of complex blockchain operations
+  - Actionable recommendations for users
+
+<img src="https://github.com/user-attachments/assets/072c3175-689f-4309-8c39-e0fa61b655b8" alt="ai_analysis" height="400">
+<img src="https://github.com/user-attachments/assets/f5a30b9a-7384-4dda-b1e6-adb36c33703f" alt="transaction_trace3" height="400">
 
 ## 📱 User Interface
 
