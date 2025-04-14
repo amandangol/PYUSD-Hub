@@ -1,4 +1,4 @@
-# PYUSD Hub - Non-Custodial Mobile Wallet & Analytics Platform
+# PYUSD Hub 
 
 <div align="center">
   <img src="assets/images/pyusdlogo.png" alt="PYUSD Hub Logo" width="200" height="200">
@@ -9,6 +9,19 @@
   [![Ethereum](https://img.shields.io/badge/Ethereum-Powered-3C3C3D?logo=ethereum)](https://ethereum.org/)
   [![GCP](https://img.shields.io/badge/GCP-Blockchain-4285F4?logo=google-cloud)](https://cloud.google.com/)
   [![Gemini](https://img.shields.io/badge/AI-Gemini-8E75B2?logo=google)](https://cloud.google.com/vertex-ai)
+</div>
+
+## 📲 Try It Now!
+
+<div align="center">
+  <h3>Download PYUSD Hub</h3>
+  
+  [![Download APK](https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android)](https://drive.google.com/drive/u/1/folders/1BG7YnRTCbg41MjIbq4gOsnfVAuP1WTyn)
+  [![GitHub Release](https://img.shields.io/badge/GitHub-Release-blue?style=for-the-badge&logo=github)](https://github.com/yourusername/PYUSD-Hub/releases/latest)
+
+  For the best experience, install the APK on your Android device and explore all features in real-time!
+  
+  > 🌟 Experience real-time blockchain analytics, MEV protection, and AI-powered insights on your mobile device.
 </div>
 
 ## 📑 Table of Contents
@@ -31,6 +44,15 @@ PYUSD Hub revolutionizes PYUSD token management by combining enterprise-grade se
 - 🌆 Interactive 3D blockchain visualization ("PYUSD City")
 - 🔒 Advanced MEV protection using GCP's `debug_traceTransaction`
 - 🤖 AI-powered transaction analysis with Google Gemini
+
+### Quick Start
+Want to try PYUSD Hub right away? Download the APK and start exploring:
+1. Download from [Google Drive](https://drive.google.com/drive/u/1/folders/1BG7YnRTCbg41MjIbq4gOsnfVAuP1WTyn) or [GitHub Releases](https://github.com/yourusername/PYUSD-Hub/releases/latest)
+2. Install on your Android device
+3. Choose Demo Mode to explore without a wallet, or create a new wallet for the full experience
+4. Experience real-time blockchain analytics and AI-powered insights
+
+> Note: For security reasons, always download from our official links above.
 
 ## 🚀 Getting Started
 
@@ -281,6 +303,15 @@ Multi-layer security implementation with:
 - Responsive design
 - Offline capability
 
+### 6. 💫 Enhanced UX
+- Intuitive navigation
+- Quick action shortcuts
+- Transaction categorization
+- Custom address book
+- QR code scanning
+- Deep linking support
+- Responsive design
+- Offline capability
 ## 🏗 Technical Architecture
 
 ### GCP RPC Integration
@@ -326,18 +357,6 @@ Multi-layer security implementation with:
 - Risk assessment
 - Gas optimization recommendations
 - Smart contract interaction analysis
-
-## 📚 Documentation
-
-### API Reference
-- [Wallet API Documentation](docs/api/wallet.md)
-- [Analytics API Documentation](docs/api/analytics.md)
-- [RPC Integration Guide](docs/api/rpc.md)
-
-### Architecture Guides
-- [System Architecture](docs/architecture/system.md)
-- [Security Model](docs/architecture/security.md)
-- [Data Flow](docs/architecture/data-flow.md)
 
 ## 🔧 Troubleshooting
 
