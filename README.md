@@ -21,7 +21,7 @@
 
   For the best experience, install the APK on your Android device and explore all features in real-time!
   
-  > 🌟 Experience real-time blockchain analytics, MEV protection, and AI-powered insights on your mobile device.
+  > 🌟 Experience real-time blockchain analytics, secure wallet, and AI-powered insights on your mobile device.
 </div>
 
 ## 📑 Table of Contents
@@ -68,7 +68,7 @@ Git
 
 1. **Clone Repository**
 ```bash
-git clone https://github.com/yourusername/PYUSD-Hub.git
+git clone https://github.com/amandangol/PYUSD-Hub.git
 cd PYUSD-Hub
 ```
 
