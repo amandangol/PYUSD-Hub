@@ -168,15 +168,6 @@ class GcpRpcService {
     }
   }
 
-  String _getEtherscanDomain(NetworkType networkType) {
-    switch (networkType) {
-      case NetworkType.sepoliaTestnet:
-        return 'api-sepolia.etherscan.io';
-      default:
-        return 'api.etherscan.io';
-    }
-  }
-
   Future<(String, double, int?)> _extractTokenTransferData(
       String rpcUrl, Map<String, dynamic> tx, String to) async {
     String tokenContractAddress = to;
@@ -1068,8 +1059,9 @@ class GcpRpcService {
     NetworkType networkType,
   ) async {
     try {
-      final apiKey = dotenv.env['ETHERSCAN_API_KEY'];
-      if (apiKey == null) {
+      final apiKey = dotenv.env['ETHERSCAN_API_KEY'] ??
+          '2W135DIX1INCKWW1QWIEIQ323SWYSUZ5BC';
+      if (apiKey.isEmpty) {
         throw Exception('Etherscan API key not found');
       }
 
