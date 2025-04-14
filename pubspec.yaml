@@ -98,7 +98,6 @@ flutter:
     - assets/config/api_config.json
     - assets/images/
     - assets/svg/
-    - assets/keys/service-account.json
     
   #   - images/a_dot_ham.jpeg
 

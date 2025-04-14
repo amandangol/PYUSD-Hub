@@ -45,6 +45,7 @@ PYUSD Hub revolutionizes PYUSD token management by combining enterprise-grade se
 - 🔒 Advanced MEV protection using GCP's `debug_traceTransaction`
 - 🤖 AI-powered transaction analysis with Google Gemini
 
+
 ### Quick Start
 Want to try PYUSD Hub right away? Download the APK and start exploring:
 1. Download from [Google Drive](https://drive.google.com/drive/u/1/folders/1BG7YnRTCbg41MjIbq4gOsnfVAuP1WTyn) or [GitHub Releases](https://github.com/amandangol/PYUSD-Hub/releases/latest)
@@ -63,6 +64,49 @@ Dart ≥3.0.0
 Android Studio / VS Code
 Git
 ```
+
+### Obtaining API Keys & RPC URLs
+
+1. **GCP Blockchain RPC Setup**
+   - Visit [Google Cloud Blockchain RPC Console](https://console.cloud.google.com/blockchain/rpc)
+   - Follow the [Quickstart Guide](https://cloud.google.com/blockchain-rpc/docs/quickstart)
+   - Copy both HTTP and WebSocket endpoints for Mainnet and Sepolia
+
+2. **Gemini API Key**
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the key for Gemini AI integration
+
+3. **Etherscan API Key**
+   - Go to [Etherscan](https://etherscan.io/apis)
+   - Create an account and generate an API key
+   - Copy the key for transaction verification
+
+### Environment Configuration
+
+1. **Get Environment Template**
+```bash
+# Copy the example environment file
+cp .env.example .env
+```
+
+2. **Configure Environment Variables**
+```env
+# GCP RPC Endpoints (from Google Cloud Console)
+MAINNET_HTTP_RPC_URL=https://your-mainnet-http-endpoint
+MAINNET_WSS_RPC_URL=wss://your-mainnet-websocket-endpoint
+SEPOLIA_HTTP_RPC_URL=https://your-sepolia-http-endpoint
+SEPOLIA_WSS_RPC_URL=wss://your-sepolia-websocket-endpoint
+
+# Contract Configuration
+PYUSD_CONTRACT_ADDRESS=0x6c3ea9036406c555b959dc03447c4f087d6d91fa
+
+# API Keys
+GEMINI_API_KEY=your_gemini_key_from_ai_studio
+ETHERSCAN_API_KEY=your_etherscan_api_key
+```
+
+> Note: Never commit your `.env` file to version control. The `.env.example` file is provided as a template.
 
 ### Installation Steps
 
@@ -303,6 +347,7 @@ Multi-layer security implementation with:
    - Blockchain data stream processing
    - Pattern recognition
    - Predictive modeling
+   > Note: Some advanced analytics features requiring BigQuery are not implemented due to billing constraints. The application focuses on real-time data analysis using GCP's Blockchain RPC services.
 
 2. **Visualization Engine**
    - 3D blockchain state rendering
@@ -334,6 +379,16 @@ Multi-layer security implementation with:
 - Gas optimization recommendations
 - Smart contract interaction analysis
 
+
+### Note on BigQuery Features
+> 🔔 Due to billing constraints, BigQuery integration features are currently not implemented. These features would have included:
+> - Historical transaction analysis
+> - Advanced MEV pattern detection
+> - Cross-chain analytics
+> - Custom SQL queries for blockchain data
+> 
+> The application currently uses GCP's Blockchain RPC services for real-time data analysis.
+
 ## 🔧 Troubleshooting
 
 ### Common Issues
@@ -349,3 +404,51 @@ Multi-layer security implementation with:
 
 ## 📄 License
 MIT License - see [LICENSE](LICENSE) for details
+
+## 📚 Learn More
+
+### Google Cloud Web3 Resources
+- [GCP Blockchain RPC Overview](https://cloud.google.com/blockchain-rpc/docs)
+- [Quickstart Guide](https://cloud.google.com/blockchain-rpc/docs/quickstart)
+- [Ethereum API Methods](https://cloud.google.com/blockchain-rpc/docs/rpc-api)
+- [Crypto Public Datasets on BigQuery](https://cloud.google.com/application/web3/discover) *(Note: BigQuery features not implemented due to billing constraints)*
+  - [BigQuery Crypto Public Datasets HOWTO](https://cloud.google.com/application/web3/discover/products/public-blockchain-datasets-available-in-bigquery)
+  - [BigQuery Ethereum Dataset](https://console.cloud.google.com/marketplace/product/bigquery-public-data/blockchain-analytics-ethereum-mainnet-us)
+  - [Ethereum Real-time Events (Experimental)](https://cloud.google.com/application/web3/discover/products/realtime-evm-blockchain-events-with-pubsub?e=48754805)
+- [Google Faucet (Sepolia & Holesky)](https://cloud.google.com/application/web3/faucet)
+- [Google AI Studio](https://aistudio.google.com/prompts/new_chat)
+
+### PYUSD Documentation
+- [About PYUSD](https://developer.paypal.com/community/blog/pyusd-stablecoin/)
+- [PYUSD Contract on Paxos](https://github.com/paxosglobal/pyusd-contract)
+- [PYUSD Contract ABI on Ethereum](https://etherscan.io/token/0x6c3ea9036406852006290770bedfcaba0e23a0e8)
+- [PYUSD Contract ABI on Sourcify](https://sourcify.dev/#/lookup/0x6c3ea9036406852006290770BEdFcAbA0e23A0e8)
+- [PYUSD Faucet on Paxos](https://faucet.paxos.com/)
+
+### Ethereum Development
+- [JSON-RPC API Documentation](https://ethereum.org/en/developers/docs/apis/json-rpc/)
+- [Reading Blockchain Data](https://docs.alchemy.com/docs/how-to-read-data-with-json-rpc)
+
+## 🙏 Credits & Acknowledgments
+
+This project is built upon the incredible work of several organizations and their technologies:
+
+### PayPal USD (PYUSD)
+PYUSD is a trademark of PayPal, Inc. This project utilizes the PYUSD smart contract and infrastructure provided by PayPal and Paxos. For more information about PYUSD, visit [pyusd.com](https://developer.paypal.com/community/blog/pyusd-stablecoin/).
+
+### Google Cloud Platform
+This project leverages Google Cloud's Blockchain Node Engine and various Web3 services. Special thanks to the GCP team for providing robust blockchain infrastructure and documentation.
+
+### Ethereum Foundation
+Built on Ethereum's technology and standards. Thanks to the Ethereum Foundation and community for maintaining the backbone of decentralized finance.
+
+### Open Source Community
+This project uses various open-source libraries and tools. We're grateful to all the developers who maintain these resources.
+
+## 📝 Legal Notice
+
+- PYUSD™ is a trademark of PayPal, Inc.
+- Google Cloud™ and related marks are trademarks of Google LLC
+- Ethereum™ is a trademark of Ethereum Foundation
+
+This project is not officially associated with PayPal, Google, or the Ethereum Foundation. It is an independent implementation utilizing their public APIs and services.
