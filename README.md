@@ -17,7 +17,7 @@
   <h3>Download PYUSD Hub</h3>
   
   [![Download APK](https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android)](https://drive.google.com/drive/u/1/folders/1BG7YnRTCbg41MjIbq4gOsnfVAuP1WTyn)
-  [![GitHub Release](https://img.shields.io/badge/GitHub-Release-blue?style=for-the-badge&logo=github)](https://github.com/yourusername/PYUSD-Hub/releases/latest)
+  [![GitHub Release](https://img.shields.io/badge/GitHub-Release-blue?style=for-the-badge&logo=github)](https://github.com/amandangol/PYUSD-Hub/releases/latest)
 
   For the best experience, install the APK on your Android device and explore all features in real-time!
   
@@ -47,7 +47,7 @@ PYUSD Hub revolutionizes PYUSD token management by combining enterprise-grade se
 
 ### Quick Start
 Want to try PYUSD Hub right away? Download the APK and start exploring:
-1. Download from [Google Drive](https://drive.google.com/drive/u/1/folders/1BG7YnRTCbg41MjIbq4gOsnfVAuP1WTyn) or [GitHub Releases](https://github.com/yourusername/PYUSD-Hub/releases/latest)
+1. Download from [Google Drive](https://drive.google.com/drive/u/1/folders/1BG7YnRTCbg41MjIbq4gOsnfVAuP1WTyn) or [GitHub Releases](https://github.com/amandangol/PYUSD-Hub/releases/latest)
 2. Install on your Android device
 3. Choose Demo Mode to explore without a wallet, or create a new wallet for the full experience
 4. Experience real-time blockchain analytics and AI-powered insights
