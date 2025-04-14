@@ -211,13 +211,6 @@ class _TransactionTraceScreenState extends State<TransactionTraceScreen> {
     final tokenValue = tokenDetails['value'] ?? 0.0;
     final tokenRecipient = tokenDetails['recipient'] ?? to;
 
-    // Extract gas analysis
-    final gasAnalysis = _analysisData['gasAnalysis'] ?? {};
-    final gasUsed = gasAnalysis['gasUsed'] ?? 0;
-    final gasPrice = gasAnalysis['gasPrice'] ?? 0.0;
-    final gasCostEth = gasAnalysis['gasCostEth'] ?? 0.0;
-    final gasCostUsd = gasAnalysis['gasCostUsd'] ?? 0.0;
-
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

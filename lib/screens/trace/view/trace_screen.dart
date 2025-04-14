@@ -12,7 +12,6 @@ import '../provider/trace_provider.dart';
 import 'transaction_trace_screen.dart';
 import 'advanced_trace_screen.dart';
 import '../../../../widgets/loading_overlay.dart';
-import 'mev_analysis_screen.dart';
 
 class TraceScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -921,21 +920,6 @@ class _TraceScreenState extends State<TraceScreen>
                   direction: DismissDirection.endToStart,
                   confirmDismiss: (direction) async {
                     return await _showDeleteConfirmationDialog(context);
-                  },
-                  onDismissed: (direction) {
-                    provider.removeTraceFromHistory(index);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: Colors.red,
-                        content: Text('$title removed from history'),
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          onPressed: () {
-                            provider.restoreRemovedTrace();
-                          },
-                        ),
-                      ),
-                    );
                   },
                   child: Card(
                     margin: const EdgeInsets.only(bottom: 8.0),

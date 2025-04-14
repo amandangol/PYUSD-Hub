@@ -405,6 +405,9 @@ class AuthProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      // Notify all listeners before clearing data
+      notifyListeners();
+
       // Clear sensitive data but keep metadata for potential recovery
       if (_wallet != null) {
         _wallet = WalletModel(
@@ -426,7 +429,7 @@ class AuthProvider extends ChangeNotifier {
       // Clear any cached data
       await _clearCachedData();
 
-      // Notify listeners after all cleanup is done
+      // Final notification after all cleanup
       notifyListeners();
     } catch (e) {
       _setError('Failed to logout: $e');

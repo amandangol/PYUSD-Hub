@@ -7,7 +7,6 @@ import '../widget/pin_input_widget.dart.dart';
 import '../../../providers/navigation_provider.dart';
 import '../../../routes/app_routes.dart';
 import 'wallet_selection_screen.dart';
-import '../../../screens/onboarding/view/onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

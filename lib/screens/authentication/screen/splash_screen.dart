@@ -16,35 +16,71 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  late Animation<double> _slideAnimation;
+  late Animation<double> _pulseAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<Offset> _taglineSlideAnimation;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
+    // Logo fade in animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeInOut),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
       ),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+    // Logo scale animation
+    _scaleAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutBack),
       ),
     );
 
-    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+    // Subtle pulse animation for logo
+    _pulseAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.05),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.05, end: 1.0),
+        weight: 1,
+      ),
+    ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.3, 0.8, curve: Curves.easeOut),
+        curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
+      ),
+    );
+
+    // Title slide animation - matching logo animation style
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 0.7, curve: Curves.easeOutBack),
+      ),
+    );
+
+    // Tagline slide animation - slightly delayed from title
+    _taglineSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.4, 0.8, curve: Curves.easeOutBack),
       ),
     );
 
@@ -65,7 +101,7 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (!mounted) return;
 
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(milliseconds: 2500));
 
       if (!mounted) return;
 
@@ -75,7 +111,6 @@ class _SplashScreenState extends State<SplashScreen>
 
       // Determine which screen to show
       if (authProvider.hasWallet) {
-        // If we have a wallet, go to login screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
@@ -124,43 +159,50 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Logo with fade, scale and pulse animations
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(
                     scale: _scaleAnimation,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.primaryContainer.withOpacity(0.3),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.2),
-                            blurRadius: 20,
-                            spreadRadius: 5,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer
+                                  .withOpacity(0.3),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary
+                                      .withOpacity(0.2),
+                                  blurRadius: 20,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Image.asset(
+                                "assets/images/pyusdlogo.png",
+                                height: 80,
+                                width: 80,
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Image.asset(
-                          "assets/images/pyusdlogo.png",
-                          height: 80,
-                          width: 80,
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // App name with slide animation
+                // App name with slide and fade animation
                 SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.3),
-                    end: Offset.zero,
-                  ).animate(_slideAnimation),
+                  position: _slideAnimation,
                   child: FadeTransition(
                     opacity: _fadeAnimation,
                     child: Text(
@@ -175,12 +217,9 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 8),
 
-                // Tagline with slide animation
+                // Tagline with slide and fade animation (slightly delayed)
                 SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.3),
-                    end: Offset.zero,
-                  ).animate(_slideAnimation),
+                  position: _taglineSlideAnimation,
                   child: FadeTransition(
                     opacity: _fadeAnimation,
                     child: Text(

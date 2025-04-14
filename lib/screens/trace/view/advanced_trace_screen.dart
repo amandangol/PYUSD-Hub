@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pyusd_hub/utils/formatter_utils.dart';
-import 'package:pyusd_hub/utils/snackbar_utils.dart';
 import '../../../../widgets/loading_overlay.dart';
 
 import '../../../widgets/pyusd_components.dart';
@@ -982,9 +981,7 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
 
     final type = call['type']?.toString().toUpperCase() ?? 'CALL';
     final to = call['to']?.toString() ?? 'Unknown';
-    final from = call['from']?.toString() ?? 'Unknown';
     final value = call['value']?.toString() ?? '0x0';
-    final input = call['input']?.toString() ?? '0x';
     final error = call['error']?.toString();
     final calls = call['calls'] as List? ?? [];
 
@@ -1381,27 +1378,27 @@ class _AdvancedTraceScreenState extends State<AdvancedTraceScreen> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: (isSuccess ? Colors.green : Colors.red).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                receipt == null
-                    ? 'Pending'
-                    : (isSuccess ? 'Success' : 'Failed'),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: receipt == null
-                      ? Colors.orange
-                      : (isSuccess ? Colors.green : Colors.red),
-                ),
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.symmetric(
+            //     horizontal: 8,
+            //     vertical: 4,
+            //   ),
+            //   decoration: BoxDecoration(
+            //     color: (isSuccess ? Colors.green : Colors.red).withOpacity(0.1),
+            //     borderRadius: BorderRadius.circular(12),
+            //   ),
+            //   child: Text(
+            //     receipt == null
+            //         ? 'Pending'
+            //         : (isSuccess ? 'Success' : 'Failed'),
+            //     style: TextStyle(
+            //       fontSize: 12,
+            //       color: receipt == null
+            //           ? Colors.orange
+            //           : (isSuccess ? Colors.green : Colors.red),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         subtitle: Column(
