@@ -1,4 +1,4 @@
-# PYUSD Hub - Non-Custodial Mobile Wallet & Analytics Platform
+# PYUSD Hub 
 
 <div align="center">
   <img src="assets/images/pyusdlogo.png" alt="PYUSD Hub Logo" width="200" height="200">
@@ -31,7 +31,6 @@ PYUSD Hub revolutionizes PYUSD token management by combining enterprise-grade se
 - 🌆 Interactive 3D blockchain visualization ("PYUSD City")
 - 🔒 Advanced MEV protection using GCP's `debug_traceTransaction`
 - 🤖 AI-powered transaction analysis with Google Gemini
-
 
 ## 🚀 Getting Started
 
@@ -79,6 +78,53 @@ flutter run
 ```
 
 ## 🌟 Core Features & GCP Integration
+
+### Complete List of GCP RPC Methods Used
+
+1. **Account & Balance Methods**
+   - `eth_getBalance` - Get ETH balance
+   - `eth_getTransactionCount` - Get account nonce
+   - `eth_call` - Call smart contracts (PYUSD balance)
+   - `eth_estimateGas` - Estimate transaction gas
+   - `eth_gasPrice` - Get current gas price
+   - `eth_maxPriorityFeePerGas` - Get max priority fee
+   - `eth_feeHistory` - Get historical fee data
+
+2. **Transaction Management**
+   - `eth_sendRawTransaction` - Send transactions
+   - `eth_getTransactionByHash` - Get transaction details
+   - `eth_getTransactionReceipt` - Get transaction receipts
+   - `eth_getBlockByHash` - Get block details by hash
+   - `eth_getBlockByNumber` - Get block details by number
+
+3. **Network State**
+   - `eth_blockNumber` - Get latest block number
+   - `eth_syncing` - Check sync status
+   - `eth_chainId` - Get network chain ID
+   - `net_version` - Get network version
+   - `net_peerCount` - Get connected peers
+
+4. **Tracing & Debug**
+   - `debug_traceTransaction` - Detailed transaction trace
+   - `debug_traceBlockByNumber` - Trace entire block
+   - `debug_traceBlockByHash` - Trace block by hash
+   - `debug_traceCall` - Simulate transaction trace
+   - `trace_block` - Get block traces
+   - `trace_transaction` - Get transaction traces
+   - `trace_call` - Trace contract calls
+   - `trace_rawTransaction` - Trace raw transactions
+
+5. **WebSocket Subscriptions**
+   - `eth_subscribe` - Subscribe to events
+     - `newHeads` - New block headers
+     - `newPendingTransactions` - Pending transactions
+     - `logs` - Contract event logs
+   - `eth_unsubscribe` - Unsubscribe from events
+
+6. **State & Storage**
+   - `eth_getCode` - Get contract code
+   - `eth_getStorageAt` - Get contract storage
+   - `eth_getLogs` - Get contract event logs
 
 ### 1. 💼 Secure Wallet Management
 Our non-custodial wallet leverages GCP RPC methods for secure asset management:
@@ -182,7 +228,26 @@ Multi-layer security implementation with:
 
 ## 📱 Additional Features
 
-### 1. 📊 Analytics & Insights
+### 1. 🎮 Demo Mode
+- Simulated wallet with test transactions
+- Pre-populated transaction history
+- Real-time network data access
+- Full MEV protection testing
+- AI analysis demonstration
+- PYUSD City exploration
+- Network switching capability
+- All features accessible without real funds
+
+### 2. ⚙️ Advanced Settings & Management
+- Custom RPC endpoint configuration
+- Network management (Mainnet/Testnet)
+- Security settings (Biometric, PIN, Session)
+- Notification preferences
+- UI customization (Dark/Light theme)
+- Connection quality monitoring
+- Fallback providers configuration
+
+### 3. 📊 Analytics & Insights
 
 <div style="display: flex; justify-content: space-around; margin: 20px 0;">
   <img src="https://github.com/user-attachments/assets/8baae0d0-d88a-4e67-ac34-8a038040e24c" alt="insightsscreen" height="400"/>
@@ -194,76 +259,68 @@ Multi-layer security implementation with:
 - Price impact predictions
 - Network health monitoring
 
-### 2. 🔔 Notification System
+### 4. 🔔 Notification System
 - Gas price alerts
 - Transaction confirmations
 - Network congestion warnings
 - Custom alert thresholds
 
-### 3. 📰 News & Information Center
+### 5. 📰 News & Information
 - PYUSD ecosystem updates
 - Market news integration
 - Protocol announcements
 - Educational content
 
-## 🏗 Technical Architecture
-
-### GCP RPC Integration
-Our application leverages these key RPC methods:
-
-1. **Core Methods**
-   - `eth_getBalance`
-   - `eth_getTransactionCount`
-   - `eth_call`
-   - `eth_sendRawTransaction`
-
-2. **Advanced Methods**
-   - `debug_traceTransaction`
-   - `debug_traceBlockByNumber`
-   - `trace_block`
-   - `eth_subscribe`
-
-and many more!!!
+### 6. 💫 Enhanced UX
+- Intuitive navigation
+- Quick action shortcuts
+- Transaction categorization
+- Custom address book
+- QR code scanning
+- Deep linking support
+- Responsive design
+- Offline capability
 
 ### High-Performance Components
 
-1. **Trace Processing Engine**
+1. **Processing Engine**
    - Parallel transaction trace processing
    - Real-time block analysis
    - MEV pattern detection
    - State reconstruction
-
-2. **Analytics Pipeline**
    - Blockchain data stream processing
-   - Real-time market analysis
    - Pattern recognition
    - Predictive modeling
 
-3. **Visualization Engine**
+2. **Visualization Engine**
    - 3D blockchain state rendering
    - Real-time transaction flows
    - Interactive exploration
-   - Optimized performance
+   - Weather effects system
+     - Clear Sky: Low congestion (<30%)
+     - Cloudy: Moderate congestion (30-60%)
+     - Foggy: High congestion (60-80%)
+     - Rain: Severe congestion (>80%)
+
+3. **System Optimizations**
+   - Caching System
+     - Transaction and balance caching
+     - Network data and RPC response caching
+     - Image caching
+   - Background Processing
+     - Parallel RPC requests
+     - Transaction queue management
+     - WebSocket connection handling
+   - Resource Management
+     - Memory and battery optimization
+     - Network bandwidth management
+     - Storage optimization
 
 ### Google Gemini AI Integration
 - Transaction pattern recognition
 - Risk assessment
 - Gas optimization recommendations
 - Smart contract interaction analysis
-
-## 🌆 PYUSD City Visualization
-
-### Interactive 3D Visualization
-- Real-time block visualization
-- Transaction flow animation
-- Network congestion effects
-- Interactive building exploration
-
-### Weather Effects System
-- Clear Sky: Low congestion (<30%)
-- Cloudy: Moderate congestion (30-60%)
-- Foggy: High congestion (60-80%)
-- Rain: Severe congestion (>80%)
 
 ## 📚 Documentation
 
