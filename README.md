@@ -24,6 +24,17 @@
   > 🌟 Experience real-time blockchain analytics, secure wallet, and AI-powered insights on your mobile device.
 </div>
 
+## 🎥 Demo Video
+
+<div align="center">
+  
+  [![PYUSD Hub Demo](https://img.youtube.com/vi/kf4cnrLYMO4/0.jpg)](https://www.youtube.com/watch?v=kf4cnrLYMO4)
+  
+  Watch our comprehensive demo video showcasing all features in action!
+  
+  > 🎮 See the wallet, analytics, PYUSD City, and AI features live
+</div>
+
 ## 📑 Table of Contents
 - [Overview](#-overview)
 - [Getting Started](#-getting-started)
@@ -53,6 +64,8 @@ Want to try PYUSD Hub right away? Download the APK and start exploring:
 3. Choose Demo Mode to explore without a wallet, or create a new wallet for the full experience
 4. Experience real-time blockchain analytics and AI-powered insights
 
+> 📱 For a quick overview of all features, check out our [Demo Video](https://www.youtube.com/watch?v=kf4cnrLYMO4)
+> 
 > Note: For security reasons, always download from our official links above.
 
 ## 🚀 Getting Started

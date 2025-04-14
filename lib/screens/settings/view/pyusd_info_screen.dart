@@ -4,7 +4,6 @@ import '../../../widgets/pyusd_components.dart';
 class PyusdInfoScreen extends StatefulWidget {
   const PyusdInfoScreen({super.key});
 
-  // Static list of Q&A items with improved accuracy
   static final List<QAItem> qaItems = [
     QAItem(
       question: "What is PayPal USD?",
