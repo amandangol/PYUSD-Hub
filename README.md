@@ -1,4 +1,5 @@
 # PYUSD Hub 
+( **Merit Prize-Winning App** for *Seamless Transactions, Infinite Possibilities* — hosted by **Google Cloud Web3 x PayPal** )
 
 <div align="center">
   <img src="assets/images/pyusdlogo.png" alt="PYUSD Hub Logo" width="200" height="200">
